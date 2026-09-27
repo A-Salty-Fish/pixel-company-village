@@ -1,0 +1,17 @@
+{
+  "date": "2026-09-24",
+  "disclaimer": "代理信号≠绩效；摸鱼分是趣味雷达",
+  "people": [
+    { "name": "林小满", "msgs": 42, "work": 2.7, "fish": 0.4, "on_task": 0.91 },
+    { "name": "周晚风", "msgs": 18, "work": 1.5, "fish": 0.6, "on_task": 0.8 },
+    { "name": "苏星河", "msgs": 27, "work": 1.8, "fish": 1.7, "on_task": 0.55 },
+    { "name": "江澄", "msgs": 11, "work": 0.7, "fish": 2.4, "on_task": 0.22 },
+    { "name": "沈听雨", "msgs": 9, "work": 0.5, "fish": 1.6, "on_task": 0.3 },
+    { "name": "顾南风", "msgs": 4, "work": 0.4, "fish": 0.3, "on_task": 0.2 },
+    { "name": "叶知秋", "msgs": 15, "work": 1.1, "fish": 1.0, "on_task": 0.5 },
+    { "name": "韩清和", "msgs": 33, "work": 2.5, "fish": 0.3, "on_task": 0.4 },
+    { "name": "许半夏", "msgs": 20, "work": 0, "fish": 0, "on_task": 0 },
+    { "name": "方既望", "scored": false },
+    { "name": "秦牧之", "msgs": 36, "work": 2.2, "fish": 1.1, "on_task": 0.74 }
+  ]
+}
