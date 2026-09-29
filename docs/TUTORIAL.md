@@ -72,4 +72,4 @@ npm run test:e2e
 npm run test:e2e:visual
 ```
 
-Playwright 读取 `SITE_PASSWORD`（环境变量或 `.env.local`）。视觉对比失败不会挡住 `test:e2e`。基线画的是演示名册；不要在开着正式名册的环境里更新截图。
+Playwright 读取 `SITE_PASSWORD`（环境变量或 `.env.local`），开发服务器用的是同一个值。视觉对比（`@visual`）失败不会挡住 `test:e2e`。GitHub Actions 使用公开的 CI 演示口令 `ci-demo-pass`，不读取生产密码；Vercel 生产环境仍然使用你自己的 `SITE_PASSWORD`。基线画的是演示名册；不要在开着正式名册的环境里更新截图。

@@ -9,6 +9,9 @@ if (!process.env.SITE_PASSWORD && fs.existsSync(".env.local")) {
   }
 }
 
+// login() and the Next dev server started below both read this same value.
+const sitePassword = process.env.SITE_PASSWORD ?? "";
+
 export default defineConfig({
   testDir: "e2e",
   timeout: 60_000,
@@ -30,5 +33,11 @@ export default defineConfig({
         url: "http://localhost:43123/login",
         reuseExistingServer: true,
         timeout: 120_000,
+        env: {
+          ...Object.fromEntries(
+            Object.entries(process.env).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+          ),
+          SITE_PASSWORD: sitePassword,
+        },
       },
 });
