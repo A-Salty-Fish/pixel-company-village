@@ -47,7 +47,7 @@ test("unscored signal card @visual", async ({ page }) => {
   const name = body.people.find((person) => !person.scored)?.name;
   await page.evaluate((person) => window.__VILLAGE_TEST__?.selectVillager(person ?? null), name);
   const card = page.getByTestId("signal-card");
-  await expect(card).toContainText("今日暂无评分");
+  await expect(card).toContainText("未评分");
   await expect(card.getByTestId("history-window")).toBeVisible();
   await expect(card.locator("[data-history-present='1']").first()).toBeVisible();
   await expect(card).toHaveScreenshot("score-card-unscored.png", { animations: "disabled" });

@@ -1,6 +1,7 @@
 import type { VillageFx } from "@/lib/interactions";
 import { blitLabel, getLabelSprite, type LabelMode } from "@/lib/pixel-label";
 import { VILLAGE_CAPACITY } from "@/lib/capacity";
+import { FLOWER_MARK_CAP, GATHER_SPOTS, GLYPH_BUDGET, PARTICLE_BUDGET, VIEWPOINTS } from "@/lib/play-systems";
 import { artReady, drawSprite, spriteFrame, type SpriteFrame } from "@/lib/sprites";
 import type { PersonWithState } from "@/lib/types";
 import { availabilityFor, glyphFor, ringClosure, shanghaiClock, type SceneLife } from "@/lib/village-life";
@@ -203,6 +204,17 @@ function ensureGround() {
       blitTopLeft(ctx, `path_${tileIndex(c, r) % 8}`, c * TILE, r * TILE);
     }
   }
+  ctx.fillStyle = "rgba(74, 42, 18, 0.55)";
+  for (let r = 0; r < ROWS; r += 1) {
+    for (let c = 0; c < COLS; c += 1) {
+      if (!path[r][c]) continue;
+      const edge = (dc: number, dr: number) => !block(c + dc, r + dr) || !path[r + dr]?.[c + dc];
+      if (edge(0, -1)) ctx.fillRect(c * TILE, r * TILE, TILE, 2);
+      if (edge(0, 1)) ctx.fillRect(c * TILE, r * TILE + TILE - 2, TILE, 2);
+      if (edge(-1, 0)) ctx.fillRect(c * TILE, r * TILE, 2, TILE);
+      if (edge(1, 0)) ctx.fillRect(c * TILE + TILE - 2, r * TILE, 2, TILE);
+    }
+  }
 
   for (let index = 0; index < VILLAGE_CAPACITY; index += 1) {
     const plot = plotAt(index);
@@ -213,6 +225,8 @@ function ensureGround() {
       }
     }
     if (index % 3 === 0) drawFence(ctx, plot.x + 24, plot.y + 22, 64);
+    ctx.fillStyle = plot.col < 5 ? "rgba(70, 110, 50, 0.16)" : "rgba(150, 96, 40, 0.14)";
+    ctx.fillRect(plot.x + 20, plot.y + 24, 72, 40);
     if (!plot.orchard) {
       for (let ry = 0; ry < 2; ry += 1) {
         for (let rx = 0; rx < 3; rx += 1) {
@@ -358,9 +372,16 @@ function drawVillager(
   const x = person.x;
   y -= bob;
   const color = person.scored ? CAT_COLORS[person.identity.palette] : "lgrey";
+  ctx.fillStyle = "rgba(20, 16, 8, 0.45)";
+  ctx.fillRect(Math.round(x - 8), Math.round(y - 20), 16, 16);
   ctx.fillStyle = "rgba(24, 36, 16, 0.35)";
   ctx.fillRect(Math.round(x - 8), Math.round(y - 2), 16, 3);
   drawSprite(ctx, catFrame(color, person.dir, anim, frame), x, y);
+  if (selected || life?.neighbors.includes(person.name)) {
+    ctx.strokeStyle = selected ? "#fff6d8" : "#f2d15c";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(Math.round(x - 10), Math.round(y - 28), 20, 26);
+  }
   if (onActor && fx?.kind === "seed") {
     const rise = Math.min(1, elapsed / 0.4);
     const hop = Math.sin(rise * Math.PI) * 8;
@@ -368,16 +389,22 @@ function drawVillager(
   }
   if (onActor && fx?.kind === "coffee") drawMug(ctx, x + 10, y - 36);
   if (onActor && fx?.kind === "scare" && elapsed < 0.45) drawBang(ctx, x + 8, y - 40);
+  if (onActor && fx?.kind === "stretch") y -= life?.reduceMotion ? 2 : Math.sin(elapsed * 8) * 5;
   if (onActor && fx?.kind === "wave") drawWave(ctx, x + 12, y - 46 - (life?.reduceMotion ? 0 : Math.sin(elapsed * 8) * 3));
-  if (life?.selfName === person.name && life.selfPreset) drawStatusProp(ctx, life.selfPreset, x - 16, y - 18);
+  if (onActor && fx?.kind === "clap") drawClap(ctx, x + 8, y - 30);
+  if (life?.selfName === person.name && life.selfPreset) {
+    drawStatusProp(ctx, life.selfPreset, x - 18, y - 28);
+    drawStatusBadge(ctx, life.selfPreset, x - 4, y - 46);
+  }
   const avail = availabilityFor(
     person,
     clock,
     life?.selfName === person.name ? life.selfPreset : null,
   );
   drawDot(ctx, x - 12, y - 4, avail.tone);
-  if (bloom) drawPetals(ctx, x, y, life?.reduceMotion ? 0 : t, ringColors(person));
+  if (bloom && life?.particles) drawPetals(ctx, x, y, life?.reduceMotion ? 0 : t, ringColors(person));
   if (showGlyph) drawGlyph(ctx, glyphFor(person, clock.hour), x + 14, y - 40);
+  drawLifeMarks(ctx, person, life, t, x, y);
 }
 
 function drawMug(ctx: CanvasRenderingContext2D, x: number, y: number) {
@@ -400,8 +427,8 @@ const FESTIVAL_FLOWERS = [
   { x: 720, y: 900 },
 ];
 
-const BLOOM_CAP = 16;
-const GLYPH_CAP = 12;
+const BLOOM_CAP = PARTICLE_BUDGET;
+const GLYPH_CAP = GLYPH_BUDGET;
 
 function bloomNames(villagers: PlacedVillager[], life: SceneLife | null, selectedName: string | null) {
   const names = new Set<string>();
@@ -535,6 +562,199 @@ function drawBang(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.fillRect(left, top + 10, 3, 2);
 }
 
+function flowerMarkNames(villagers: PlacedVillager[], selectedName: string | null) {
+  const names = new Set<string>();
+  const closed = villagers.filter((person) => ringClosure(person).any).map((person) => person.name);
+  const picked =
+    closed.length <= FLOWER_MARK_CAP
+      ? closed
+      : closed.filter((name) => hashName(name) % Math.ceil(closed.length / FLOWER_MARK_CAP) === 0);
+  for (const name of picked.slice(0, FLOWER_MARK_CAP)) names.add(name);
+  if (selectedName && closed.includes(selectedName)) names.add(selectedName);
+  return names;
+}
+
+function drawLifeMarks(
+  ctx: CanvasRenderingContext2D,
+  person: PlacedVillager,
+  life: SceneLife | null,
+  t: number,
+  x: number,
+  y: number,
+) {
+  if (!life) return;
+  if (life.spotlights.includes(person.name)) {
+    ctx.fillStyle = "rgba(255, 226, 120, 0.28)";
+    ctx.fillRect(Math.round(x - 16), Math.round(y - 50), 32, 54);
+  }
+  if (life.sundayGlow.includes(person.name)) {
+    const pulse = life.reduceMotion ? 0 : Math.sin(t * 4) * 2;
+    ctx.strokeStyle = "#f2d15c";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(Math.round(x - 13 - pulse), Math.round(y - 34 - pulse), 26 + pulse * 2, 32 + pulse * 2);
+  }
+  const club = life.clubs[person.name];
+  if (club) drawFlag(ctx, x - 20, y - 18, club);
+  const tier = life.cropTiers[person.name] ?? 0;
+  if (tier > 0) {
+    drawSprite(ctx, `crop_0_0_${Math.min(3, tier)}`, x + 16, y + 6, { scale: 2 });
+  }
+  if (life.jobLook) {
+    const look = jobPixels(person);
+    if (look) drawJob(ctx, x + 18, y - 8, look);
+  }
+  if (life.selfName === person.name && life.selfProp) drawMiniProp(ctx, life.selfProp, x - 22, y + 4);
+  const crop = life.gardenCrops[person.name];
+  if (crop) drawMiniProp(ctx, crop, x + 8, y + 8);
+}
+
+function jobPixels(person: PlacedVillager): "hoe" | "rod" | "scroll" | null {
+  if (!person.scored) return null;
+  const work = person.work / 3;
+  const fish = person.fish / 3;
+  const task = person.on_task;
+  const max = Math.max(work, fish, task);
+  if (max <= 0) return null;
+  if (fish === max) return "rod";
+  if (task === max) return "scroll";
+  return "hoe";
+}
+
+function drawFlag(ctx: CanvasRenderingContext2D, x: number, y: number, axis: "work" | "fish" | "task") {
+  const left = Math.round(x);
+  const top = Math.round(y);
+  ctx.fillStyle = "#6a3d18";
+  ctx.fillRect(left, top, 2, 12);
+  ctx.fillStyle = axis === "work" ? "#3a7d4a" : axis === "fish" ? "#3a8fbc" : "#d4a017";
+  ctx.fillRect(left + 2, top, 7, 5);
+}
+
+function drawJob(ctx: CanvasRenderingContext2D, x: number, y: number, kind: "hoe" | "rod" | "scroll") {
+  const left = Math.round(x);
+  const top = Math.round(y);
+  ctx.fillStyle = kind === "rod" ? "#3a8fbc" : kind === "scroll" ? "#fff6d8" : "#c4a060";
+  if (kind === "scroll") {
+    ctx.fillRect(left, top, 8, 6);
+    ctx.fillStyle = "#6a3d18";
+    ctx.fillRect(left + 1, top + 2, 6, 1);
+    return;
+  }
+  ctx.fillRect(left + 3, top, 2, 10);
+  ctx.fillRect(left, top, 8, 2);
+}
+
+function drawMiniProp(ctx: CanvasRenderingContext2D, id: string, x: number, y: number) {
+  const left = Math.round(x);
+  const top = Math.round(y);
+  const color =
+    id === "lantern" || id === "lamp"
+      ? "#f2d15c"
+      : id === "pot" || id === "flower"
+        ? "#c44b3a"
+        : id === "mushroom"
+          ? "#d46a4a"
+          : "#efe6d6";
+  ctx.fillStyle = "#6a3d18";
+  ctx.fillRect(left, top, 8, 8);
+  ctx.fillStyle = color;
+  ctx.fillRect(left + 1, top + 1, 6, 6);
+}
+
+function drawClap(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  const left = Math.round(x);
+  const top = Math.round(y);
+  ctx.fillStyle = "#fff6d8";
+  ctx.fillRect(left, top, 3, 4);
+  ctx.fillRect(left + 5, top, 3, 4);
+}
+
+function drawStatusBadge(ctx: CanvasRenderingContext2D, preset: NonNullable<SceneLife["selfPreset"]>, x: number, y: number) {
+  const left = Math.round(x);
+  const top = Math.round(y);
+  ctx.fillStyle = preset === "leave" || preset === "meeting" ? "#c44b3a" : preset === "focus" ? "#d4a017" : "#3a8fbc";
+  ctx.fillRect(left, top, 8, 8);
+  ctx.fillStyle = "#fff6d8";
+  ctx.fillRect(left + 2, top + 2, 4, 4);
+}
+
+const HOUSE_FACES = [
+  { x: 500, y: 168, face: 0 },
+  { x: 790, y: 156, face: 1 },
+  { x: 1070, y: 940, face: 2 },
+];
+
+function drawHouseFace(ctx: CanvasRenderingContext2D, face: number, x: number, y: number) {
+  const left = Math.round(x);
+  const top = Math.round(y);
+  ctx.fillStyle = face === 1 ? "#6a3d18" : face === 2 ? "#2a1a10" : "#8a3a28";
+  ctx.fillRect(left, top, face === 1 ? 14 : 8, 12);
+  ctx.fillStyle = face === 2 ? "#d5e4ef" : "#f2d15c";
+  ctx.fillRect(left + 2, top + 3, 3, 4);
+  if (face === 0) {
+    ctx.fillStyle = "#c44b3a";
+    ctx.fillRect(left + 10, top - 6, 3, 6);
+  }
+}
+
+function drawSpotMarker(ctx: CanvasRenderingContext2D, x: number, y: number, kind: "gather" | "view") {
+  ctx.fillStyle = kind === "view" ? "#fff6d8" : "#6a3d18";
+  ctx.fillRect(Math.round(x - 6), Math.round(y), 12, 4);
+  if (kind === "view") {
+    ctx.fillStyle = "#f2d15c";
+    ctx.fillRect(Math.round(x - 1), Math.round(y - 8), 2, 8);
+  }
+}
+
+function drawFestivalOverlay(
+  ctx: CanvasRenderingContext2D,
+  viewW: number,
+  viewH: number,
+  festivalId: string,
+  t: number,
+  quiet: boolean,
+  reduced: boolean,
+) {
+  const count = quiet ? 8 : 18;
+  const still = quiet || reduced;
+  for (let i = 0; i < count; i += 1) {
+    const baseX = ((i * 97) % Math.max(1, viewW - 8)) + 4;
+    const baseY = ((i * 53) % Math.max(1, viewH - 8)) + 4;
+    const drift = still ? 0 : Math.sin(t + i) * 6;
+    if (festivalId === "立春") {
+      ctx.fillStyle = i % 2 ? "#f4b4c4" : "#fff6d8";
+      ctx.fillRect(Math.round(baseX), Math.round(baseY + drift), 3, 3);
+    } else if (festivalId === "立夏") {
+      ctx.fillStyle = i % 2 ? "#f2d15c" : "#fff6d8";
+      ctx.fillRect(Math.round(baseX + drift), Math.round(baseY), 2, 2);
+    } else if (festivalId === "立秋") {
+      ctx.fillStyle = i % 2 ? "#d46a32" : "#e0a050";
+      ctx.fillRect(Math.round(baseX), Math.round(baseY + drift), 4, 2);
+    } else {
+      ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+      ctx.fillRect(Math.round(baseX), Math.round(baseY), 2, 2);
+    }
+  }
+}
+
+export function paintBootField(ctx: CanvasRenderingContext2D, viewW: number, viewH: number, label: string) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = "#3c6e32";
+  ctx.fillRect(0, 0, viewW, viewH);
+  ctx.fillStyle = "#2f5a28";
+  for (let row = 0; row < 8; row += 1) {
+    ctx.fillRect(24, 80 + row * (viewH / 10), viewW - 48, 10);
+  }
+  ctx.fillStyle = "#c4a060";
+  ctx.fillRect(0, Math.round(viewH * 0.42), viewW, 18);
+  ctx.fillStyle = "#3a8fbc";
+  ctx.fillRect(28, 28, Math.min(180, viewW * 0.2), 48);
+  ctx.fillStyle = "#5a3214";
+  ctx.fillRect(16, 16, Math.min(280, viewW - 32), 36);
+  ctx.fillStyle = "#fff6d8";
+  ctx.font = "16px sans-serif";
+  ctx.fillText(label, 28, 40);
+}
+
 function drawActors(
   ctx: CanvasRenderingContext2D,
   villagers: PlacedVillager[],
@@ -545,6 +765,7 @@ function drawActors(
 ) {
   const blooms = bloomNames(villagers, life, selectedName);
   const glyphs = glyphNames(villagers, life, selectedName);
+  const flowers = flowerMarkNames(villagers, selectedName);
   const clock = shanghaiClock();
   const queue: { sort: number; draw: () => void }[] = [];
   for (const prop of propList) {
@@ -553,7 +774,7 @@ function drawActors(
       draw: () => drawSprite(ctx, prop.name, prop.x, prop.y),
     });
   }
-  if (life?.festival) {
+  if (life?.festival && life.festivalSkin) {
     for (const spot of FESTIVAL_FLOWERS) {
       queue.push({
         sort: spot.y,
@@ -561,10 +782,26 @@ function drawActors(
       });
     }
   }
+  for (const house of HOUSE_FACES) {
+    queue.push({
+      sort: house.y + 20,
+      draw: () => drawHouseFace(ctx, house.face, house.x, house.y),
+    });
+  }
+  for (const spot of GATHER_SPOTS) {
+    queue.push({ sort: spot.y, draw: () => drawSpotMarker(ctx, spot.x, spot.y, "gather") });
+  }
+  for (const spot of VIEWPOINTS) {
+    const found = life?.feathers.includes(spot.id);
+    queue.push({
+      sort: spot.y,
+      draw: () => drawSpotMarker(ctx, spot.x, spot.y, found ? "view" : "gather"),
+    });
+  }
   for (const person of villagers) {
     queue.push({
       sort: person.y,
-      draw: () =>
+      draw: () => {
         drawVillager(
           ctx,
           person,
@@ -575,7 +812,9 @@ function drawActors(
           blooms.has(person.name),
           glyphs.has(person.name),
           clock,
-        ),
+        );
+        if (flowers.has(person.name)) drawSprite(ctx, "flower_3", person.x + 14, person.y + 2);
+      },
     });
   }
   queue.sort((a, b) => a.sort - b.sort);
@@ -627,8 +866,13 @@ export function paintVillage(
     ctx.fillStyle = life.seasonTint;
     ctx.fillRect(0, 0, viewW, viewH);
   }
-  drawNameLabels(ctx, villagers, zoom, camX, camY, emphasize, viewW, viewH, dpr);
+  if (life?.festivalSkin && life.festivalId) {
+    drawFestivalOverlay(ctx, viewW, viewH, life.festivalId, t, Boolean(life.quiet), Boolean(life.reduceMotion));
+  }
+  drawNameLabels(ctx, villagers, zoom, camX, camY, emphasize, viewW, viewH, dpr, life);
 }
+
+const FAMILIAR_RIM = ["", "#c4a060", "#d4a017", "#2f6a3a"];
 
 export function drawNameLabels(
   ctx: CanvasRenderingContext2D,
@@ -640,6 +884,7 @@ export function drawNameLabels(
   viewW = WORLD_W,
   viewH = WORLD_H,
   dpr = 1,
+  life: SceneLife | null = null,
 ) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.imageSmoothingEnabled = false;
@@ -648,20 +893,22 @@ export function drawNameLabels(
   const viewWorldH = span.h;
   const cssW = viewW / dpr;
   const pitchCss = (PITCH_X * cssW * zoom) / WORLD_W;
-  // 24px glyphs in the overview when a plaque still fits a plot; smaller phones stay at 12px.
   let cssScale = zoom >= 3 ? 3 : 2;
   if (pitchCss < 72) cssScale = 1;
   const scale = cssScale * Math.max(1, Math.round(dpr));
   const placed: { x: number; y: number; w: number; h: number }[] = [];
+  const showAll = Boolean(life?.showAllPlates);
 
   const ordered = [...villagers].sort((a, b) => {
-    const ae = emphasize.has(a.name) ? 0 : a.scored ? 1 : 2;
-    const be = emphasize.has(b.name) ? 0 : b.scored ? 1 : 2;
-    return ae - be;
+    const ah = emphasize.has(a.name) ? 0 : 1;
+    const bh = emphasize.has(b.name) ? 0 : 1;
+    if (ah !== bh) return ah - bh;
+    return b.y - a.y;
   });
 
   for (const person of ordered) {
     const hot = emphasize.has(person.name);
+    if (zoom < 2 && !hot && !showAll) continue;
     const mode: LabelMode = hot ? "hot" : person.scored ? "scored" : "muted";
     const sprite = getLabelSprite(person.name, mode);
     if (!sprite) continue;
@@ -676,7 +923,12 @@ export function drawNameLabels(
     const hit = placed.some((other) => overlaps(box, other));
     if (hit && !hot) continue;
     placed.push(box);
-    blitLabel(ctx, sprite, x, y, scale);
+    const level = life?.familiarity[person.name] ?? 0;
+    if (level > 0) {
+      ctx.fillStyle = FAMILIAR_RIM[level] ?? FAMILIAR_RIM[1];
+      ctx.fillRect(Math.round(x - 2), Math.round(y - 2), dw + 4, dh + 4);
+    }
+    blitLabel(ctx, sprite, x, y, scale, hot ? 1 : 0.84);
   }
 }
 
@@ -687,12 +939,25 @@ function overlaps(
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
-export function hitTest(villagers: PlacedVillager[], worldX: number, worldY: number) {
-  for (let i = villagers.length - 1; i >= 0; i -= 1) {
-    const v = villagers[i];
-    if (worldX >= v.x - 16 && worldX <= v.x + 16 && worldY >= v.y - 40 && worldY <= v.y + 4) return v;
+export function hitTest(villagers: PlacedVillager[], worldX: number, worldY: number, zoom = 2) {
+  const pad = zoom <= 1 ? 22 : zoom < 2 ? 10 : 0;
+  let best: PlacedVillager | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (const v of villagers) {
+    const left = v.x - 16 - pad;
+    const right = v.x + 16 + pad;
+    const top = v.y - 40 - pad;
+    const bottom = v.y + 8 + pad;
+    if (worldX < left || worldX > right || worldY < top || worldY > bottom) continue;
+    const dx = worldX - v.x;
+    const dy = worldY - (v.y - 16);
+    const dist = dx * dx + dy * dy;
+    if (dist < bestDist) {
+      best = v;
+      bestDist = dist;
+    }
   }
-  return null;
+  return best;
 }
 
 /** Integer world span for a zoom step so drawImage never samples a fractional source rect. */

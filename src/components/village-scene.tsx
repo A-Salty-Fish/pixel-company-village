@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { loadVillageArt } from "@/lib/sprites";
+import { loadVillageArt, resetVillageArt, artReady } from "@/lib/sprites";
 import {
   WORLD_H,
   WORLD_W,
@@ -10,26 +10,49 @@ import {
   viewSpan,
   defaultCamera,
   hitTest,
+  paintBootField,
   paintVillage,
   placeVillagers,
   updateVillager,
 } from "@/lib/pixel-scene";
 import type { VillageFx } from "@/lib/interactions";
+import { deriveLoadStage, loadStageLabel, type LoadStage } from "@/lib/load-machine";
+import { hitSpot } from "@/lib/play-systems";
 import type { PersonWithState } from "@/lib/types";
 import { availabilityFor, shanghaiClock, type SceneLife } from "@/lib/village-life";
+
+type SpotHit = { id: string; kind: "gather" | "view"; title: string };
 
 type Props = {
   people: PersonWithState[];
   selectedName: string | null;
   fx: VillageFx | null;
   life: SceneLife;
+  forceTimeout?: boolean;
+  bootAttempt?: number;
   onSelect: (name: string | null) => void;
+  onRetry?: () => void;
+  onSpot?: (spot: SpotHit) => void;
+  onTogglePlates?: () => void;
+  onEmote?: (kind: "stretch" | "sit" | "clap" | "wave") => void;
 };
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
 
-export function VillageScene({ people, selectedName, fx, life, onSelect }: Props) {
+export function VillageScene({
+  people,
+  selectedName,
+  fx,
+  life,
+  forceTimeout = false,
+  bootAttempt = 0,
+  onSelect,
+  onRetry,
+  onSpot,
+  onTogglePlates,
+  onEmote,
+}: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const hintRef = useRef<HTMLParagraphElement>(null);
@@ -42,6 +65,11 @@ export function VillageScene({ people, selectedName, fx, life, onSelect }: Props
   const lifeRef = useRef(life);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
+  const [stage, setStage] = useState<LoadStage>("terrain");
+  const [hintOpen, setHintOpen] = useState(false);
+  const stageRef = useRef<LoadStage>("terrain");
+  const onSpotRef = useRef(onSpot);
+  const forceRef = useRef(forceTimeout);
   const startCam = defaultCamera();
   const [zoom, setZoom] = useState(startCam.zoom);
   const zoomRef = useRef(startCam.zoom);
@@ -57,6 +85,19 @@ export function VillageScene({ people, selectedName, fx, life, onSelect }: Props
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+
+  useEffect(() => {
+    onSpotRef.current = onSpot;
+  }, [onSpot]);
+
+  useEffect(() => {
+    forceRef.current = forceTimeout;
+  }, [forceTimeout]);
+
+  const shownStage: LoadStage = forceTimeout ? "timeout" : failed ? "failed" : ready ? "ready" : stage;
+  useEffect(() => {
+    stageRef.current = shownStage;
+  });
 
   useEffect(() => {
     fxRef.current = fx;
@@ -124,20 +165,42 @@ export function VillageScene({ people, selectedName, fx, life, onSelect }: Props
       return dpr;
     };
 
-    let art = false;
+    let art = artReady();
+    const bootStarted = performance.now();
+    if (!art) resetVillageArt();
+    const stageTimer = window.setInterval(() => {
+      if (art || artReady()) return;
+      const elapsed = performance.now() - bootStarted;
+      setStage(
+        deriveLoadStage({
+          elapsedMs: elapsed,
+          artReady: false,
+          rosterCount: villagersRef.current.length,
+          failed: false,
+          forcedTimeout: forceRef.current,
+        }),
+      );
+    }, 200);
     loadVillageArt()
       .then(() => {
         art = true;
         setReady(true);
+        setFailed(false);
+        setStage("ready");
+        kickRef.current?.();
       })
       .catch((error) => {
         console.error(error);
         setFailed(true);
+        setStage("timeout");
       });
 
     const paint = (now: number, start: number) => {
       const dpr = resize();
-      if (!art) return;
+      if (!art) {
+        paintBootField(ctx, canvas.width, canvas.height, loadStageLabel(stageRef.current === "ready" ? "terrain" : stageRef.current));
+        return;
+      }
       const t = lifeRef.current.reduceMotion ? 0 : (now - start) / 1000;
       const list = villagersRef.current;
       for (const v of list) updateVillager(v, t);
@@ -205,7 +268,7 @@ export function VillageScene({ people, selectedName, fx, life, onSelect }: Props
     };
     const onPointerMove = (e: PointerEvent) => {
       const world = toWorld(e.clientX, e.clientY);
-      const found = hitTest(villagersRef.current, world.x, world.y);
+      const found = hitTest(villagersRef.current, world.x, world.y, zoomRef.current);
       const nextHover = found?.name ?? null;
       if (nextHover !== hoverRef.current) setHoverHint(nextHover);
       if (!drag.current) return;
@@ -222,10 +285,17 @@ export function VillageScene({ people, selectedName, fx, life, onSelect }: Props
     };
     const onPointerUp = (e: PointerEvent) => {
       const world = toWorld(e.clientX, e.clientY);
-      const found = hitTest(villagersRef.current, world.x, world.y);
+      const found = hitTest(villagersRef.current, world.x, world.y, zoomRef.current);
       const moved = drag.current?.moved ?? false;
       drag.current = null;
-      if (!moved) onSelectRef.current(found?.name ?? null);
+      if (moved) return;
+      if (found) {
+        onSelectRef.current(found.name);
+        return;
+      }
+      const spot = hitSpot(world.x, world.y);
+      if (spot) onSpotRef.current?.(spot);
+      else onSelectRef.current(null);
     };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -275,18 +345,22 @@ export function VillageScene({ people, selectedName, fx, life, onSelect }: Props
     };
     kickRef.current = kick;
     kick();
+    const onFont = () => kick();
     document.addEventListener("visibilitychange", kick);
+    document.addEventListener("village-font", onFont);
 
     return () => {
       cancelAnimationFrame(frame);
+      window.clearInterval(stageTimer);
       document.removeEventListener("visibilitychange", kick);
+      document.removeEventListener("village-font", onFont);
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerUp);
       canvas.removeEventListener("wheel", onWheel);
     };
-  }, [people]);
+  }, [people, bootAttempt]);
 
   const applyZoom = (next: number) => {
     const z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(next)));
@@ -301,23 +375,72 @@ export function VillageScene({ people, selectedName, fx, life, onSelect }: Props
       className="pixel-frame relative overflow-hidden bg-[#3c6e32]"
       style={{ aspectRatio: `${WORLD_W} / ${WORLD_H}` }}
       data-village-host={ready ? "ready" : "boot"}
+      data-load-stage={shownStage}
+      data-bell={life.bell ? "1" : "0"}
+      data-festival-skin={life.festivalId ?? ""}
     >
-      {failed ? (
-        <p className="absolute inset-x-0 top-3 text-center text-sm text-[#fff6d8]">
-          小镇画布没能画出来，请用下面的名册点人。
-        </p>
+      {shownStage === "timeout" || shownStage === "failed" ? (
+        <div className="load-recovery" data-testid="load-recovery">
+          <p>田垄铺得太久了。可以再试一次，右上角也能刷新今日分数。</p>
+          <button
+            type="button"
+            className="hud-btn"
+            onClick={() => {
+              setFailed(false);
+              setStage("terrain");
+              onRetry?.();
+            }}
+          >
+            再试一次
+          </button>
+        </div>
       ) : !ready ? (
-        <p className="absolute inset-x-0 top-3 text-center text-sm text-[#fff6d8]">田垄和名牌铺开中…</p>
-      ) : (
+        <p className="load-progress" data-testid="load-progress">
+          {loadStageLabel(shownStage)}
+        </p>
+      ) : null}
+      {ready && hintOpen && !life.quiet ? (
         <p
           ref={hintRef}
-          className="pointer-events-none absolute bottom-2 left-3 z-10 rounded-sm border-[3px] border-[#6a3d18] bg-[#5a3214]/80 px-2 py-1 text-[11px] text-[#fff6d8]"
+          className="absolute bottom-2 left-3 z-10 flex items-center gap-2 rounded-sm border-[3px] border-[#6a3d18] bg-[#5a3214]/80 px-2 py-1 text-[11px] text-[#fff6d8]"
         >
+          <span>拖动画布 · 滚轮缩放 · 点小人看今日信号</span>
+          <button type="button" className="hud-icon" onClick={() => setHintOpen(false)} aria-label="收起提示">
+            ×
+          </button>
+        </p>
+      ) : (
+        <p ref={hintRef} className="sr-only">
           拖动画布 · 滚轮缩放 · 点小人看今日信号
         </p>
       )}
+      <div className="name-legend" data-testid="name-legend">
+        <span>
+          <i className="swatch swatch-scored" /> 彩猫 · 琥珀名牌 · 有分
+        </span>
+        <span>
+          <i className="swatch swatch-muted" /> 灰猫 · 灰名牌 · 未评分
+        </span>
+        <span>远景先收起名牌</span>
+      </div>
+      {life.selfName && onEmote ? (
+        <div className="emote-bar" data-testid="emote-bar">
+          <button type="button" className="hud-btn hud-btn-ghost" onClick={() => onEmote("stretch")}>
+            伸懒腰
+          </button>
+          <button type="button" className="hud-btn hud-btn-ghost" onClick={() => onEmote("sit")}>
+            坐下
+          </button>
+          <button type="button" className="hud-btn hud-btn-ghost" onClick={() => onEmote("clap")}>
+            鼓掌
+          </button>
+          <button type="button" className="hud-btn hud-btn-ghost" onClick={() => onEmote("wave")}>
+            挥手
+          </button>
+        </div>
+      ) : null}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-gradient-to-b from-[#2a1a10]/20 to-transparent" />
-      <div className="absolute bottom-3 right-3 z-10 flex gap-1">
+      <div className="absolute bottom-3 left-3 z-10 flex gap-1">
         <button type="button" className="hud-icon" onClick={() => applyZoom(zoom - 1)} aria-label="拉远">
           −
         </button>
@@ -326,6 +449,15 @@ export function VillageScene({ people, selectedName, fx, life, onSelect }: Props
         </button>
         <button type="button" className="hud-icon" onClick={() => applyZoom(zoom + 1)} aria-label="拉近">
           +
+        </button>
+        <button
+          type="button"
+          className="hud-icon hud-icon-wide"
+          data-testid="toggle-plates"
+          aria-pressed={life.showAllPlates}
+          onClick={onTogglePlates}
+        >
+          {life.showAllPlates ? "收起" : "全显"}
         </button>
       </div>
     </div>

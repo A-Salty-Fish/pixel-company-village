@@ -54,6 +54,10 @@ function hexRgb(hex: string): [number, number, number] {
   return [parseInt(n.slice(0, 2), 16), parseInt(n.slice(2, 4), 16), parseInt(n.slice(4, 6), 16)];
 }
 
+export function clearLabelCache() {
+  labelCache.clear();
+}
+
 export function getLabelSprite(name: string, mode: LabelMode) {
   const key = `fusion|${mode}|${name}`;
   const hit = labelCache.get(key);
@@ -96,8 +100,11 @@ export function blitLabel(
   destX: number,
   destY: number,
   scale: number,
+  alpha = 1,
 ) {
   const s = Math.max(1, Math.round(scale));
+  ctx.save();
+  ctx.globalAlpha = alpha;
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(
     sprite.canvas,
@@ -110,4 +117,5 @@ export function blitLabel(
     sprite.w * s,
     sprite.h * s,
   );
+  ctx.restore();
 }

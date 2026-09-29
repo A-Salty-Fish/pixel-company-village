@@ -1,3 +1,5 @@
+import { clearLabelCache } from "@/lib/pixel-label";
+
 export type SpriteFrame = {
   x: number;
   y: number;
@@ -30,20 +32,54 @@ export function spriteFrame(name: string) {
   return frames[name];
 }
 
+const ART_LOAD_BUDGET_MS = 8_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(label)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+export function resetVillageArt() {
+  if (ready) return;
+  loading = null;
+}
+
 export async function loadVillageArt() {
   if (ready) return;
   if (loading) return loading;
   loading = (async () => {
-    const atlasPromise = fetch("/assets/village-atlas.json").then((res) => {
-      if (!res.ok) throw new Error("atlas_json");
-      return res.json() as Promise<AtlasFile>;
-    });
-    const [atlas] = await Promise.all([atlasPromise, loadPixelFont()]);
-    const image = await loadImage(atlas.image);
+    const atlas = await withTimeout(
+      fetch("/assets/village-atlas.json").then((res) => {
+        if (!res.ok) throw new Error("atlas_json");
+        return res.json() as Promise<AtlasFile>;
+      }),
+      ART_LOAD_BUDGET_MS,
+      "art_timeout",
+    );
+    const image = await withTimeout(loadImage(atlas.image), ART_LOAD_BUDGET_MS, "art_timeout");
     frames = atlas.frames;
     baseCanvas = imageToCanvas(image);
-    variants = buildVariants(baseCanvas);
+    variants = await buildVariants(baseCanvas);
     ready = true;
+    void loadPixelFont()
+      .then(() => {
+        clearLabelCache();
+        if (typeof document !== "undefined") document.dispatchEvent(new Event("village-font"));
+      })
+      .catch(() => {
+        /* nameplates fall back to the page font */
+      });
   })();
   try {
     await loading;
@@ -84,13 +120,14 @@ function imageToCanvas(image: HTMLImageElement) {
   return canvas;
 }
 
-function buildVariants(source: HTMLCanvasElement) {
+async function buildVariants(source: HTMLCanvasElement) {
   const made: HTMLCanvasElement[][] = [];
   for (let palette = 0; palette < PALETTE_COUNT; palette += 1) {
     const row: HTMLCanvasElement[] = [];
     row.push(recolor(source, HUE_SHIFTS[palette], false));
     row.push(recolor(source, HUE_SHIFTS[palette], true));
     made.push(row);
+    await new Promise((resolve) => setTimeout(resolve, 0));
   }
   return made;
 }
