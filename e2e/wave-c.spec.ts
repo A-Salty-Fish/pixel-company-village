@@ -6,7 +6,7 @@ test("password wall rejects a wrong password and accepts Enter", async ({ page }
   await page.getByTestId("login-password").fill("not-the-site-password");
   await page.getByTestId("login-submit").click();
   await expect(page).toHaveURL(/error=password/);
-  await expect(page.getByRole("alert")).toContainText("密码不对");
+  await expect(page.getByText("密码不对，再试一次。")).toBeVisible();
 
   const password = process.env.SITE_PASSWORD ?? "";
   await page.getByTestId("login-password").fill(password);
