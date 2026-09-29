@@ -41,6 +41,16 @@ export function kindnessView(entry: KindnessEntry | undefined, clock: ClockStamp
   };
 }
 
+export function undoKindness(entry: KindnessEntry | undefined, clock: ClockStamp): KindnessEntry | null {
+  if (!entry?.days.includes(clock.ymd)) return null;
+  const weekCounts = { ...entry.weekCounts };
+  weekCounts[clock.weekKey] = Math.max(0, (weekCounts[clock.weekKey] ?? 1) - 1);
+  return {
+    days: entry.days.filter((day) => day !== clock.ymd),
+    weekCounts,
+  };
+}
+
 export function commitKindness(
   entry: KindnessEntry | undefined,
   clock: ClockStamp,

@@ -1,6 +1,6 @@
-import type { PersonWithState } from "@/lib/types";
+import type { PersonWithState } from "./types";
 
-export type FxKind = "seed" | "coffee" | "rod" | "quote" | "pair" | "nod" | "sit" | "scare" | "wave";
+export type FxKind = "seed" | "coffee" | "rod" | "quote" | "pair" | "nod" | "sit" | "scare" | "wave" | "stretch" | "clap";
 
 const KINDNESS_KINDS = new Set<FxKind>(["seed", "coffee", "rod", "pair"]);
 
@@ -49,16 +49,33 @@ export function signalTag(work: number, fish: number, onTask: number) {
   if (work >= 2 && onTask >= 0.68 && fish < 1.2) return "高产专注";
   if (fish >= 2 && fish > work) return "湖边放空";
   if (work >= 1.5 && fish >= 1.5) return "混合节奏";
-  if (work >= 1.2 && fish >= 1.2) return "边聊边干";
+  if (work >= 1.2 && fish >= 1.2) return "张弛有度";
   if (onTask >= 0.68 && work >= 1.2 && fish < 1.5) return "高产专注";
   if (fish >= 1.2 && work < 1.2) return "湖边放空";
   if (work < 1 && fish < 1) return "田边发呆";
   return "混合节奏";
 }
 
+export function quoteCount() {
+  return QUOTES.length;
+}
+
+export function quoteByIndex(index: number) {
+  const safe = ((index % QUOTES.length) + QUOTES.length) % QUOTES.length;
+  return QUOTES[safe];
+}
+
 export function pickQuote(name: string, salt: number) {
-  const index = Math.abs(hash(name) + salt) % QUOTES.length;
-  return QUOTES[index];
+  return quoteByIndex(Math.abs(hash(name) + salt));
+}
+
+export function kindnessFx(action: "seed" | "coffee" | "rod" | "water", actor: string): VillageFx {
+  if (action === "water") return makeFx("pair", actor);
+  return makeFx(action, actor);
+}
+
+export function emoteFx(actor: string, kind: "stretch" | "sit" | "clap" | "wave"): VillageFx {
+  return makeFx(kind, actor);
 }
 
 export function rollOpeningEvent(name: string, people: PersonWithState[], random = Math.random) {
@@ -115,16 +132,22 @@ function makeFx(kind: FxKind, actor: string, partner?: string, salt = 0): Villag
         : kind === "rod"
           ? "递来一根钓竿，湖风跟着响。"
           : kind === "pair"
-            ? `和${partner}一起浇了几秒水。`
+            ? partner
+              ? `和${partner}一起浇了几秒水。`
+              : "浇了几秒水。"
             : kind === "nod"
               ? "点了点头。"
               : kind === "sit"
                 ? "干脆在田边坐下了。"
                 : kind === "scare"
                   ? "被田鼠吓得跳起来。"
-                  : kind === "wave"
-                    ? "挥了挥手。"
-                    : pickQuote(actor, salt);
+                    : kind === "wave"
+                      ? "挥了挥手。"
+                      : kind === "stretch"
+                        ? "伸了个懒腰。"
+                        : kind === "clap"
+                          ? "拍了拍手。"
+                          : pickQuote(actor, salt);
   return {
     id: Date.now() + salt,
     kind,

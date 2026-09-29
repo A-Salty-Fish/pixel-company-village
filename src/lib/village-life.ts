@@ -3,6 +3,7 @@ import { fishRatio, taskRatio, workRatio } from "@/lib/interactions";
 import {
   commitKindness,
   kindnessView,
+  undoKindness,
   waveExhaustedLine,
   waveView,
   type KindnessEntry,
@@ -38,6 +39,10 @@ export type Comfort = {
   reduceMotion: boolean;
   /** When true, reduceMotion overrides the system prefers-reduced-motion setting. */
   motionOverride: boolean;
+  showAllPlates: boolean;
+  ambient: boolean;
+  festivalSkin: boolean;
+  jobLook: boolean;
 };
 
 export type MotionFlags = {
@@ -57,17 +62,35 @@ export type SceneLife = {
   reduceMotion: boolean;
   seasonTint: string;
   festival: boolean;
+  festivalId: string | null;
+  festivalSkin: boolean;
   glyphsOn: boolean;
+  particles: boolean;
+  showAllPlates: boolean;
+  jobLook: boolean;
   selfName: string | null;
   selfPreset: StatusId | null;
   sundayGlow: string[];
+  familiarity: Record<string, number>;
+  neighbors: string[];
+  spotlights: string[];
+  clubs: Record<string, "work" | "fish" | "task">;
+  cropTiers: Record<string, number>;
+  selfProp: string | null;
+  feathers: string[];
+  bell: boolean;
+  gardenCrops: Record<string, string>;
 };
 
 export const DEFAULT_COMFORT: Comfort = {
-  quiet: false,
+  quiet: true,
   hideScores: false,
   reduceMotion: false,
   motionOverride: false,
+  showAllPlates: false,
+  ambient: true,
+  festivalSkin: true,
+  jobLook: true,
 };
 
 const COMFORT_KEY = "village-comfort-v1";
@@ -79,6 +102,7 @@ type Clock = {
   ymd: string;
   hour: number;
   sunday: boolean;
+  workday: boolean;
   weekKey: string;
   monthDay: string;
 };
@@ -136,13 +160,20 @@ export function shanghaiClock(now?: Date): Clock {
   });
   const parts = Object.fromEntries(fmt.formatToParts(instant).map((part) => [part.type, part.value]));
   const ymd = `${parts.year}-${parts.month}-${parts.day}`;
+  const sunday = parts.weekday === "Sun";
+  const saturday = parts.weekday === "Sat";
   return {
     ymd,
     hour: Number(parts.hour),
-    sunday: parts.weekday === "Sun",
+    sunday,
+    workday: !sunday && !saturday,
     weekKey: isoWeek(ymd),
     monthDay: `${parts.month}-${parts.day}`,
   };
+}
+
+export function weekKeyOf(ymd: string) {
+  return isoWeek(ymd);
 }
 
 export function seasonOf(clock = shanghaiClock()) {
@@ -203,7 +234,7 @@ export function availabilityFor(
   if (preset === "dive") return { tone: "yellow", label: "潜水摸鱼" };
   if (preset === "lunch" || clock.hour === 12 || clock.hour === 13) return { tone: "yellow", label: "午饭时段" };
   if (preset === "focus") return { tone: "yellow", label: "专注中" };
-  if (!person.scored) return { tone: "yellow", label: "今日暂无评分" };
+  if (!person.scored) return { tone: "yellow", label: "未评分" };
   if ((person.fish ?? 0) >= 2) return { tone: "yellow", label: "湖边" };
   if ((person.on_task ?? 0) >= 0.68) return { tone: "green", label: "在任务上" };
   if (clock.hour < 9 || clock.hour >= 19) return { tone: "yellow", label: "村里灯还亮着" };
@@ -325,13 +356,29 @@ export function hydratePrefs() {
 }
 
 export function loadComfort(): Comfort {
-  const stored = readJson<Partial<Comfort>>(COMFORT_KEY, {});
-  return {
-    quiet: Boolean(stored.quiet),
-    hideScores: Boolean(stored.hideScores),
-    reduceMotion: Boolean(stored.reduceMotion),
-    motionOverride: Boolean(stored.motionOverride),
-  };
+  if (typeof window === "undefined") return { ...DEFAULT_COMFORT };
+  let raw: string | null = null;
+  try {
+    raw = window.localStorage.getItem(COMFORT_KEY);
+  } catch {
+    raw = null;
+  }
+  if (!raw) return { ...DEFAULT_COMFORT };
+  try {
+    const stored = JSON.parse(raw) as Partial<Comfort>;
+    return {
+      quiet: stored.quiet !== undefined ? Boolean(stored.quiet) : true,
+      hideScores: Boolean(stored.hideScores),
+      reduceMotion: Boolean(stored.reduceMotion),
+      motionOverride: Boolean(stored.motionOverride),
+      showAllPlates: Boolean(stored.showAllPlates),
+      ambient: stored.ambient !== undefined ? Boolean(stored.ambient) : true,
+      festivalSkin: stored.festivalSkin !== undefined ? Boolean(stored.festivalSkin) : true,
+      jobLook: stored.jobLook !== undefined ? Boolean(stored.jobLook) : true,
+    };
+  } catch {
+    return { ...DEFAULT_COMFORT };
+  }
 }
 
 export function viewerStorageKey(viewer: string, bucket: "kindness" | "wave" | "garden") {
@@ -392,6 +439,28 @@ export function kindnessStatus(name: string, clock = shanghaiClock(), viewer = v
 }
 
 const NEED_IDENTITY = "先在体贴设置里选定「我是谁」。善意、挥手和状态记在这个名字上。";
+
+export function revertKindness(name: string, clock = shanghaiClock(), viewer = viewerName()) {
+  if (!viewer) return false;
+  const book = loadKindness(viewer);
+  const undone = undoKindness(book[name], clock);
+  if (!undone) return false;
+  book[name] = undone;
+  writeJson(viewerStorageKey(viewer, "kindness"), book);
+  publishPrefs({ comfort: prefs.comfort, selfName: prefs.selfName, preset: prefs.preset });
+  return true;
+}
+
+export function kindnessDayCounts(viewer = viewerName()) {
+  if (!viewer) return {} as Record<string, number>;
+  const book = loadKindness(viewer);
+  return Object.fromEntries(Object.entries(book).map(([name, entry]) => [name, entry.days.length]));
+}
+
+export function kindnessOnDay(ymd: string, viewer = viewerName()) {
+  if (!viewer) return false;
+  return Object.values(loadKindness(viewer)).some((entry) => entry.days.includes(ymd));
+}
 
 export function spendKindness(name: string, clock = shanghaiClock(), viewer = viewerName()) {
   if (!viewer) return { ok: false as const, line: NEED_IDENTITY };
@@ -466,6 +535,23 @@ export function localScoreHistory(name: string, today: string) {
     recordedDays: days.filter((day) => day.present).length,
     source: "local" as const,
   };
+}
+
+export function scoreInsights(weekKey: string) {
+  const book = readJson<HistoryBook>(SCORE_HISTORY_KEY, {});
+  const out: Record<string, { scoredDays: number; week: { work: number; fish: number; on_task: number }[] }> = {};
+  for (const [date, points] of Object.entries(book)) {
+    const inWeek = weekKeyOf(date) === weekKey;
+    for (const point of points) {
+      const row = out[point.name] ?? { scoredDays: 0, week: [] };
+      if (point.scored && point.work != null && point.fish != null && point.on_task != null) {
+        row.scoredDays += 1;
+        if (inWeek) row.week.push({ work: point.work, fish: point.fish, on_task: point.on_task });
+      }
+      out[point.name] = row;
+    }
+  }
+  return out;
 }
 
 export function recordGarden(date: string, people: PersonWithState[], viewer = viewerName()) {

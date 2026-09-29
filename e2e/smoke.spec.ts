@@ -43,7 +43,8 @@ test("login, roster, and one scored card", async ({ page }) => {
   const card = page.getByTestId("signal-card");
   await expect(card).toBeVisible();
   await expect(card).toContainText(scoredName ?? "");
-  await expect(card).toContainText("今日信号卡");
+  await expect(card).toContainText("信号卡");
+  await expect(card.getByTestId("data-date")).toBeVisible();
   await expect(card.getByText("今日暂无评分")).toHaveCount(0);
   const history = card.getByTestId("history-window");
   await expect(history).toContainText("30");

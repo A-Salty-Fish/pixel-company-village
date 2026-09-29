@@ -5,8 +5,14 @@ on:
   pull_request:
 
 jobs:
+  # Required. Functional specs, including Wave C. @visual screenshots and @prod
+  # stay out of this job (see package.json test:e2e).
   smoke:
     runs-on: ubuntu-latest
+    env:
+      # Public CI demo password only. Not the Vercel production SITE_PASSWORD.
+      # A repository secret overrides it when one is configured.
+      SITE_PASSWORD: ${{ secrets.SITE_PASSWORD || 'ci-demo-pass' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -14,13 +20,16 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm test
       - run: npx playwright install --with-deps chrome
       - run: npm run test:e2e
-        env:
-          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+  # Screenshot baselines only (@visual). Pixel drift does not fail the required
+  # smoke job. Wave C behavior specs are not tagged @visual, so they stay in smoke.
   visual:
     runs-on: ubuntu-latest
     continue-on-error: true
+    env:
+      SITE_PASSWORD: ${{ secrets.SITE_PASSWORD || 'ci-demo-pass' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,5 +39,3 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chrome
       - run: npm run test:e2e:visual
-        env:
-          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}

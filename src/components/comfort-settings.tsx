@@ -32,8 +32,7 @@ export function ComfortSettings({
       <summary className="hud-title cursor-pointer">体贴设置</summary>
       <div className="space-y-3 px-3 py-3">
         <p className="text-xs leading-5 text-[#6a3d18]">
-          舒适选项存在这台浏览器。先选定「我是谁」，善意、挥手、状态和田历才记在这个显示名上。键是
-          viewer:你的显示名。换一台电脑不会同步。不是简单模式。
+          这些开关存在这台浏览器。我是谁：{selfName ?? "还没选定"}。善意、挥手、状态和田历都记在这个显示名上，换一台电脑不会跟着走。
         </p>
         <label className="flex items-start gap-2 text-sm text-[#2a1a10]">
           <input
@@ -41,7 +40,39 @@ export function ComfortSettings({
             checked={comfort.quiet}
             onChange={(event) => onComfort({ ...comfort, quiet: event.target.checked })}
           />
-          <span>安静村子：少一点花瓣和头顶小动作</span>
+          <span>安静村子：少一点花瓣、广播和头顶小动作。新来的人默认开着。</span>
+        </label>
+        <label className="flex items-start gap-2 text-sm text-[#2a1a10]">
+          <input
+            type="checkbox"
+            checked={comfort.showAllPlates}
+            onChange={(event) => onComfort({ ...comfort, showAllPlates: event.target.checked })}
+          />
+          <span>远景也显示全部名牌</span>
+        </label>
+        <label className="flex items-start gap-2 text-sm text-[#2a1a10]">
+          <input
+            type="checkbox"
+            checked={comfort.ambient}
+            onChange={(event) => onComfort({ ...comfort, ambient: event.target.checked })}
+          />
+          <span>村里氛围：整点广播、晨钟、团聚小段</span>
+        </label>
+        <label className="flex items-start gap-2 text-sm text-[#2a1a10]">
+          <input
+            type="checkbox"
+            checked={comfort.festivalSkin}
+            onChange={(event) => onComfort({ ...comfort, festivalSkin: event.target.checked })}
+          />
+          <span>节日装饰层</span>
+        </label>
+        <label className="flex items-start gap-2 text-sm text-[#2a1a10]">
+          <input
+            type="checkbox"
+            checked={comfort.jobLook}
+            onChange={(event) => onComfort({ ...comfort, jobLook: event.target.checked })}
+          />
+          <span>岗位小外观：按当天最高的一项换一把小道具。未评分仍是灰猫。</span>
         </label>
         <label className="flex items-start gap-2 text-sm text-[#2a1a10]">
           <input
@@ -59,7 +90,7 @@ export function ComfortSettings({
               onComfort({ ...comfort, reduceMotion: event.target.checked, motionOverride: true })
             }
           />
-          <span>减少动作（系统偏好和这个开关合成一个动效治理；勾上后装饰动画停住）</span>
+          <span>减少动作：跟着系统的「减少动态」，也可以在这里强制停住装饰。</span>
         </label>
         <label className="flex items-start gap-2 text-sm text-[#6a3d18]">
           <input type="checkbox" checked disabled data-testid="mute-stub" />
