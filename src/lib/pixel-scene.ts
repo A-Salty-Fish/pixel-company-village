@@ -26,6 +26,9 @@ import { selfYardPixels } from "@/features/self-yard-marker/self-yard-marker";
 import { NIGHT_WASH_V2_ENABLED, paintNightWashV2 } from "@/features/night-wash-v2/night-wash-v2";
 import { plateGlyph, shortPlateNames } from "@/features/nameplate-mid/nameplate-mid";
 import { glanceSpot, resonancePixels } from "@/features/post-week-presence/presence";
+import { autumnPaletteMark, paintAutumnPalette } from "@/features/autumn-palette/autumn-palette";
+import { afterglowAlpha, paintRitualAfterglow, type AfterglowBeat } from "@/features/ritual-afterglow/ritual-afterglow";
+import { paintScoreDayFrame, scoreDayMark } from "@/features/score-day-immersion/score-day-immersion";
 
 export const WORLD_W = 1216;
 export const WORLD_H = 1120;
@@ -1449,6 +1452,9 @@ export function paintVillage(
     ctx.fillStyle = "rgba(88, 48, 24, 0.28)";
     ctx.fillRect(0, 0, viewW, viewH);
   }
+  if (autumnPaletteMark(life?.decor?.seasonId ?? "") === "warm") {
+    paintAutumnPalette(ctx, viewW, viewH);
+  }
   if (NIGHT_WASH_V2_ENABLED && life?.sessionNight) {
     paintNightWashV2(ctx, {
       viewW,
@@ -1488,6 +1494,18 @@ export function paintVillage(
       const sy = ((i * 47) % Math.max(1, viewH - 8)) + 4;
       drawSeasonSpeck(ctx, life.decor.seasonId, sx, sy);
     }
+  }
+  paintScoreDayFrame(ctx, viewW, viewH, scoreDayMark(Boolean(life?.scoreFresh), Boolean(life?.quiet)));
+  const glowAt = life?.ritualGlowAt;
+  if (glowAt != null && life?.ritual?.beat) {
+    const elapsed = Date.now() - glowAt;
+    paintRitualAfterglow(
+      ctx,
+      viewW,
+      viewH,
+      life.ritual.beat as AfterglowBeat,
+      afterglowAlpha(elapsed, Boolean(life.reduceMotion)),
+    );
   }
   return drawNameLabels(ctx, villagers, zoom, camX, camY, emphasize, viewW, viewH, dpr, life);
 }

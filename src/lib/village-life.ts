@@ -44,6 +44,8 @@ export type Comfort = {
   ambient: boolean;
   festivalSkin: boolean;
   jobLook: boolean;
+  /** True keeps PV-PM-022 silent. Default true. */
+  sfxMuted: boolean;
 };
 
 export type MotionFlags = {
@@ -92,6 +94,12 @@ export type SceneLife = {
   presenceOn?: boolean;
   /** Find-me ring holds for at least 1.5s. Set each frame, not stored. */
   selfHighlight?: boolean;
+  /** Epoch ms when this session finished the ritual. Absent after reload. */
+  ritualGlowAt?: number | null;
+  /** UI phase for the afterglow. The canvas derives its own alpha from ritualGlowAt. */
+  ritualPhase?: "fade" | "still" | "off";
+  /** True when the score payload date is the clock's today. */
+  scoreFresh?: boolean;
 };
 
 export const DEFAULT_COMFORT: Comfort = {
@@ -103,6 +111,7 @@ export const DEFAULT_COMFORT: Comfort = {
   ambient: true,
   festivalSkin: true,
   jobLook: true,
+  sfxMuted: true,
 };
 
 const COMFORT_KEY = "village-comfort-v1";
@@ -381,6 +390,7 @@ export function comfortFromStorage(raw: string | null): Comfort {
       ambient: stored.ambient !== undefined ? Boolean(stored.ambient) : true,
       festivalSkin: stored.festivalSkin !== undefined ? Boolean(stored.festivalSkin) : true,
       jobLook: stored.jobLook !== undefined ? Boolean(stored.jobLook) : true,
+      sfxMuted: stored.sfxMuted !== undefined ? Boolean(stored.sfxMuted) : true,
     };
   } catch {
     return { ...DEFAULT_COMFORT };
