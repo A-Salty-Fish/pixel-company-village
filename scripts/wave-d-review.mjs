@@ -35,11 +35,11 @@ async function freeze(iso) {
 }
 
 async function setQuiet(on) {
-  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByTestId("comfort-settings").locator("> summary").click();
   const box = page.getByRole("checkbox", { name: /安静村子/ });
   if (on) await box.check();
   else await box.uncheck();
-  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByTestId("comfort-settings").locator("> summary").click();
 }
 
 await login();

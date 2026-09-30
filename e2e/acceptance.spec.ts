@@ -35,7 +35,7 @@ test("viewer switch keeps pins and kindness apart", async ({ page }) => {
   await login(page);
   const body = await roster(page);
   const [first, second, third, fourth] = body.people.map((person) => person.name);
-  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(first);
   await page.getByTestId("wave-d-panel").locator("summary").click();
   for (const name of [first, second, third]) {
@@ -47,7 +47,7 @@ test("viewer switch keeps pins and kindness apart", async ({ page }) => {
   await page.waitForSelector("canvas[data-village-ready='1']");
   await page.getByTestId("wave-d-panel").locator("summary").click();
   await expect(page.locator(`[data-pin="${first}"]`)).toHaveAttribute("aria-pressed", "true");
-  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(second);
   await expect(page.locator(`[data-pin="${first}"]`)).toHaveAttribute("aria-pressed", "false");
   await page.getByTestId("self-picker").selectOption(first);
@@ -58,10 +58,10 @@ test("kindness confirm debounces and does not credit another viewer", async ({ p
   await login(page);
   const body = await roster(page);
   const [self, other, nextViewer] = body.people.map((person) => person.name);
-  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(self);
   await page.evaluate((name) => window.__VILLAGE_TEST__?.selectVillager(name), other);
-  await page.getByRole("button", { name: "今日互动" }).click();
+  await page.getByRole("button", { name: /今日互动|本地互动/ }).click();
   await page.getByRole("button", { name: "种子" }).click();
   await page.getByRole("button", { name: "确认关照" }).dblclick();
   await expect(page.locator("[data-kindness-quota]")).toContainText("今日 1/1");
@@ -76,7 +76,7 @@ test("home camera moves when self is set", async ({ page }) => {
   await login(page);
   const body = await roster(page);
   const self = body.people[0].name;
-  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(self);
   await page.getByTestId("wave-d-panel").locator("summary").click();
   await page.getByTestId("go-home").click();
@@ -95,7 +95,7 @@ test("visitor copy blocks home until a name is chosen", async ({ page }) => {
 test("crop water blocks a second pour the same day", async ({ page }) => {
   await login(page);
   const body = await roster(page);
-  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(body.people[0].name);
   await page.evaluate(() => window.__VILLAGE_TEST__?.setClock("2026-09-30T02:00:00.000Z"));
   await page.getByTestId("wave-d-panel").locator("summary").click();
@@ -152,6 +152,59 @@ test("narrow split can open the map or the card", async ({ page }) => {
   await page.reload();
   await page.waitForSelector("[data-testid='split-bar']");
   await expect(page.locator(".village-stage")).toHaveAttribute("style", /0\.32/);
+});
+
+test("a cleared profile keeps quiet village checked", async ({ page }) => {
+  await page.goto("/login");
+  await page.evaluate(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
+  await login(page);
+  await page.getByTestId("comfort-settings").locator("> summary").click();
+  const quiet = page.getByTestId("quiet-toggle");
+  await expect(quiet).toBeChecked();
+  await expect(page.getByTestId("comfort-quiet")).toContainText("新来的人默认开着");
+});
+
+test("slow score load shows the boot shell without a retry button", async ({ page }) => {
+  await login(page);
+  await page.goto("/?delayScores=1", { waitUntil: "commit" });
+  await expect(page.getByTestId("village-boot")).toBeVisible();
+  await expect(page.getByTestId("village-boot")).toContainText("正在请名册");
+  await expect(page.getByTestId("village-boot")).not.toContainText("再试一次");
+  await expect(page.getByTestId("roster-list")).toBeVisible();
+});
+
+test("narrow sheet keeps the title, close, undo, and leave button usable", async ({ page }) => {
+  await page.setViewportSize({ width: 420, height: 800 });
+  await login(page);
+  const body = await roster(page);
+  const self = body.people[0]?.name;
+  const target = body.people.find((person) => person.scored && person.name !== self)?.name;
+  await page.getByTestId("comfort-settings").locator("> summary").click();
+  await page.getByTestId("self-picker").selectOption(self ?? "");
+  await page.evaluate((name) => window.__VILLAGE_TEST__?.selectVillager(name ?? null), target);
+  const head = page.getByTestId("signal-sheet-head");
+  const close = page.getByRole("button", { name: "关闭信号卡" });
+  await expect(head).toBeVisible();
+  await expect(close).toBeVisible();
+  const leave = await page.getByRole("button", { name: "出村" }).boundingBox();
+  expect(leave).toBeTruthy();
+  const hit = await page.evaluate(({ x, y }) => {
+    const el = document.elementFromPoint(x, y);
+    return Boolean(el?.closest("[data-testid='village-header']"));
+  }, { x: (leave?.x ?? 0) + 8, y: (leave?.y ?? 0) + 8 });
+  expect(hit).toBeTruthy();
+  await page.getByRole("button", { name: /今日互动|本地互动/ }).click();
+  await page.getByRole("button", { name: "种子" }).click();
+  await page.getByRole("button", { name: "确认关照" }).click();
+  const undo = page.getByTestId("kindness-undo");
+  await expect(undo).toBeVisible();
+  await expect(page.getByTestId("signal-actions")).toContainText("撤销");
+  const headBox = await head.boundingBox();
+  const undoBox = await undo.boundingBox();
+  expect(headBox && undoBox && headBox.y < undoBox.y).toBeTruthy();
 });
 
 test("help drawer explains plates, quiet, and privacy", async ({ page }) => {

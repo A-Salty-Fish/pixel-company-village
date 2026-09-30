@@ -12,6 +12,14 @@ Steam rubric final: 8.3 / 10
 Prod smoke: SKIPPED (no production SITE_PASSWORD in this environment; script writes 6 PNGs when run)
 Screenshot roots: docs/images/wave-d/round1/ docs/images/wave-d/round2/ e2e/visual.spec.ts-snapshots/
 Known gaps: production read-only smoke was not executed here
+
+Playtest 2026-09-30 follow-ups:
+- Narrow signal card is a bottom sheet. Title and close stay together; the body scrolls; actions and the 3s undo stay in the sheet footer. The header keeps a higher layer so 「出村」 stays clickable.
+- Hard refresh shows `village-boot` (“正在请名册”) with no retry button. Retry appears only when the roster request fails and the list is empty.
+- Kindness confirm still offers undo for 3 seconds, now inside `signal-actions`. Covered by `e2e/wave-c.spec.ts` and the narrow sheet test.
+- Fresh storage: `comfortFromStorage` unit plus `a cleared profile keeps quiet village checked`.
+- Stale score days label the button 「本地互动」.
+- Comfort settings are grouped into 安静 / 装饰 / 名牌 / 我是谁.
 ```
 
 Hard red lines: no chat text path, no Redis/Blob/KV, no shame board, love sim, or ambient audio, no secrets in git. New systems have a unit or Playwright check and a local toggle or undo.

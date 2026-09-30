@@ -15,6 +15,11 @@ export function scoreDateCopy(dataDate: string, today: string) {
   };
 }
 
+/** Local kindness is not the score day. Use a different label when the score day is stale. */
+export function interactionLabel(scoreDayIsToday: boolean) {
+  return scoreDayIsToday ? "今日互动" : "本地互动";
+}
+
 export function waveHint(input: { hasIdentity: boolean; allowed: boolean; retryAfterMin: number }) {
   if (!input.hasIdentity) return "挥手需要先选定「我是谁」。";
   if (!input.allowed) {

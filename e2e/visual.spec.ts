@@ -24,7 +24,7 @@ test("frozen map overview @visual", async ({ page }) => {
 
 test("busy map overview @visual", async ({ page }) => {
   await login(page);
-  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByRole("checkbox", { name: /安静村子/ }).uncheck();
   await page.evaluate(() => {
     window.__VILLAGE_TEST__?.setClock("2026-09-26T02:00:00.000Z");
@@ -69,7 +69,7 @@ test("unscored signal card @visual", async ({ page }) => {
 
 test("comfort settings @visual", async ({ page }) => {
   await login(page);
-  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByTestId("comfort-settings").locator("> summary").click();
   await expect(page.getByTestId("self-picker")).toBeVisible();
   await expect(page.getByTestId("comfort-settings")).toHaveScreenshot("comfort-settings.png", {
     animations: "disabled",

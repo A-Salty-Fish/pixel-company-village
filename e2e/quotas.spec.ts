@@ -9,7 +9,7 @@ test("kindness quota exhausts on the local identity", async ({ page }) => {
   const target = body.people.find((person) => person.scored && person.name !== self)?.name;
   expect(self && target).toBeTruthy();
 
-  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(self ?? "");
   await page.evaluate((name) => window.__VILLAGE_TEST__?.selectVillager(name ?? null), target);
 
@@ -32,7 +32,7 @@ test("kindness quota exhausts on the local identity", async ({ page }) => {
 
   const card = page.getByTestId("signal-card");
   await expect(card).toContainText("这周两次关照都用过了");
-  await expect(card.getByRole("button", { name: "今日互动" })).toBeDisabled();
+  await expect(card.getByRole("button", { name: /今日互动|本地互动/ })).toBeDisabled();
 });
 
 test("wave is limited to once an hour", async ({ page }) => {
@@ -40,7 +40,7 @@ test("wave is limited to once an hour", async ({ page }) => {
   const body = await roster(page);
   const self = body.people[0]?.name;
   const target = body.people.find((person) => person.name !== self)?.name;
-  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(self ?? "");
   await page.evaluate((name) => window.__VILLAGE_TEST__?.selectVillager(name ?? null), target);
   const card = page.getByTestId("signal-card");
@@ -51,7 +51,8 @@ test("wave is limited to once an hour", async ({ page }) => {
 
 test("comfort toggles reach the motion governor", async ({ page }) => {
   await login(page);
-  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByTestId("comfort-settings").locator("> summary").click();
+  await page.getByTestId("comfort-decor").locator("summary").click();
   await page.getByRole("checkbox", { name: /安静村子/ }).check();
   await page.getByRole("checkbox", { name: /先收起别人的分数/ }).check();
   await page.getByRole("checkbox", { name: /减少动作/ }).check();

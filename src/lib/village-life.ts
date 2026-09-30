@@ -357,17 +357,11 @@ export function hydratePrefs() {
   });
 }
 
-export function loadComfort(): Comfort {
-  if (typeof window === "undefined") return { ...DEFAULT_COMFORT };
-  let raw: string | null = null;
-  try {
-    raw = window.localStorage.getItem(COMFORT_KEY);
-  } catch {
-    raw = null;
-  }
+export function comfortFromStorage(raw: string | null): Comfort {
   if (!raw) return { ...DEFAULT_COMFORT };
   try {
-    const stored = JSON.parse(raw) as Partial<Comfort>;
+    const stored = JSON.parse(raw) as Partial<Comfort> | null;
+    if (!stored || typeof stored !== "object") return { ...DEFAULT_COMFORT };
     return {
       quiet: stored.quiet !== undefined ? Boolean(stored.quiet) : true,
       hideScores: Boolean(stored.hideScores),
@@ -381,6 +375,17 @@ export function loadComfort(): Comfort {
   } catch {
     return { ...DEFAULT_COMFORT };
   }
+}
+
+export function loadComfort(): Comfort {
+  if (typeof window === "undefined") return { ...DEFAULT_COMFORT };
+  let raw: string | null = null;
+  try {
+    raw = window.localStorage.getItem(COMFORT_KEY);
+  } catch {
+    raw = null;
+  }
+  return comfortFromStorage(raw);
 }
 
 export function viewerStorageKey(viewer: string, bucket: "kindness" | "wave" | "garden") {

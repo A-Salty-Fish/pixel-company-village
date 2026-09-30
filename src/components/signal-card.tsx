@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { STATE_LABELS } from "@/lib/animation";
-import { KINDNESS_MENU, type KindnessMenuId } from "@/lib/copy";
+import { interactionLabel, KINDNESS_MENU, type KindnessMenuId } from "@/lib/copy";
 import { AXIS_MARK, fishRatio, signalTag, taskRatio, workRatio } from "@/lib/interactions";
 import { GARDEN_CROPS } from "@/lib/play-systems";
 import type { PersonWithState } from "@/lib/types";
@@ -59,86 +59,20 @@ export function SignalCard(props: Props) {
   const showScores = person.scored && (!props.hideScores || props.isSelf);
   const rings = ringClosure(person);
   const pending = KINDNESS_MENU.find((item) => item.id === menu);
+  const actionLabel = interactionLabel(!props.dataDateDetail.includes("不是日历上的今天"));
   return (
     <aside
-      className="signal-card hud-panel overflow-hidden"
+      className="signal-card hud-panel"
       data-signal-card={props.person.scored ? "scored" : "unscored"}
       data-testid="signal-card"
     >
-      <div className="hud-title flex items-center justify-between gap-2">
-        <span>信号卡</span>
+      <div className="signal-sheet-head hud-title" data-testid="signal-sheet-head">
+        <span>信号卡 · {props.person.name}</span>
         <button type="button" className="hud-icon" onClick={props.onClose} aria-label="关闭信号卡">
           ×
         </button>
       </div>
-      <div className="signal-actions" data-testid="signal-actions">
-        <button
-          type="button"
-          className="hud-btn"
-          onClick={() => setMenu((current) => (current === "closed" ? "pick" : "closed"))}
-          data-play-interaction
-          disabled={!props.hasIdentity || !props.canKindness}
-        >
-          今日互动
-        </button>
-        <button
-          type="button"
-          className="hud-btn hud-btn-ghost"
-          onClick={props.onWave}
-          data-wave
-          disabled={!props.hasIdentity || !props.canWave}
-        >
-          挥手
-        </button>
-        <p className="text-xs text-[#6a3d18]" data-wave-note>
-          {props.waveHint}
-        </p>
-      </div>
-      <div className="space-y-3 px-3 py-3">
-        {menu === "pick" ? (
-          <div className="kindness-menu" data-testid="kindness-menu">
-            <p className="pixel-label text-[#2a1a10]">先选一种关照，确认后才扣次数。</p>
-            <div className="flex flex-wrap gap-2">
-              {KINDNESS_MENU.map((item) => (
-                <button key={item.id} type="button" className="hud-btn hud-btn-ghost" onClick={() => setMenu(item.id)}>
-                  {item.label}
-                </button>
-              ))}
-              <button type="button" className="hud-btn hud-btn-ghost" onClick={() => setMenu("closed")}>
-                先不用
-              </button>
-            </div>
-          </div>
-        ) : null}
-        {pending ? (
-          <div className="kindness-menu" data-testid="kindness-confirm">
-            <p className="pixel-label text-[#2a1a10]">{pending.confirm}</p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="hud-btn"
-                onClick={() => {
-                  props.onKindness(pending.id);
-                  setMenu("closed");
-                }}
-              >
-                确认关照
-              </button>
-              <button type="button" className="hud-btn hud-btn-ghost" onClick={() => setMenu("pick")}>
-                返回
-              </button>
-            </div>
-          </div>
-        ) : null}
-        {props.undoSeconds > 0 ? (
-          <p className="hud-stat pixel-label text-[#2a1a10]" data-testid="kindness-undo">
-            刚才消耗了 1 次善意。
-            <button type="button" className="hud-btn hud-btn-ghost ml-2" onClick={props.onUndo}>
-              撤销（{props.undoSeconds}秒）
-            </button>
-          </p>
-        ) : null}
-
+      <div className="signal-sheet-body space-y-3 px-3 py-3">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <h2 className="pixel-title text-[#2a1a10]">{props.person.name}</h2>
           <span className="hud-chip">{props.person.scored ? STATE_LABELS[props.person.state] : "未评分"}</span>
@@ -258,6 +192,72 @@ export function SignalCard(props: Props) {
           </div>
         </div>
         <p className="disclaimer-banner">{props.disclaimer}</p>
+      </div>
+      <div className="signal-actions" data-testid="signal-actions">
+        {menu === "pick" ? (
+          <div className="kindness-menu" data-testid="kindness-menu">
+            <p className="pixel-label text-[#2a1a10]">先选一种关照，确认后才扣次数。</p>
+            <div className="flex flex-wrap gap-2">
+              {KINDNESS_MENU.map((item) => (
+                <button key={item.id} type="button" className="hud-btn hud-btn-ghost" onClick={() => setMenu(item.id)}>
+                  {item.label}
+                </button>
+              ))}
+              <button type="button" className="hud-btn hud-btn-ghost" onClick={() => setMenu("closed")}>
+                先不用
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {pending ? (
+          <div className="kindness-menu" data-testid="kindness-confirm">
+            <p className="pixel-label text-[#2a1a10]">{pending.confirm}</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="hud-btn"
+                onClick={() => {
+                  props.onKindness(pending.id);
+                  setMenu("closed");
+                }}
+              >
+                确认关照
+              </button>
+              <button type="button" className="hud-btn hud-btn-ghost" onClick={() => setMenu("pick")}>
+                返回
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {props.undoSeconds > 0 ? (
+          <p className="hud-stat pixel-label text-[#2a1a10]" data-testid="kindness-undo">
+            刚才消耗了 1 次善意。
+            <button type="button" className="hud-btn hud-btn-ghost ml-2" onClick={props.onUndo}>
+              撤销（{props.undoSeconds}秒）
+            </button>
+          </p>
+        ) : null}
+        <button
+          type="button"
+          className="hud-btn"
+          onClick={() => setMenu((current) => (current === "closed" ? "pick" : "closed"))}
+          data-play-interaction
+          disabled={!props.hasIdentity || !props.canKindness}
+        >
+          {actionLabel}
+        </button>
+        <button
+          type="button"
+          className="hud-btn hud-btn-ghost"
+          onClick={props.onWave}
+          data-wave
+          disabled={!props.hasIdentity || !props.canWave}
+        >
+          挥手
+        </button>
+        <p className="text-xs text-[#6a3d18]" data-wave-note>
+          {props.waveHint} 本机操作，不改评分日。
+        </p>
       </div>
     </aside>
   );

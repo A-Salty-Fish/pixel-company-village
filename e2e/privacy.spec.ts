@@ -67,7 +67,7 @@ test("removed quota routes do not echo chat text", async ({ page }) => {
 test("storage and test state never hold chat text", async ({ page }) => {
   await login(page);
   const planted = "PRIVACY_PROBE_CHAT_ALPHA";
-  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByTestId("comfort-settings").locator("> summary").click();
   const body = await roster(page);
   await page.getByTestId("self-picker").selectOption(body.people[0].name);
   await page.getByTestId("wave-d-panel").locator("summary").click();

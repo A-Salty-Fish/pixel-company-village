@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { scoreDateCopy, waveHint } from "./copy";
+import { interactionLabel, scoreDateCopy, waveHint } from "./copy";
+import { comfortFromStorage, DEFAULT_COMFORT } from "./village-life";
 import { signalTag } from "./interactions";
 import { deriveLoadStage } from "./load-machine";
 import {
@@ -26,6 +27,21 @@ import {
 import { commitKindness, undoKindness, type ClockStamp } from "./quota-rules";
 
 const clock: ClockStamp = { ymd: "2026-09-22", weekKey: "2026-W39", sunday: false };
+
+test("a fresh comfort profile keeps quiet village on", () => {
+  assert.equal(DEFAULT_COMFORT.quiet, true);
+  assert.equal(comfortFromStorage(null).quiet, true);
+  assert.equal(comfortFromStorage("").quiet, true);
+  assert.equal(comfortFromStorage("{}").quiet, true);
+  assert.equal(comfortFromStorage("not-json").quiet, true);
+  assert.equal(comfortFromStorage('{"hideScores":true}').quiet, true);
+  assert.equal(comfortFromStorage('{"quiet":false}').quiet, false);
+});
+
+test("stale score days call the local action by a local name", () => {
+  assert.equal(interactionLabel(true), "今日互动");
+  assert.equal(interactionLabel(false), "本地互动");
+});
 
 test("kindness undo restores the daily and weekly quota", () => {
   const first = commitKindness(undefined, clock);

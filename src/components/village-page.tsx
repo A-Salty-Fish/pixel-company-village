@@ -599,7 +599,7 @@ export function VillagePage({ initial }: Props) {
       data-bad-isolated={badNote ? "1" : "0"}
       data-roster-mode={rosterMode}
     >
-      <header className="hud-panel" data-testid="village-header">
+      <header className="hud-panel village-header" data-testid="village-header">
         <div className="hud-title">像素公司村</div>
         <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
@@ -893,7 +893,18 @@ export function VillagePage({ initial }: Props) {
 
       <section className="hud-panel overflow-hidden">
         <div className="hud-title">田亩名册</div>
-        {people.length === 0 ? (
+        {people.length === 0 && error ? (
+          <div className="space-y-2 px-3 py-6 text-center text-sm text-[#4a3a28]">
+            <p>名册没请来。</p>
+            <button type="button" className="hud-btn" onClick={refresh}>
+              再试一次
+            </button>
+          </div>
+        ) : people.length === 0 && loading ? (
+          <p className="px-3 py-6 text-center text-sm text-[#4a3a28]" data-testid="roster-loading">
+            正在请名册…
+          </p>
+        ) : people.length === 0 ? (
           <p className="px-3 py-6 text-center text-sm text-[#4a3a28]">等评分机器人投喂一条分数吧。</p>
         ) : (
           <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3" data-testid="roster-list">

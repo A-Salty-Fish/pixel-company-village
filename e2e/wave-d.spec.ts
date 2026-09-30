@@ -7,7 +7,7 @@ test("visitor banner is visible before identity is chosen", async ({ page }) => 
   await expect(page.getByTestId("weather-chip")).toBeVisible();
   const body = await roster(page);
   const self = body.people[0]?.name ?? "";
-  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(self);
   await expect(page.getByTestId("visitor-banner")).toHaveCount(0);
 });
@@ -16,7 +16,7 @@ test("wave d actions stay local and canned", async ({ page }) => {
   await login(page);
   const body = await roster(page);
   const self = body.people[0]?.name ?? "";
-  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(self);
   await page.getByTestId("wave-d-panel").locator("summary").click();
   await expect(page.getByTestId("week-board")).toContainText("不公示");
