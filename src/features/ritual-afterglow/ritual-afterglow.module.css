@@ -1,0 +1,30 @@
+/*
+  PV-PM-019. The map frame carries the afterglow. The canvas tint fades
+  on its own clock. 减少动作 uses .still and does not run the keyframes.
+  Turn the feature off with RITUAL_AFTERGLOW_ENABLED.
+*/
+
+.fade {
+  animation: ritual-afterglow-fade 2.8s linear forwards;
+}
+
+.still {
+  box-shadow: inset 0 0 0 3px rgba(242, 209, 92, 0.5);
+  animation: none !important;
+}
+
+@keyframes ritual-afterglow-fade {
+  from {
+    box-shadow: inset 0 0 0 3px rgba(242, 209, 92, 0.55);
+  }
+  to {
+    box-shadow: inset 0 0 0 3px rgba(242, 209, 92, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade {
+    animation: none !important;
+    box-shadow: inset 0 0 0 3px rgba(242, 209, 92, 0.5);
+  }
+}

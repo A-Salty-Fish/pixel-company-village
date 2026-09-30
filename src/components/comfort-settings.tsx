@@ -3,6 +3,7 @@
 import type { Comfort, StatusId } from "@/lib/village-life";
 import { STATUS_PRESETS } from "@/lib/village-life";
 import { SettingsDiscover } from "@/features/compact-settings-discover/discover-badge";
+import { LIGHT_SFX_ENABLED } from "@/features/light-sfx/light-sfx";
 
 type Props = {
   comfort: Comfort;
@@ -99,6 +100,16 @@ export function ComfortSettings({
             <label className="flex items-start gap-2 text-sm text-[#6a3d18]">
               <input type="checkbox" checked disabled data-testid="mute-stub" />
               <span>环境音保持关闭。这一轮没有声音。</span>
+            </label>
+            <label className="flex items-start gap-2 text-sm text-[#2a1a10]">
+              <input
+                type="checkbox"
+                data-testid="sfx-mute"
+                checked={comfort.sfxMuted || !LIGHT_SFX_ENABLED}
+                disabled={!LIGHT_SFX_ENABLED}
+                onChange={(event) => onComfort({ ...comfort, sfxMuted: event.target.checked })}
+              />
+              <span>轻声静音：勾上就没有按钮轻点。去掉勾才响一声。少动时也不响。</span>
             </label>
           </div>
         </details>

@@ -31,6 +31,11 @@ import { selfYardMark } from "@/features/self-yard-marker/self-yard-marker";
 import { NIGHT_WASH_V2_ENABLED, nightWashV2Mark } from "@/features/night-wash-v2/night-wash-v2";
 import nightWashV2Styles from "@/features/night-wash-v2/night-wash-v2.module.css";
 import { MID_ZOOM, NAMEPLATE_MID_ENABLED, QUIET_SHORT_CAP, SHORT_CAP } from "@/features/nameplate-mid/nameplate-mid";
+import { afterglowPhase } from "@/features/ritual-afterglow/ritual-afterglow";
+import afterglowStyles from "@/features/ritual-afterglow/ritual-afterglow.module.css";
+import { autumnPaletteMark } from "@/features/autumn-palette/autumn-palette";
+import { scoreDayMark } from "@/features/score-day-immersion/score-day-immersion";
+import scoreDayStyles from "@/features/score-day-immersion/score-day-immersion.module.css";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
 
@@ -297,6 +302,12 @@ export function VillageScene({
       canvas.dataset.nightPaint = nightMark;
       canvas.dataset.nightWash = nightMark;
       canvas.classList.toggle("night-wash-active", nightMark === "active");
+      const lifeNow = lifeRef.current;
+      const glowAt = lifeNow?.ritualGlowAt;
+      const glowPhase = afterglowPhase(glowAt == null ? -1 : Date.now() - glowAt, Boolean(lifeNow?.reduceMotion));
+      canvas.dataset.ritualAfterglow = glowPhase;
+      canvas.dataset.autumnPalette = autumnPaletteMark(lifeNow?.decor?.seasonId ?? "");
+      canvas.dataset.scoreDay = scoreDayMark(Boolean(lifeNow?.scoreFresh), Boolean(lifeNow?.quiet));
     };
 
     const toWorld = (clientX: number, clientY: number) => {
@@ -447,13 +458,20 @@ export function VillageScene({
     ? nightWashV2Mark(sessionNight)
     : nightWashMark(Boolean(life.decor?.night), life.reduceMotion);
   const plateMid = NAMEPLATE_MID_ENABLED && zoom === MID_ZOOM && !life.showAllPlates;
+  const glowPhase = life.ritualPhase ?? "off";
+  const autumnMark = autumnPaletteMark(life.decor?.seasonId ?? "");
+  const scoreMark = scoreDayMark(Boolean(life.scoreFresh), life.quiet);
 
   return (
     <div
       ref={hostRef}
       className={`pixel-frame relative h-full overflow-hidden bg-[#3c6e32]${
         nightV2 ? ` night-wash-active ${nightWashV2Styles.frame}` : ""
-      }${nightV1 ? ` ${nightWashStyles.frame}` : ""}`}
+      }${nightV1 ? ` ${nightWashStyles.frame}` : ""}${
+        glowPhase === "fade" ? ` ${afterglowStyles.fade}` : ""
+      }${glowPhase === "still" ? ` ${afterglowStyles.still}` : ""}${
+        scoreMark === "soft" ? ` ${scoreDayStyles.soft}` : ""
+      }${scoreMark === "quiet" ? ` ${scoreDayStyles.quiet}` : ""}`}
       data-village-host={ready ? "ready" : "boot"}
       data-load-stage={shownStage}
       data-bell={life.bell ? "1" : "0"}
@@ -514,6 +532,9 @@ export function VillageScene({
       data-wave-reply="0"
       data-ritual-done={life.ritual?.done ? "1" : "0"}
       data-ritual-beat={life.ritual?.beat ?? ""}
+      data-ritual-afterglow={glowPhase}
+      data-autumn-palette={autumnMark}
+      data-score-day={scoreMark}
     >
       {shownStage === "timeout" || shownStage === "failed" ? (
         <div className="load-recovery" data-testid="load-recovery">

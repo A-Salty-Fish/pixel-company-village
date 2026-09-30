@@ -29,6 +29,18 @@ import { VillageScene } from "@/components/village-scene";
 import { WEEK_DONE_SUMMARY_ENABLED } from "@/features/week-done-summary/week-done-summary";
 import { WeekDoneSummary } from "@/features/week-done-summary/week-done-summary-view";
 import { sessionIsNight } from "@/features/night-wash-v2/night-wash-v2";
+import {
+  AFTERGLOW_LINE,
+  afterglowDuration,
+  afterglowPhase,
+  type AfterglowPhase,
+} from "@/features/ritual-afterglow/ritual-afterglow";
+import { autumnPaletteMark } from "@/features/autumn-palette/autumn-palette";
+import autumnPaletteStyles from "@/features/autumn-palette/autumn-palette.module.css";
+import { SCORE_DAY_LINE, scoreDayMark } from "@/features/score-day-immersion/score-day-immersion";
+import scoreDayStyles from "@/features/score-day-immersion/score-day-immersion.module.css";
+import { sfxMark } from "@/features/light-sfx/light-sfx";
+import { LightSfxBridge } from "@/features/light-sfx/sfx-bridge";
 import { POST_WEEK_PRESENCE_ENABLED, loadGlance, presencePhase, storeGlance, type GlanceSave } from "@/features/post-week-presence/presence";
 import { PostWeekPresence } from "@/features/post-week-presence/presence-view";
 import {
@@ -180,6 +192,8 @@ export function VillagePage({ initial }: Props) {
   const preset = prefs.preset;
   const [clock, setClock] = useState(() => shanghaiClock());
   const [ritualMark, setRitualMark] = useState<RitualSave | null>(null);
+  const [ritualGlowAt, setRitualGlowAt] = useState<number | null>(null);
+  const [ritualPhase, setRitualPhase] = useState<AfterglowPhase>("off");
   const [glanceMark, setGlanceMark] = useState<GlanceSave | null>(null);
   const [, setFreezeTick] = useState(0);
   const [forceTimeout, setForceTimeout] = useState(false);
@@ -413,6 +427,22 @@ export function VillagePage({ initial }: Props) {
   const season = seasonOf(clock);
   const festival = festivalOf(clock);
   const motion = motionGovernor({ systemReduced, comfort });
+  useEffect(() => {
+    if (ritualGlowAt == null) return;
+    const reduced = motion.reduced;
+    const elapsed = Date.now() - ritualGlowAt;
+    const nextPhase = afterglowPhase(elapsed, reduced);
+    const mark = window.setTimeout(() => setRitualPhase(nextPhase), 0);
+    const left = ritualGlowAt + afterglowDuration(reduced) - Date.now();
+    const clear = window.setTimeout(() => {
+      setRitualGlowAt(null);
+      setRitualPhase("off");
+    }, Math.max(16, left));
+    return () => {
+      window.clearTimeout(mark);
+      window.clearTimeout(clear);
+    };
+  }, [ritualGlowAt, motion.reduced]);
   const insights = useMemo(() => (prefs.rev > 0 ? scoreInsights(clock.weekKey) : {}), [prefs.rev, clock.weekKey]);
   const familiarity = useMemo(() => {
     const counts = prefs.rev > 0 ? kindnessDayCounts() : {};
@@ -547,6 +577,9 @@ export function VillagePage({ initial }: Props) {
       ribbon: tally.complete,
     },
     ritual: ritualMark ? { beat: ritualMark.beat, done: true } : null,
+    ritualGlowAt,
+    ritualPhase,
+    scoreFresh: dateCopy.fresh,
     bondMarks: bondNames(play.bonds),
     sessionNight: sessionIsNight(clock.hour),
     presenceOn:
@@ -877,6 +910,8 @@ export function VillagePage({ initial }: Props) {
     setWaveLine("把锄头放下，在长椅上坐下了。");
   }
 
+  const autumnMark = autumnPaletteMark(season.id);
+  const dayMark = scoreDayMark(dateCopy.fresh, comfort.quiet);
   const ritualShown = ritualMark ? RITUAL_BEATS[ritualMark.beat] : ritualBeat(clock.hour);
   const openParchment = (id: "ritual" | "week" | "season") => {
     setParchment((current) => (current === id ? null : id));
@@ -888,7 +923,12 @@ export function VillagePage({ initial }: Props) {
       data-reduce-motion={motion.reduced ? "1" : "0"}
       data-bad-isolated={badNote ? "1" : "0"}
       data-roster-mode={rosterMode}
+      data-sfx={sfxMark(comfort.sfxMuted, motion.reduced)}
+      data-ritual-afterglow={ritualPhase}
+      data-autumn-palette={autumnMark}
+      data-score-day={dayMark}
     >
+      <LightSfxBridge muted={comfort.sfxMuted} reduceMotion={motion.reduced} />
       <div className="village-hero" data-testid="village-hero">
       <div className="parchment-stack" data-testid="parchment-stack">
       <header ref={headerRef} className="hud-panel village-header" data-testid="village-header">
@@ -903,6 +943,11 @@ export function VillagePage({ initial }: Props) {
                 selfName,
               })}
             </p>
+            {dayMark !== "off" ? (
+              <p className={`glance-line text-xs ${scoreDayStyles.line}`} data-testid="score-day-cue" data-score-day={dayMark}>
+                {SCORE_DAY_LINE}
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="hud-btn" onClick={refresh} disabled={loading} data-testid="refresh-scores" data-loading={loading ? "1" : "0"}>
@@ -959,10 +1004,11 @@ export function VillagePage({ initial }: Props) {
         ) : null}
         <button
           type="button"
-          className={`parchment-badge season-banner season-${season.id}`}
+          className={`parchment-badge season-banner season-${season.id}${autumnMark === "warm" ? ` ${autumnPaletteStyles.warm}` : ""}`}
           data-testid="season-banner"
           data-season-banner
           data-season={season.id}
+          data-autumn-palette={autumnMark}
           data-festival={festival ? festival.label : ""}
           data-season-fade="400"
           aria-expanded={parchment === "season"}
@@ -975,6 +1021,11 @@ export function VillagePage({ initial }: Props) {
           {festival ? ` · 今日${festival.label}` : ""}
         </button>
       </div>
+      {ritualPhase !== "off" ? (
+        <p className="px-1 text-xs text-[#6a3d18]" data-testid="ritual-afterglow" data-ritual-afterglow={ritualPhase}>
+          {AFTERGLOW_LINE}
+        </p>
+      ) : null}
       <div className="parchment-panel" hidden={parchment !== "ritual"}>
         <HeaderRitual
           viewer={selfName}
@@ -984,6 +1035,8 @@ export function VillagePage({ initial }: Props) {
           onComplete={() => {
             if (!selfName) return;
             setRitualMark(storeRitual(selfName, clock.ymd, clock.hour));
+            setRitualGlowAt(Date.now());
+            setRitualPhase(afterglowPhase(0, motion.reduced));
           }}
         />
       </div>

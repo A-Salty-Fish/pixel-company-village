@@ -1,0 +1,9 @@
+/*
+  PV-PM-020. A thin warm rule under the season badge.
+  The map bands live on the canvas. Not a theme switch.
+  Turn the feature off with AUTUMN_PALETTE_ENABLED.
+*/
+
+.warm {
+  box-shadow: inset 0 -3px 0 #c46a32;
+}
