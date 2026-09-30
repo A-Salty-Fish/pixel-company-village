@@ -16,6 +16,7 @@ type Props = {
   disclaimer: string;
   line: string | null;
   socialReply?: "wave" | "kind" | null;
+  bondNote?: string;
   waveHint: string;
   kindnessNote: string;
   sundayNote: string | null;
@@ -154,6 +155,11 @@ export function SignalCard(props: Props) {
           </p>
         ) : null}
         {props.anonNote ? <p className="hud-stat pixel-label text-[#2a1a10]">{props.anonNote}</p> : null}
+        {props.bondNote ? (
+          <p className="text-xs text-[#6a3d18]" data-testid="bond-note">
+            {props.bondNote}
+          </p>
+        ) : null}
         {props.line ? (
           <p className="hud-stat pixel-label text-[#2a1a10]" data-event-line data-social-reply={props.socialReply ?? ""}>
             {props.line}

@@ -84,6 +84,8 @@ export type SceneLife = {
   decor?: WaveDecor | null;
   craft?: { steps: number; watered: boolean; ribbon: boolean } | null;
   ritual?: { beat: "dawn" | "noon" | "dusk"; done: boolean } | null;
+  /** Names this viewer has waved at or cared for. Static map posts. */
+  bondMarks?: string[];
 };
 
 export const DEFAULT_COMFORT: Comfort = {

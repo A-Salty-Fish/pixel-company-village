@@ -636,6 +636,12 @@ function drawVillager(
   if (nodding && !life?.reduceMotion) {
     y -= Math.abs(Math.sin(t * 3)) * 3;
   }
+  if (life?.bondMarks?.includes(person.name)) {
+    ctx.fillStyle = "#f2d15c";
+    ctx.fillRect(Math.round(x + 12), Math.round(y - 10), 3, 3);
+    ctx.fillStyle = "#6a3d18";
+    ctx.fillRect(Math.round(x + 13), Math.round(y - 7), 1, 5);
+  }
   const color = person.scored ? CAT_COLORS[person.identity.palette] : "lgrey";
   ctx.fillStyle = "rgba(20, 16, 8, 0.45)";
   ctx.fillRect(Math.round(x - 8), Math.round(y - 20), 16, 16);
