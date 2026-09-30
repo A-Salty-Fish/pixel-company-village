@@ -432,6 +432,15 @@ export function VillageScene({
       data-sitting={life.decor?.sit ? "1" : "0"}
       data-season={life.decor?.seasonId ?? ""}
       data-week-ribbon={life.decor?.weekRibbon ? "1" : "0"}
+      data-world-water={life.decor?.world.water ? "1" : "0"}
+      data-world-card={life.decor?.world.card ? "1" : "0"}
+      data-world-gate={life.decor?.world.gate ? "1" : "0"}
+      data-world-porch={life.decor?.world.porch ? "1" : "0"}
+      data-world-diary={life.decor?.world.diary ? "1" : "0"}
+      data-world-steps={life.decor?.world.steps ? "1" : "0"}
+      data-world-season={life.decor?.world.season ? "1" : "0"}
+      data-world-pin={life.decor?.world.pin ? "1" : "0"}
+      data-world-rest={life.decor?.world.rest ? "1" : "0"}
     >
       {shownStage === "timeout" || shownStage === "failed" ? (
         <div className="load-recovery" data-testid="load-recovery">

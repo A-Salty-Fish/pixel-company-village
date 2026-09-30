@@ -1,4 +1,4 @@
-import type { VillageFx } from "@/lib/interactions";
+import { isKindnessKind, type VillageFx } from "@/lib/interactions";
 import { blitLabel, getLabelSprite, type LabelMode } from "@/lib/pixel-label";
 import { VILLAGE_CAPACITY } from "@/lib/capacity";
 import { FLOWER_MARK_CAP, GATHER_SPOTS, GLYPH_BUDGET, PARTICLE_BUDGET, VIEWPOINTS } from "@/lib/play-systems";
@@ -558,6 +558,10 @@ function drawVillager(
   if (onActor && fx?.kind === "scare" && elapsed < 0.45) drawBang(ctx, x + 8, y - 40);
   if (onActor && fx?.kind === "stretch") y -= life?.reduceMotion ? 2 : Math.sin(elapsed * 8) * 5;
   if (onActor && fx?.kind === "wave") drawWave(ctx, x + 12, y - 46 - (life?.reduceMotion ? 0 : Math.sin(elapsed * 8) * 3));
+  if (fx && fx.partner === person.name && (fx.kind === "wave" || isKindnessKind(fx.kind))) {
+    const bob = life?.reduceMotion ? 0 : Math.sin(elapsed * 8) * 3;
+    drawWave(ctx, x - 16, y - 46 - bob);
+  }
   if (onActor && fx?.kind === "clap") drawClap(ctx, x + 8, y - 30);
   if (!person.scored) {
     ctx.save();
@@ -838,6 +842,41 @@ function drawBench(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.fillStyle = "#8a5528";
   ctx.fillRect(left - 8, top + 3, 2, 4);
   ctx.fillRect(left + 6, top + 3, 2, 4);
+}
+
+function drawChoreWorld(
+  ctx: CanvasRenderingContext2D,
+  world: {
+    water: boolean;
+    card: boolean;
+    gate: boolean;
+    porch: boolean;
+    diary: boolean;
+    steps: boolean;
+    season: boolean;
+    pin: boolean;
+    rest: boolean;
+  },
+) {
+  const marks = [
+    world.water && "#3a8fbc",
+    world.card && "#fff6d8",
+    world.gate && "#8a8478",
+    world.porch && "#f2d15c",
+    world.diary && "#f4d7a1",
+    world.steps && "#efe0c0",
+    world.season && "#6aaa3a",
+    world.pin && "#c44b3a",
+    world.rest && "#6a3d18",
+  ].filter((color): color is string => Boolean(color));
+  marks.forEach((color, index) => {
+    const x = 48 + index * 8;
+    const y = 156;
+    ctx.fillStyle = "#2a1a10";
+    ctx.fillRect(x, y, 6, 6);
+    ctx.fillStyle = color;
+    ctx.fillRect(x + 1, y + 1, 4, 4);
+  });
 }
 
 function drawWeekRibbon(ctx: CanvasRenderingContext2D, x: number, y: number) {
@@ -1130,6 +1169,10 @@ function drawActors(
         draw: () => drawWeekRibbon(ctx, 88, 128),
       });
     }
+    queue.push({
+      sort: 150,
+      draw: () => drawChoreWorld(ctx, decor.world),
+    });
     if (decor.dusk) {
       for (const house of HOUSE_FACES) {
         queue.push({
