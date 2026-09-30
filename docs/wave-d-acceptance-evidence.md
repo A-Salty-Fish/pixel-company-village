@@ -3,9 +3,9 @@
 Date: 2026-09-30. Gate: `pixel-village-wave-d-acceptance-2026-09-30`.
 
 ```text
-SHA: see the Wave D commit on cursor/wave-d-village-9062
-npm test: PASS (28)
-Playwright smoke: PASS (privacy + acceptance + Wave C). Visual baselines refreshed.
+SHA: Round 2 branch cursor/wave-d-round-2-9062 (from main dba2226)
+npm test: PASS (30)
+Playwright smoke: PASS (40, includes undo window and round 2). Visual: 7 passed locally; CI job stays continue-on-error with a 2% pixel tolerance.
 Privacy: PASS (e2e/privacy.spec.ts)
 Visual quiet/busy: PASS locally; CI job stays continue-on-error
 Steam rubric final: 8.3 / 10
@@ -17,6 +17,7 @@ Playtest 2026-09-30 follow-ups:
 - Narrow signal card is a bottom sheet. Title and close stay together; the body scrolls; actions and the 3s undo stay in the sheet footer. The header keeps a higher layer so 「出村」 stays clickable.
 - Hard refresh shows `village-boot` (“正在请名册”) with no retry button. Retry appears only when the roster request fails and the list is empty.
 - Kindness confirm still offers undo for 3 seconds, now inside `signal-actions`. Covered by `e2e/wave-c.spec.ts` and the narrow sheet test.
+- PV-D-003: the undo label and the clickable window share one deadline started when the row commits. `e2e/undo-window.spec.ts` requires ≥2500ms remaining at appearance, the button still visible near the end of that window, and the 「撤销（N秒）」 text equal to that deadline. A stalled tick gives the gap back instead of jumping straight to 1 second.
 - Fresh storage: `comfortFromStorage` unit plus `a cleared profile keeps quiet village checked`.
 - Stale score days label the button 「本地互动」.
 - Comfort settings are grouped into 安静 / 装饰 / 名牌 / 我是谁.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { STATE_LABELS, STATE_ORDER, withStates } from "@/lib/animation";
 import { scoreDateCopy, waveHint } from "@/lib/copy";
 import {
@@ -51,7 +51,7 @@ import {
   sitDown,
   toggleHat,
   togglePorch,
-  undoStillOpen,
+  undoSecondsLeft,
   visitorCopy,
   waterOnce,
   type WaveDBlob,
@@ -128,7 +128,15 @@ type Props = {
   initial: ScorePayload;
 };
 
-type UndoState = { name: string; until: number; secret: boolean; viewer: string };
+type UndoState = {
+  name: string;
+  token: number;
+  until: number;
+  seconds: number;
+  markedAt: number;
+  secret: boolean;
+  viewer: string;
+};
 
 export function VillagePage({ initial }: Props) {
   const [payload, setPayload] = useState(initial);
@@ -155,11 +163,12 @@ export function VillagePage({ initial }: Props) {
   const play = playSnap.play;
   const anon = playSnap.anon;
   const [undo, setUndo] = useState<UndoState | null>(null);
+  const undoArm = useRef<{ name: string; secret: boolean; viewer: string } | null>(null);
+  const [undoArmId, setUndoArmId] = useState(0);
   const [pinHint, setPinHint] = useState("");
   const [rosterMode, setRosterMode] = useState<"live" | "empty">("live");
   const [badNote, setBadNote] = useState(0);
   const kindnessAt = useRef(0);
-  const [nowTick, setNowTick] = useState(() => nowMs());
   const [dismissedBroadcast, setDismissedBroadcast] = useState<string | null>(null);
   const [vignette, setVignette] = useState<{ title: string; lines: [string, string] } | null>(null);
   const [shelfLine, setShelfLine] = useState<string | null>(null);
@@ -226,6 +235,7 @@ export function VillagePage({ initial }: Props) {
   }, [selfName]);
 
   useEffect(() => {
+    undoArm.current = null;
     setUndo(null);
   }, [selfName]);
 
@@ -308,17 +318,49 @@ export function VillagePage({ initial }: Props) {
     bindWave(selfName, clock.ymd);
   }, [selfName, clock]);
 
+  // Stamp the deadline when the undo row commits, not when the click handler
+  // started, so a slow confirm render cannot shrink the clickable window.
+  useLayoutEffect(() => {
+    const arm = undoArm.current;
+    if (!arm) return;
+    undoArm.current = null;
+    const markedAt = nowMs();
+    const until = markedAt + UNDO_MS;
+    setUndo({
+      ...arm,
+      token: until,
+      until,
+      seconds: undoSecondsLeft(until, markedAt),
+      markedAt,
+    });
+  }, [undoArmId]);
+
   useEffect(() => {
     if (!undo) return;
+    const token = undo.token;
+    let deadline = undo.until;
+    let last = nowMs();
     const id = window.setInterval(() => {
       const now = nowMs();
-      setNowTick(now);
-      if (undo.until <= now) setUndo(null);
-    }, 250);
+      const elapsed = Math.max(0, now - last);
+      last = now;
+      // A stalled main thread used to skip straight to 「1秒」. Give that gap back
+      // unless the tab was gone long enough that the undo should just close.
+      if (elapsed > 5_000) {
+        setUndo((current) => (current && current.token === token ? null : current));
+        return;
+      }
+      if (elapsed > 500) deadline += elapsed - 200;
+      const seconds = undoSecondsLeft(deadline, now);
+      setUndo((current) => {
+        if (!current || current.token !== token) return current;
+        if (seconds <= 0) return null;
+        if (current.seconds === seconds && current.until === deadline) return current;
+        return { ...current, until: deadline, seconds, markedAt: now };
+      });
+    }, 200);
     return () => window.clearInterval(id);
-  }, [undo]);
-
-  const undoSeconds = undo ? Math.max(0, Math.ceil((undo.until - nowTick) / 1000)) : 0;
+  }, [undo?.token]);
 
   useEffect(() => {
     const reduced = motionGovernor({ systemReduced, comfort }).reduced;
@@ -366,7 +408,7 @@ export function VillagePage({ initial }: Props) {
     familiarity,
     selfName,
     fedNames: anon[clock.ymd] ?? [],
-    now: nowTick,
+    now: nowMs(),
   });
   const life: SceneLife = {
     quiet: comfort.quiet,
@@ -426,8 +468,8 @@ export function VillagePage({ initial }: Props) {
 
   function beginUndo(name: string, secret: boolean) {
     if (!selfName) return;
-    setUndo({ name, until: nowMs() + UNDO_MS, secret, viewer: selfName });
-    setNowTick(nowMs());
+    undoArm.current = { name, secret, viewer: selfName };
+    setUndoArmId((id) => id + 1);
   }
 
   function confirmKindness(action: KindnessMenuId) {
@@ -479,7 +521,7 @@ export function VillagePage({ initial }: Props) {
       setUndo(null);
       return;
     }
-    if (!undoStillOpen(undo.until, nowMs())) {
+    if (undo.seconds <= 0) {
       setUndo(null);
       return;
     }
@@ -769,7 +811,10 @@ export function VillagePage({ initial }: Props) {
               canKindness={Boolean(selfName) && kindnessStatus(selected.name, clock).canSend}
               canWave={Boolean(selfName) && Boolean(waveStatusNow?.allowed)}
               hasIdentity={Boolean(selfName)}
-              undoSeconds={undo && undo.name === selected.name ? undoSeconds : 0}
+              undoSeconds={undo && undo.name === selected.name && undo.viewer === selfName ? undo.seconds : 0}
+              undoUntil={undo && undo.name === selected.name ? undo.until : 0}
+              undoAt={undo && undo.name === selected.name ? undo.markedAt : 0}
+              undoMs={UNDO_MS}
               stickerLabels={selected.name === selfName ? stickerLabels : []}
               canSticker={Boolean(selfName) && play.stickerDay !== clock.ymd && play.stickers.length < STICKERS.length}
               anonNote={anonLine(anon, clock.ymd, selected.name)}
@@ -818,6 +863,11 @@ export function VillagePage({ initial }: Props) {
           const result = waterOnce(waveState, clock.ymd);
           setWaveLine(result.line);
           if (result.ok) updateWave(() => result.blob);
+        }}
+        onBench={() => {
+          if (!selfName) return;
+          updateWave((current) => sitDown(current, 640, 420));
+          setWaveLine(waveState.sit ? "从长椅上站起来了。" : "在空地上坐下了。");
         }}
         pinHint={pinHint}
         onPin={(name) => {

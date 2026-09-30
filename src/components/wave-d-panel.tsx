@@ -26,6 +26,7 @@ type Props = {
   onDiary: (index: number) => void;
   onPorch: () => void;
   onWater: () => void;
+  onBench: () => void;
   pinHint?: string;
   onPin: (name: string) => void;
   onHat: (name: string) => void;
@@ -132,6 +133,9 @@ export function WaveDPanel(props: Props) {
           </button>
           <button type="button" className="hud-btn" disabled={!props.selfName} onClick={props.onWater} data-testid="water-crop">
             浇自己的田
+          </button>
+          <button type="button" className="hud-btn hud-btn-ghost" disabled={!props.selfName} onClick={props.onBench} data-testid="sit-bench">
+            {props.wave.sit ? "起身" : "坐长椅"}
           </button>
           <button type="button" className="hud-btn" disabled={!props.selfName} onClick={props.onHome} data-testid="go-home">
             回家

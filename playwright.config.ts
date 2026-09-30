@@ -15,7 +15,14 @@ const sitePassword = process.env.SITE_PASSWORD ?? "";
 export default defineConfig({
   testDir: "e2e",
   timeout: 60_000,
-  expect: { timeout: 15_000 },
+  expect: {
+    timeout: 15_000,
+    toHaveScreenshot: {
+      // GitHub-hosted Linux rasterizes the Chinese UI about 1% differently
+      // from the snapshot machine. Smoke stays exact; visual may drift this far.
+      maxDiffPixelRatio: 0.02,
+    },
+  },
   fullyParallel: false,
   retries: 0,
   use: {
