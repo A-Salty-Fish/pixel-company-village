@@ -1,0 +1,47 @@
+/* PV-PM-012. Remove this import and set RELATION_FIRST_ENABLED to false to revert. */
+
+.lead {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.45rem 0.55rem;
+  background: #fff6d8;
+  border: 2px solid #6a3d18;
+}
+
+.leadLine {
+  margin: 0;
+  color: #2a1a10;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  color: #2a1a10;
+  font-size: 0.95rem;
+}
+
+.note {
+  margin: 0;
+  color: #4a3a28;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.score {
+  border: 2px solid #c4a060;
+  background: #efe0c0;
+}
+
+.summary {
+  cursor: pointer;
+  padding: 0.35rem 0.55rem;
+  color: #6a3d18;
+}
+
+.scoreBody {
+  padding: 0 0.55rem 0.55rem;
+}

@@ -18,6 +18,7 @@ import {
   type Pixel,
 } from "@/lib/worldcraft";
 import { ritualSeal } from "@/lib/header-ritual";
+import { paintNightWash } from "@/features/night-wash/night-wash";
 
 export const WORLD_W = 1216;
 export const WORLD_H = 1120;
@@ -1411,8 +1412,17 @@ export function paintVillage(
     ctx.fillRect(0, 0, viewW, viewH);
   }
   if (life?.decor?.night) {
-    ctx.fillStyle = "rgba(16, 28, 64, 0.34)";
-    ctx.fillRect(0, 0, viewW, viewH);
+    // PV-PM-014 checkpoint
+    paintNightWash(ctx, {
+      viewW,
+      viewH,
+      camX,
+      camY,
+      worldW: span.w,
+      worldH: span.h,
+      houses: HOUSE_FACES,
+      reduced: Boolean(life.reduceMotion),
+    });
   }
   if (life?.decor && life.decor.stars > 0) {
     for (let i = 0; i < life.decor.stars; i += 1) {
