@@ -63,6 +63,9 @@ import {
   emptyViewerChores,
   rememberViewerChores,
   WEEK_DONE_LINE,
+  WEEK_KEPT_LINE,
+  noteWeekChore,
+  readWeekMarks,
   addStrollStep,
   wreathColor,
 } from "./wave-d";
@@ -271,6 +274,38 @@ test("sanitize drops chat-shaped storage and keeps toggles", () => {
   assert.deepEqual(storageSweepPlan(["village:score-history-v1", "chat-transcript", "village:viewer:林:wave-d"]), [
     "chat-transcript",
   ]);
+});
+
+test("kept weekly chores stay on one week and drop free text", () => {
+  const quiet = {
+    wateredToday: false,
+    cardOpen: false,
+    visitedGate: false,
+    porchOn: false,
+    diaryToday: false,
+    steps: 0,
+    pinned: false,
+    resting: false,
+    noticedSeason: false,
+  };
+  const week = "2026-W40";
+  const label = weekBoard(week).items[0];
+  const noted = noteWeekChore(EMPTY_WAVE, week, label);
+  assert.deepEqual(noted.weekMarks, { week, labels: [label] });
+  assert.equal(noteWeekChore(noted, week, label), noted);
+  assert.equal(noteWeekChore(EMPTY_WAVE, week, "聊天原文"), EMPTY_WAVE);
+  assert.equal(noteWeekChore(EMPTY_WAVE, "not-a-week", label), EMPTY_WAVE);
+  assert.equal(weekChores(week, quiet, noted.weekMarks).find((item) => item.label === label)?.done, true);
+  assert.equal(weekChores("2026-W01", quiet, noted.weekMarks).some((item) => item.done), false);
+  const nextLabel = weekBoard("2026-W41").items[0];
+  const moved = noteWeekChore(noted, "2026-W41", nextLabel);
+  assert.deepEqual(moved.weekMarks, { week: "2026-W41", labels: [nextLabel] });
+  const cleaned = sanitizeWave({
+    weekMarks: { week, labels: [label, "聊天原文", "自己写的一句"] },
+  });
+  assert.deepEqual(cleaned.weekMarks, { week, labels: [label] });
+  assert.equal(readWeekMarks({ week: "2026-W40", labels: ["聊天原文"] }), null);
+  assert.equal(copyIsClean([WEEK_KEPT_LINE]), true);
 });
 
 test("history ticks include the first and last day", () => {
