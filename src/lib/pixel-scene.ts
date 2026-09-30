@@ -1,4 +1,30 @@
 import type { VillageFx } from "@/lib/interactions";
+import {
+  RIDGE,
+  ambientMotes,
+  bedCrops,
+  buildPathGrid,
+  cropAccents,
+  distanceSilhouette,
+  fencePosts,
+  fieldWash,
+  grassTufts,
+  pathMarks,
+  plateAlpha,
+  pondLife,
+  porchWindows,
+  propPixels,
+  seasonWash,
+  showNameplate,
+  smokePuffs,
+  soilTiles,
+  weatherMotes,
+  yardFences,
+  yardProps,
+  type Pixel,
+  type PlotRef,
+  type PropSeed,
+} from "@/lib/map-craft";
 import { blitLabel, getLabelSprite, type LabelMode } from "@/lib/pixel-label";
 import { VILLAGE_CAPACITY } from "@/lib/capacity";
 import { FLOWER_MARK_CAP, GATHER_SPOTS, GLYPH_BUDGET, PARTICLE_BUDGET, VIEWPOINTS } from "@/lib/play-systems";
@@ -55,6 +81,15 @@ type Plot = { x: number; y: number; col: number; row: number; orchard: boolean; 
 let groundCanvas: HTMLCanvasElement | null = null;
 let worldCanvas: HTMLCanvasElement | null = null;
 const propList: { name: string; x: number; y: number; sort: number }[] = [];
+let pixelProps: PropSeed[] = [];
+const POND = { c0: 2, r0: 2, c1: 13, r1: 7 };
+
+function paintPixels(ctx: CanvasRenderingContext2D, pixels: Pixel[]) {
+  for (const pixel of pixels) {
+    ctx.fillStyle = pixel.color;
+    ctx.fillRect(pixel.x, pixel.y, pixel.w, pixel.h);
+  }
+}
 
 export function hashName(name: string) {
   let h = 2166136261;
@@ -174,20 +209,9 @@ function ensureGround() {
   const ctx = groundCanvas.getContext("2d");
   if (!ctx) return;
   ctx.imageSmoothingEnabled = false;
-  const path = Array.from({ length: ROWS }, () => Array<boolean>(COLS).fill(false));
+  const path = buildPathGrid(COLS, ROWS);
   const block = (c: number, r: number) => c >= 0 && r >= 0 && c < COLS && r < ROWS;
-  const fillPath = (c0: number, r0: number, c1: number, r1: number) => {
-    for (let r = r0; r <= r1; r += 1) {
-      for (let c = c0; c <= c1; c += 1) {
-        if (block(c, r)) path[r][c] = true;
-      }
-    }
-  };
-  fillPath(0, 13, COLS - 1, 14);
-  fillPath(37, 13, 38, ROWS - 2);
-  fillPath(2, 40, COLS - 3, 41);
-
-  const pond = { c0: 2, r0: 2, c1: 13, r1: 7 };
+  const pond = POND;
 
   for (let r = 0; r < ROWS; r += 1) {
     for (let c = 0; c < COLS; c += 1) {
@@ -213,38 +237,30 @@ function ensureGround() {
       if (edge(0, 1)) ctx.fillRect(c * TILE, r * TILE + TILE - 3, TILE, 3);
       if (edge(-1, 0)) ctx.fillRect(c * TILE, r * TILE, 3, TILE);
       if (edge(1, 0)) ctx.fillRect(c * TILE + TILE - 3, r * TILE, 3, TILE);
-      ctx.fillStyle = "rgba(92, 58, 28, 0.45)";
-      ctx.fillRect(c * TILE + 6, r * TILE + 7, 4, 2);
       ctx.fillStyle = "rgba(42, 24, 10, 0.82)";
     }
   }
+  paintPixels(ctx, pathMarks(path));
 
+  const plots: PlotRef[] = [];
   for (let index = 0; index < VILLAGE_CAPACITY; index += 1) {
     const plot = plotAt(index);
-    const soil = (index & 1) === 0 ? "soil_wet" : "soil_dry";
-    for (let ty = 0; ty < 2; ty += 1) {
-      for (let tx = 0; tx < 4; tx += 1) {
-        blitTopLeft(ctx, tx === 0 || ty === 0 ? "soil_edge" : soil, plot.x + 24 + tx * TILE, plot.y + 28 + ty * TILE);
-      }
-    }
-    if (index % 3 === 0) drawFence(ctx, plot.x + 24, plot.y + 22, 64);
-    ctx.fillStyle = plot.col < 5 ? "rgba(70, 110, 50, 0.16)" : "rgba(150, 96, 40, 0.14)";
-    ctx.fillRect(plot.x + 20, plot.y + 24, 72, 40);
-    if (!plot.orchard) {
-      for (let ry = 0; ry < 2; ry += 1) {
-        for (let rx = 0; rx < 3; rx += 1) {
-          if ((plot.cropRow + rx + ry) % 5 === 0) continue;
-          const stage = (plot.cropSide + rx + ry) % 4;
-          drawSprite(
-            ctx,
-            `crop_${plot.cropRow}_${plot.cropSide}_${stage}`,
-            plot.x + 36 + rx * 18,
-            plot.y + 52 + ry * 12,
-          );
-        }
-      }
-    }
+    const ref: PlotRef = { ...plot, index };
+    plots.push(ref);
+    for (const tile of soilTiles(ref)) blitTopLeft(ctx, tile.name, tile.x, tile.y);
+    const wash = fieldWash(ref);
+    ctx.fillStyle = wash.color;
+    ctx.fillRect(wash.x, wash.y, wash.w, wash.h);
+    const crops = bedCrops(ref);
+    for (const crop of crops) drawSprite(ctx, crop.sprite, crop.x, crop.y);
+    paintPixels(ctx, cropAccents(crops));
   }
+  const fences = yardFences(plots);
+  for (const fence of fences) {
+    if (!fence.gate) drawSprite(ctx, fence.sprite, fence.x, fence.y);
+  }
+  paintPixels(ctx, fencePosts(fences));
+  paintPixels(ctx, grassTufts(COLS, ROWS, path, pond, plots));
 
   for (let i = 0; i < 160; i += 1) {
     const c = (i * 17 + 3) % COLS;
@@ -310,6 +326,12 @@ function ensureGround() {
     pushProp(`bush_${Math.floor(index / 4) % 6}`, plot.x + 16, plot.y + 68);
     if (index % 5 === 0) pushProp(`farm_${Math.floor(index / 5) % 8}`, plot.x + 88, plot.y + 36);
   }
+  for (const ridge of RIDGE) pushProp(ridge.sprite, ridge.x, ridge.y);
+  pixelProps = [];
+  for (const prop of yardProps(plots)) {
+    if (prop.kind === "sprite" && prop.sprite) pushProp(prop.sprite, prop.x, prop.y);
+    else pixelProps.push(prop);
+  }
 }
 
 function drawMill(ctx: CanvasRenderingContext2D, angle: number) {
@@ -372,12 +394,6 @@ function drawSeasonSpeck(ctx: CanvasRenderingContext2D, seasonId: string, x: num
   ctx.fillRect(left + 1, top + 2, 1, 1);
 }
 
-function drawFence(ctx: CanvasRenderingContext2D, x: number, y: number, w: number) {
-  const frame = spriteFrame("fence_0");
-  if (!frame) return;
-  drawSprite(ctx, "fence_0", x + w / 2, y + frame.h - frame.ay);
-}
-
 function drawWater(ctx: CanvasRenderingContext2D, t: number) {
   const frame = `water_${Math.floor(t * 6) % 4}`;
   for (let r = 2; r <= 7; r += 1) {
@@ -414,6 +430,7 @@ function drawVillager(
   bloom: boolean,
   showGlyph: boolean,
   clock: ReturnType<typeof shanghaiClock>,
+  zoom: number,
 ) {
   const elapsed = fx ? (Date.now() - fx.startedAt) / 1000 : 0;
   const onActor = fx?.actor === person.name;
@@ -438,10 +455,24 @@ function drawVillager(
     y -= Math.abs(Math.sin(t * 3)) * 3;
   }
   const color = person.scored ? CAT_COLORS[person.identity.palette] : "lgrey";
-  ctx.fillStyle = "rgba(20, 16, 8, 0.45)";
-  ctx.fillRect(Math.round(x - 8), Math.round(y - 20), 16, 16);
-  ctx.fillStyle = "rgba(24, 36, 16, 0.35)";
-  ctx.fillRect(Math.round(x - 8), Math.round(y - 2), 16, 3);
+  const read = distanceSilhouette(zoom, Boolean(person.scored));
+  ctx.fillStyle = "rgba(20, 16, 8, 0.55)";
+  ctx.fillRect(Math.round(x + read.body.x), Math.round(y + read.body.y), read.body.w, read.body.h);
+  ctx.fillStyle = read.shadow.color;
+  ctx.fillRect(Math.round(x + read.shadow.x), Math.round(y + read.shadow.y), read.shadow.w, read.shadow.h);
+  if (read.cap) {
+    ctx.fillStyle = read.cap.color;
+    ctx.fillRect(Math.round(x + read.cap.x), Math.round(y + read.cap.y), read.cap.w, read.cap.h);
+  }
+  if (read.side) {
+    ctx.fillStyle = read.side.color;
+    ctx.fillRect(Math.round(x + read.side.x), Math.round(y + read.side.y), read.side.w, read.side.h);
+    ctx.fillRect(Math.round(x - read.side.x - read.side.w), Math.round(y + read.side.y), read.side.w, read.side.h);
+  }
+  if (read.pip) {
+    ctx.fillStyle = read.pip.color;
+    ctx.fillRect(Math.round(x + read.pip.x), Math.round(y + read.pip.y), read.pip.w, read.pip.h);
+  }
   drawSprite(ctx, catFrame(color, person.dir, anim, frame), x, y);
   if (selected || life?.neighbors.includes(person.name)) {
     ctx.strokeStyle = selected ? "#fff6d8" : "#f2d15c";
@@ -477,7 +508,7 @@ function drawVillager(
     clock,
     life?.selfName === person.name ? life.selfPreset : null,
   );
-  drawDot(ctx, x - 12, y - 4, avail.tone);
+  drawDot(ctx, x - 12, y - 4, avail.tone, read.dot);
   if (bloom && life?.particles) drawPetals(ctx, x, y, life?.reduceMotion ? 0 : t, ringColors(person));
   if (showGlyph) drawGlyph(ctx, glyphFor(person, clock.hour), x + 14, y - 40);
   drawLifeMarks(ctx, person, life, t, x, y);
@@ -550,9 +581,13 @@ function drawPetals(ctx: CanvasRenderingContext2D, x: number, y: number, t: numb
   }
 }
 
-function drawDot(ctx: CanvasRenderingContext2D, x: number, y: number, tone: "green" | "yellow" | "red") {
+function drawDot(ctx: CanvasRenderingContext2D, x: number, y: number, tone: "green" | "yellow" | "red", size = 3) {
   ctx.fillStyle = tone === "green" ? "#3a7d4a" : tone === "red" ? "#c44b3a" : "#d4a017";
-  ctx.fillRect(Math.round(x), Math.round(y), 3, 3);
+  const s = size;
+  ctx.fillRect(Math.round(x), Math.round(y), s, s);
+  ctx.fillStyle = "rgba(20, 12, 8, 0.8)";
+  ctx.fillRect(Math.round(x) - 1, Math.round(y) - 1, s + 2, 1);
+  ctx.fillRect(Math.round(x) - 1, Math.round(y) + s, s + 2, 1);
 }
 
 function drawWave(ctx: CanvasRenderingContext2D, x: number, y: number) {
@@ -934,6 +969,7 @@ function drawActors(
   selectedName: string | null,
   fx: VillageFx | null,
   life: SceneLife | null,
+  zoom: number,
 ) {
   const blooms = bloomNames(villagers, life, selectedName);
   const glyphs = glyphNames(villagers, life, selectedName);
@@ -999,12 +1035,14 @@ function drawActors(
       });
     }
     if (decor.critters !== "none") {
+      const still = Boolean(life?.reduceMotion);
       for (let i = 0; i < 4; i += 1) {
         const x = 220 + i * 150;
         const y = 340 + (i % 2) * 70;
+        const hop = still ? 0 : Math.sin(t + i) * 3;
         queue.push({
           sort: y,
-          draw: () => drawCritter(ctx, decor.critters, x, y + Math.sin(t + i) * 3, i),
+          draw: () => drawCritter(ctx, decor.critters, x, y + hop, i),
         });
       }
     }
@@ -1021,20 +1059,27 @@ function drawActors(
         draw: () => drawWeekRibbon(ctx, 88, 128),
       });
     }
-    if (decor.dusk) {
-      for (const house of HOUSE_FACES) {
-        queue.push({
-          sort: house.y + 8,
-          draw: () => {
-            ctx.fillStyle = "#f2d15c";
-            ctx.fillRect(house.x + 2, house.y + 3, 4, 3);
-            ctx.fillStyle = "#fff6d8";
-            ctx.fillRect(house.x + 3, house.y + 4, 2, 1);
-          },
-        });
-      }
+    if (decor.dusk || decor.porch) {
+      const panes = porchWindows(decor.dusk, decor.porch, Boolean(life?.reduceMotion), t);
+      queue.push({
+        sort: 12,
+        draw: () => paintPixels(ctx, panes),
+      });
     }
   }
+  const lit = Boolean(life?.decor?.dusk || life?.decor?.porch);
+  for (const prop of pixelProps) {
+    const pixels = propPixels(prop, lit);
+    queue.push({
+      sort: prop.sort,
+      draw: () => paintPixels(ctx, pixels),
+    });
+  }
+  const smoke = smokePuffs(t, Boolean(life?.reduceMotion || life?.quiet));
+  queue.push({
+    sort: 40,
+    draw: () => paintPixels(ctx, smoke),
+  });
   for (const person of villagers) {
     const bench = life?.decor?.sit;
     const seated = Boolean(bench && life?.selfName === person.name);
@@ -1052,6 +1097,7 @@ function drawActors(
           blooms.has(person.name),
           glyphs.has(person.name),
           clock,
+          zoom,
         );
         if (flowers.has(person.name)) drawSprite(ctx, "flower_3", person.x + 14, person.y + 2);
       },
@@ -1090,7 +1136,8 @@ export function paintVillage(
   world.clearRect(0, 0, WORLD_W, WORLD_H);
   world.drawImage(groundCanvas, 0, 0);
   drawWater(world, life?.reduceMotion ? 0 : t);
-  drawActors(world, villagers, t, selectedName, fx, life);
+  paintPixels(world, pondLife(POND, life?.reduceMotion ? 0 : t, Boolean(life?.reduceMotion)));
+  drawActors(world, villagers, t, selectedName, fx, life, zoom);
 
   const span = viewSpan(zoom);
   const viewWorldW = span.w;
@@ -1105,6 +1152,7 @@ export function paintVillage(
   if (life?.seasonTint) {
     ctx.fillStyle = life.seasonTint;
     ctx.fillRect(0, 0, viewW, viewH);
+    paintPixels(ctx, seasonWash(life.decor?.seasonId ?? "spring", viewW, viewH));
   }
   if (life?.festivalSkin && life.festivalId) {
     drawFestivalOverlay(ctx, viewW, viewH, life.festivalId, t, Boolean(life.quiet), Boolean(life.reduceMotion));
@@ -1123,12 +1171,38 @@ export function paintVillage(
   }
   if (life?.decor && life.decor.seasonParticles > 0) {
     const count = life.decor.seasonParticles;
+    const still = Boolean(life.reduceMotion);
     for (let i = 0; i < count; i += 1) {
+      const drift = still ? 0 : Math.round(Math.sin(t * 0.6 + i) * 4);
       const sx = ((i * 131) % Math.max(1, viewW - 8)) + 4;
-      const sy = ((i * 47) % Math.max(1, viewH - 8)) + 4;
+      const sy = ((i * 47) % Math.max(1, viewH - 8)) + 4 + drift;
       drawSeasonSpeck(ctx, life.decor.seasonId, sx, sy);
     }
   }
+  if (life?.decor?.showWeather) {
+    paintPixels(
+      ctx,
+      weatherMotes({
+        id: life.decor.weatherId,
+        viewW,
+        viewH,
+        t,
+        reduced: Boolean(life.reduceMotion),
+        quiet: Boolean(life.quiet),
+      }),
+    );
+  }
+  paintPixels(
+    ctx,
+    ambientMotes({
+      seasonId: life?.decor?.seasonId ?? "spring",
+      viewW,
+      viewH,
+      t,
+      reduced: Boolean(life?.reduceMotion),
+      quiet: Boolean(life?.quiet),
+    }),
+  );
   drawNameLabels(ctx, villagers, zoom, camX, camY, emphasize, viewW, viewH, dpr, life);
 }
 
@@ -1170,7 +1244,7 @@ export function drawNameLabels(
   for (const person of ordered) {
     const pinned = pins.has(person.name);
     const hot = emphasize.has(person.name) || pinned;
-    if (zoom < 2 && !hot && !showAll) continue;
+    if (!showNameplate(zoom, hot, showAll)) continue;
     const mode: LabelMode = hot ? "hot" : person.scored ? "scored" : "muted";
     const sprite = getLabelSprite(person.name, mode);
     if (!sprite) continue;
@@ -1190,8 +1264,11 @@ export function drawNameLabels(
       ctx.fillStyle = FAMILIAR_RIM[level] ?? FAMILIAR_RIM[1];
       ctx.fillRect(Math.round(x - 2), Math.round(y - 2), dw + 4, dh + 4);
     }
-    const alpha = hot ? 1 : mode === "muted" ? 0.7 : 0.92;
-    blitLabel(ctx, sprite, x, y, scale, alpha);
+    if (zoom < 2) {
+      ctx.fillStyle = "rgba(20, 12, 8, 0.55)";
+      ctx.fillRect(Math.round(x + 1), Math.round(y + 1), dw, dh);
+    }
+    blitLabel(ctx, sprite, x, y, scale, plateAlpha(mode, zoom));
   }
 }
 
