@@ -29,6 +29,8 @@ type Props = {
   line: string | null;
   facts: WeekFacts;
   marks?: WeekMark | null;
+  reduced: boolean;
+  onReduceMotion: (on: boolean) => void;
   onToggle: (id: WaveSystemId, on: boolean) => void;
   onDiary: (index: number) => void;
   onPorch: () => void;
@@ -57,6 +59,15 @@ export function WaveDPanel(props: Props) {
         <section data-testid="wave-toggles">
           <h3 className="pixel-label">开关</h3>
           <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={props.reduced}
+                onChange={(event) => props.onReduceMotion(event.target.checked)}
+                data-testid="reduce-motion-toggle"
+              />
+              <span>减动开关</span>
+            </label>
             {WAVE_SYSTEMS.map((id) => (
               <label key={id} className="flex items-center gap-2 text-xs">
                 <input
