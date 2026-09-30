@@ -17,6 +17,7 @@ import {
 import type { KindnessMenuId } from "@/lib/copy";
 import { ComfortSettings } from "@/components/comfort-settings";
 import { FirstRunGuide } from "@/components/first-run-guide";
+import { HeaderRitual } from "@/components/header-ritual";
 import { PlayShelf } from "@/components/play-shelf";
 import { VillageLoopsPanel } from "@/components/village-loops-panel";
 import { YardNookPanel } from "@/components/yard-nook-panel";
@@ -43,6 +44,8 @@ import {
   sweepVillageStorage,
   updateWave,
 } from "@/lib/wave-d-store";
+import { loadRitual, ritualNearCount, storeRitual, type RitualSave } from "@/lib/header-ritual";
+import { placeVillagers } from "@/lib/pixel-scene";
 import { applyLoop, emptyLoops, loopSalt, type LoopId } from "@/lib/village-loops";
 import { bindLoops, getLoopSnapshot, getServerLoopSnapshot, subscribeLoops, updateLoops, updatePebbles } from "@/lib/village-loops-store";
 import { applyNook, emptyNook, emptySession, nookSalt, type NookId } from "@/lib/yard-nook";
@@ -168,6 +171,7 @@ export function VillagePage({ initial }: Props) {
   const selfName = prefs.selfName;
   const preset = prefs.preset;
   const [clock, setClock] = useState(() => shanghaiClock());
+  const [ritualMark, setRitualMark] = useState<RitualSave | null>(null);
   const [, setFreezeTick] = useState(0);
   const [forceTimeout, setForceTimeout] = useState(false);
   const [bootAttempt, setBootAttempt] = useState(0);
@@ -212,6 +216,11 @@ export function VillagePage({ initial }: Props) {
       : payload.people;
     return withStates(isolatePeople(raw).people as VillagePerson[]);
   }, [payload.people, rosterMode, badNote]);
+  const ritualNear = useMemo(() => {
+    const placed = placeVillagers(people);
+    const self = selfName ? (placed.find((person) => person.name === selfName) ?? null) : null;
+    return ritualNearCount(self, placed);
+  }, [people, selfName]);
   const selected = people.find((person) => person.name === selectedName) ?? null;
   const history =
     selected && prefs.rev > 0
@@ -328,6 +337,10 @@ export function VillagePage({ initial }: Props) {
     const id = window.setInterval(() => setClock(shanghaiClock()), 60_000);
     return () => window.clearInterval(id);
   }, [initial]);
+
+  useEffect(() => {
+    setRitualMark(loadRitual(selfName, clock.ymd));
+  }, [selfName, clock.ymd]);
 
   useEffect(() => {
     recordGarden(payload.date, people);
@@ -481,6 +494,12 @@ export function VillagePage({ initial }: Props) {
     bell: playSnap.bell,
     gardenCrops: play.garden2,
     decor,
+    craft: {
+      steps: weekFacts.steps,
+      watered: weekFacts.wateredToday,
+      ribbon: tally.complete,
+    },
+    ritual: ritualMark ? { beat: ritualMark.beat, done: true } : null,
   };
 
   function resolveKindness(target: string) {
@@ -805,6 +824,18 @@ export function VillagePage({ initial }: Props) {
           </div>
         </div>
       </header>
+      <div className="hud-panel px-3 pb-3">
+        <HeaderRitual
+          viewer={selfName}
+          hour={clock.hour}
+          near={ritualNear}
+          saved={ritualMark}
+          onComplete={() => {
+            if (!selfName) return;
+            setRitualMark(storeRitual(selfName, clock.ymd, clock.hour));
+          }}
+        />
+      </div>
 
       {broadcast && dismissedBroadcast !== broadcastKey ? (
         <div className="hud-panel flex items-center justify-between gap-3 px-3 py-2" data-testid="village-broadcast">
@@ -913,6 +944,7 @@ export function VillagePage({ initial }: Props) {
             onTogglePlates={() => saveComfort({ ...comfort, showAllPlates: !comfort.showAllPlates })}
             onEmote={selfName ? emote : undefined}
             homePulse={homePulse}
+            onFindMe={() => visitOwnGate()}
             onEmpty={(x, y) => {
               if (!selfName) return;
               updateWave((current) => {

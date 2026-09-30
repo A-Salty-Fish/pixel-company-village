@@ -82,6 +82,8 @@ export type SceneLife = {
   bell: boolean;
   gardenCrops: Record<string, string>;
   decor?: WaveDecor | null;
+  craft?: { steps: number; watered: boolean; ribbon: boolean } | null;
+  ritual?: { beat: "dawn" | "noon" | "dusk"; done: boolean } | null;
 };
 
 export const DEFAULT_COMFORT: Comfort = {

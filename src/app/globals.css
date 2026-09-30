@@ -141,7 +141,8 @@ canvas {
 }
 
 .village-header {
-  position: relative;
+  position: sticky;
+  top: 0;
   z-index: 60;
 }
 
@@ -596,6 +597,14 @@ a:focus-visible,
   width: auto;
   padding: 0 0.45rem;
   font-size: 0.72rem;
+}
+
+.hud-icon-find {
+  width: auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0.55rem;
+  font-size: 0.85rem;
 }
 
 .history-axis {
