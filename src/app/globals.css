@@ -831,3 +831,58 @@ a:focus-visible,
 .garden-2 { background: #8fbf72; }
 .garden-3 { background: #3a7d4a; }
 .garden-4 { background: #245233; }
+
+.loop-spot-art[data-kind="kettle"] { background: #c46a3a; }
+.loop-spot-art[data-kind="pond"] { background: #3d7ea6; }
+.loop-spot-art[data-kind="wood"] { background: #8a5528; }
+.loop-spot-art[data-kind="laundry"] { background: #f4f7fb; }
+.loop-spot-art[data-kind="bridge"] { background: #9aa3ad; }
+.loop-spot-art[data-kind="cat"] { background: #d9893b; }
+.loop-spot-art[data-kind="barrel"] { background: #6a8f4e; }
+.loop-spot-art[data-kind="sign"] { background: #f6f0dc; }
+.loop-spot-art[data-kind="pot"] { background: #c4566a; }
+.loop-spot-art[data-kind="shutter"] { background: #6a5344; }
+
+.loop-spot[data-sway="sway"] .loop-spot-art {
+  transform-origin: top center;
+  animation: nook-sway 1.6s ease-in-out infinite;
+}
+
+.loop-spot[data-sway="still"] .loop-spot-art {
+  transform-origin: top center;
+  transform: rotate(8deg);
+}
+
+.loop-spot[data-swing="swing"] .loop-spot-art {
+  transform-origin: left center;
+  animation: nook-swing 1.2s ease-in-out infinite;
+}
+
+.loop-spot[data-swing="still"] .loop-spot-art {
+  transform-origin: left center;
+  transform: rotateY(50deg);
+}
+
+.loop-yard[data-motion="reduced"] .loop-spot[data-sway="sway"] .loop-spot-art,
+.loop-yard[data-motion="reduced"] .loop-spot[data-swing="swing"] .loop-spot-art {
+  animation: none;
+}
+
+@keyframes nook-sway {
+  0%,
+  100% { transform: rotate(-6deg); }
+  50% { transform: rotate(8deg); }
+}
+
+@keyframes nook-swing {
+  0%,
+  100% { transform: rotateY(0deg); }
+  50% { transform: rotateY(55deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loop-spot[data-sway="sway"] .loop-spot-art,
+  .loop-spot[data-swing="swing"] .loop-spot-art {
+    animation: none;
+  }
+}

@@ -16,6 +16,7 @@ import type { KindnessMenuId } from "@/lib/copy";
 import { ComfortSettings } from "@/components/comfort-settings";
 import { PlayShelf } from "@/components/play-shelf";
 import { VillageLoopsPanel } from "@/components/village-loops-panel";
+import { YardNookPanel } from "@/components/yard-nook-panel";
 import { WaveDPanel } from "@/components/wave-d-panel";
 import { installVillageTestHook, testHooksEnabled, type VillageTestState } from "@/lib/test-hooks";
 import { SignalCard } from "@/components/signal-card";
@@ -41,6 +42,8 @@ import {
 } from "@/lib/wave-d-store";
 import { applyLoop, emptyLoops, loopSalt, type LoopId } from "@/lib/village-loops";
 import { bindLoops, getLoopSnapshot, getServerLoopSnapshot, subscribeLoops, updateLoops, updatePebbles } from "@/lib/village-loops-store";
+import { applyNook, emptyNook, emptySession, nookSalt, type NookId } from "@/lib/yard-nook";
+import { bindNook, getNookSnapshot, getServerNookSnapshot, subscribeNook, updateNook, updateNookSession } from "@/lib/yard-nook-store";
 import {
   acceptTap,
   buildDecor,
@@ -171,6 +174,8 @@ export function VillagePage({ initial }: Props) {
   const [waveLine, setWaveLine] = useState<string | null>(null);
   const [loopLine, setLoopLine] = useState<{ viewer: string; text: string } | null>(null);
   const loopSnap = useSyncExternalStore(subscribeLoops, getLoopSnapshot, getServerLoopSnapshot);
+  const [nookLine, setNookLine] = useState<{ viewer: string; text: string } | null>(null);
+  const nookSnap = useSyncExternalStore(subscribeNook, getNookSnapshot, getServerNookSnapshot);
   const lastTap = useRef({ name: "", at: 0 });
   const play = playSnap.play;
   const anon = playSnap.anon;
@@ -333,6 +338,10 @@ export function VillagePage({ initial }: Props) {
   }, [selfName]);
 
   useEffect(() => {
+    bindNook(selfName);
+  }, [selfName]);
+
+  useEffect(() => {
     const reduced = motionGovernor({ systemReduced, comfort }).reduced;
     if (!selfName || comfort.quiet || !comfort.ambient || reduced) return;
     if (!morningBellDue(clock, getPlaySnapshot().play.bellDay, true)) return;
@@ -373,6 +382,9 @@ export function VillagePage({ initial }: Props) {
   const loopsReady = Boolean(selfName) && loopSnap.viewer === selfName;
   const loopBlob = loopsReady ? loopSnap.loops : emptyLoops();
   const loopPebbles = loopsReady ? loopSnap.pebbles : 0;
+  const nookReady = Boolean(selfName) && nookSnap.viewer === selfName;
+  const nookBlob = nookReady ? nookSnap.nook : emptyNook();
+  const nookSession = nookReady ? nookSnap.session : emptySession();
   const weekFacts = {
     wateredToday: liveWave?.waterDay === clock.ymd,
     cardOpen: kept.card,
@@ -668,6 +680,18 @@ export function VillagePage({ initial }: Props) {
     if (result.view.blob !== loopSnap.loops) updateLoops(() => result.view.blob);
     if (result.view.pebbles !== loopSnap.pebbles) updatePebbles(result.view.pebbles);
     setLoopLine({ viewer: selfName, text: result.line });
+  }
+
+  function runNook(id: NookId) {
+    if (!selfName || nookSnap.viewer !== selfName) return;
+    const result = applyNook(
+      { blob: nookSnap.nook, session: nookSnap.session },
+      id,
+      { ymd: clock.ymd, salt: nookSalt(selfName, clock.ymd), hour: clock.hour },
+    );
+    if (result.view.blob !== nookSnap.nook) updateNook(() => result.view.blob);
+    if (result.view.session !== nookSnap.session) updateNookSession(() => result.view.session);
+    setNookLine({ viewer: selfName, text: result.line });
   }
 
   function rememberChore(flag: keyof ViewerChoreFlags) {
@@ -1084,6 +1108,16 @@ export function VillagePage({ initial }: Props) {
         onAct={runLoop}
       />
 
+      <YardNookPanel
+        selfName={selfName}
+        blob={nookBlob}
+        session={nookSession}
+        ymd={clock.ymd}
+        reduced={motion.reduced}
+        line={nookLine && nookLine.viewer === selfName ? nookLine.text : null}
+        onAct={runNook}
+      />
+
       <div className="thumb-bar" data-testid="thumb-bar">
         <button type="button" className="hud-btn" data-testid="thumb-home" disabled={!selfName} onClick={() => {
           visitOwnGate("镜头回到自己的小屋。");
@@ -1218,6 +1252,7 @@ function VillageHelp() {
         <p>干活是方块，摸鱼是波浪，在任务上是等号。颜色只是辅助，形状也分得开。</p>
         <p>这里不收录说过的话。善意、挥手和田里的小玩具都记在这台电脑的「我是谁」上。</p>
         <p>村里小玩有十处：信箱、稻草人、水井、菜畦、石子、灯笼、告示、鸡舍、篱门、野餐垫。进度跟着「我是谁」。石子只留在这个标签页，灯笼在减少动作时不闪。</p>
+        <p>屋边角落还有水壶、水漂、柴堆、衣绳、石桥、猫、雨水桶、路口牌、花盆和窗板。水漂和花盆只留这个标签页。减少动作时衣绳和窗板不再晃。</p>
       </div>
     </details>
   );
