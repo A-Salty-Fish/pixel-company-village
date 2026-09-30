@@ -1,0 +1,67 @@
+/* PV-PM-015. Set WEEK_DONE_SUMMARY_ENABLED to false and drop this import to revert. */
+
+.panel {
+  margin-top: 0.45rem;
+}
+
+.title {
+  margin: 0;
+  color: #2a1a10;
+}
+
+.note {
+  margin: 0.3rem 0 0;
+  color: #6a3d18;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.45rem 0 0;
+  padding: 0;
+}
+
+.thumb {
+  width: 4.75rem;
+  margin: 0;
+  padding: 0.3rem 0.2rem 0.35rem;
+  text-align: center;
+  background: #fff6d8;
+  border: 2px solid #6a3d18;
+  color: #2a1a10;
+}
+
+.art {
+  display: block;
+  width: 22px;
+  height: 16px;
+  margin: 0.15rem auto 0.2rem;
+}
+
+.footprints {
+  background:
+    linear-gradient(#3a2412, #3a2412) 2px 8px / 7px 4px no-repeat,
+    linear-gradient(#efe6d6, #efe6d6) 4px 9px / 3px 2px no-repeat,
+    linear-gradient(#5a3a1c, #5a3a1c) 12px 4px / 7px 4px no-repeat;
+}
+
+.kettle {
+  background:
+    linear-gradient(#3a8fbc, #3a8fbc) 4px 6px / 12px 8px no-repeat,
+    linear-gradient(#d5e4ef, #d5e4ef) 7px 3px / 6px 4px no-repeat,
+    linear-gradient(#6a3d18, #6a3d18) 2px 8px / 3px 8px no-repeat;
+}
+
+.ribbon {
+  background:
+    linear-gradient(#6a3d18, #6a3d18) 3px 0 / 2px 16px no-repeat,
+    linear-gradient(#c44b3a, #c44b3a) 5px 3px / 12px 6px no-repeat,
+    linear-gradient(#f2d15c, #f2d15c) 8px 0 / 5px 3px no-repeat;
+}
+
+.caption {
+  font-size: 0.7rem;
+}

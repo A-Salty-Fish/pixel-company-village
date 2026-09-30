@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start --port 43123",
     "lint": "eslint",
-    "test": "tsx --test src/lib/wave-c.test.ts src/lib/wave-d.test.ts src/lib/yard.test.ts src/lib/lane.test.ts src/lib/village-loops.test.ts src/lib/yard-nook.test.ts src/lib/pm-play.test.ts src/lib/worldcraft.test.ts src/lib/header-ritual.test.ts src/lib/social-bond.test.ts",
+    "test": "tsx --test src/lib/wave-c.test.ts src/lib/wave-d.test.ts src/lib/yard.test.ts src/lib/lane.test.ts src/lib/village-loops.test.ts src/lib/yard-nook.test.ts src/lib/pm-play.test.ts src/lib/worldcraft.test.ts src/lib/header-ritual.test.ts src/lib/social-bond.test.ts src/features/signal-card-relation-first/relation-first.test.ts src/features/night-wash/night-wash.test.ts src/features/week-done-summary/week-done-summary.test.ts",
     "test:e2e": "playwright test --grep-invert \"@visual|@prod\"",
     "test:e2e:visual": "playwright test --grep @visual",
     "test:e2e:prod": "playwright test --grep @prod"

@@ -22,6 +22,8 @@ import type { PersonWithState } from "@/lib/types";
 import { EASING, particleAllowance } from "@/lib/wave-d";
 import { FIND_ME_HOLD_MS, FIND_ME_LABEL, plateLegend } from "@/lib/worldcraft";
 import { availabilityFor, shanghaiClock, type SceneLife } from "@/lib/village-life";
+import { NIGHT_WASH_ENABLED, nightWashMark } from "@/features/night-wash/night-wash";
+import nightWashStyles from "@/features/night-wash/night-wash.module.css";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
 
@@ -419,7 +421,9 @@ export function VillageScene({
   return (
     <div
       ref={hostRef}
-      className="pixel-frame relative h-full overflow-hidden bg-[#3c6e32]"
+      className={`pixel-frame relative h-full overflow-hidden bg-[#3c6e32]${
+        NIGHT_WASH_ENABLED && life.decor?.night ? ` ${nightWashStyles.frame}` : ""
+      }`}
       data-village-host={ready ? "ready" : "boot"}
       data-load-stage={shownStage}
       data-bell={life.bell ? "1" : "0"}
@@ -433,6 +437,8 @@ export function VillageScene({
       data-critters={life.decor?.critters ?? "none"}
       data-dusk={life.decor?.dusk ? "1" : "0"}
       data-night={life.decor?.night ? "1" : "0"}
+      data-night-wash={nightWashMark(Boolean(life.decor?.night), life.reduceMotion)}
+      data-night-static={life.decor?.night && life.reduceMotion ? "1" : "0"}
       data-path-wear={life.decor?.yard.wear ? "1" : "0"}
       data-yard-hen={life.decor?.yard.hen ? "1" : "0"}
       data-yard-laundry={life.decor?.yard.laundry ? "1" : "0"}

@@ -8,6 +8,8 @@ import { AXIS_MARK, fishRatio, signalTag, taskRatio, workRatio } from "@/lib/int
 import { GARDEN_CROPS } from "@/lib/play-systems";
 import type { PersonWithState } from "@/lib/types";
 import { messageSparkCount, RING_CLOSE, ringClosure, type Availability } from "@/lib/village-life";
+import { RELATION_FIRST_ENABLED } from "@/features/signal-card-relation-first/relation-first";
+import { RelationFirstLead, ScoreRingsDisclosure } from "@/features/signal-card-relation-first/relation-first-view";
 
 type Props = {
   person: PersonWithState;
@@ -90,6 +92,7 @@ export function SignalCard(props: Props) {
       aria-modal="false"
       aria-labelledby="signal-sheet-title"
       data-signal-card={props.person.scored ? "scored" : "unscored"}
+      data-relation-first={RELATION_FIRST_ENABLED ? "1" : "0"}
       data-testid="signal-card"
     >
       <div className="signal-sheet-head hud-title" data-testid="signal-sheet-head">
@@ -103,16 +106,29 @@ export function SignalCard(props: Props) {
           <h2 className="pixel-title text-[#2a1a10]">{props.person.name}</h2>
           <span className="hud-chip">{props.person.scored ? STATE_LABELS[props.person.state] : "未评分"}</span>
         </div>
+        {/* PV-PM-012 checkpoint */}
+        {RELATION_FIRST_ENABLED ? (
+          <RelationFirstLead
+            availabilityLabel={props.person.scored ? props.availability.label : "人在村里"}
+            availabilityTone={props.availability.tone}
+            kindnessNote={props.kindnessNote}
+            bondNote={props.bondNote}
+            sundayNote={props.sundayNote}
+            line={props.line}
+            socialReply={props.socialReply}
+          />
+        ) : (
+          <p className="flex items-center gap-2 text-xs text-[#4a3a28]" data-availability={props.availability.label}>
+            <span className={`avail-dot avail-${props.availability.tone}`} aria-hidden />
+            <span>{props.person.scored ? props.availability.label : "人在村里"}</span>
+          </p>
+        )}
         <p className="pixel-label text-[#6a3d18]" data-testid="data-date">
           {props.dataDateLabel}。{props.dataDateDetail}
         </p>
-        <p className="flex items-center gap-2 text-xs text-[#4a3a28]" data-availability={props.availability.label}>
-          <span className={`avail-dot avail-${props.availability.tone}`} aria-hidden />
-          <span>{props.person.scored ? props.availability.label : "人在村里"}</span>
-        </p>
 
         {showScores && person.scored ? (
-          <>
+          <ScoreRingsDisclosure enabled={RELATION_FIRST_ENABLED}>
             <p className="pixel-label text-[#6a3d18]">人话标签 · {signalTag(person.work, person.fish, person.on_task)}</p>
             <div className="signal-tray" data-activity-rings>
               <Ring label="干活" ratio={workRatio(person.work)} closed={rings.work} tone="work" hint="0–3" />
@@ -135,7 +151,7 @@ export function SignalCard(props: Props) {
                 <span className="pixel-title text-[#2a1a10]">{person.msgs}</span>
               </div>
             </div>
-          </>
+          </ScoreRingsDisclosure>
         ) : person.scored && props.hideScores ? (
           <p className="pixel-label text-[#4a3a28]">别人的分数先收起来了。把自己选进「我是谁」后，自己的卡仍然完整。</p>
         ) : (
@@ -146,27 +162,31 @@ export function SignalCard(props: Props) {
           <HistoryWindow days={props.history} source={props.historySource} recordedDays={props.recordedDays} today={props.today} />
         ) : null}
 
-        <p className="text-xs text-[#6a3d18]" data-kindness-quota>
-          {props.kindnessNote}
-        </p>
-        {props.sundayNote ? (
-          <p className="hud-stat pixel-label text-[#2a1a10]" data-testid="sunday-bonus">
-            {props.sundayNote}
-          </p>
-        ) : null}
-        {props.anonNote ? <p className="hud-stat pixel-label text-[#2a1a10]">{props.anonNote}</p> : null}
-        {props.bondNote ? (
-          <p className="text-xs text-[#6a3d18]" data-testid="bond-note">
-            {props.bondNote}
-          </p>
-        ) : null}
-        {props.line ? (
-          <p className="hud-stat pixel-label text-[#2a1a10]" data-event-line data-social-reply={props.socialReply ?? ""}>
-            {props.line}
-          </p>
-        ) : (
-          <p className="text-xs leading-5 text-[#6a3d18]">再点一次这个人：点头，坐下，再吓一跳。不消耗关照。</p>
+        {RELATION_FIRST_ENABLED ? null : (
+          <>
+            <p className="text-xs text-[#6a3d18]" data-kindness-quota>
+              {props.kindnessNote}
+            </p>
+            {props.sundayNote ? (
+              <p className="hud-stat pixel-label text-[#2a1a10]" data-testid="sunday-bonus">
+                {props.sundayNote}
+              </p>
+            ) : null}
+            {props.bondNote ? (
+              <p className="text-xs text-[#6a3d18]" data-testid="bond-note">
+                {props.bondNote}
+              </p>
+            ) : null}
+            {props.line ? (
+              <p className="hud-stat pixel-label text-[#2a1a10]" data-event-line data-social-reply={props.socialReply ?? ""}>
+                {props.line}
+              </p>
+            ) : (
+              <p className="text-xs leading-5 text-[#6a3d18]">再点一次这个人：点头，坐下，再吓一跳。不消耗关照。</p>
+            )}
+          </>
         )}
+        {props.anonNote ? <p className="hud-stat pixel-label text-[#2a1a10]">{props.anonNote}</p> : null}
 
         {props.isSelf && props.stickerLabels.length > 0 ? (
           <p className="pixel-label text-[#6a3d18]" data-testid="sticker-row">

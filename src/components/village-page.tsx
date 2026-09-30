@@ -26,6 +26,8 @@ import { WaveDPanel } from "@/components/wave-d-panel";
 import { installVillageTestHook, testHooksEnabled, type VillageTestState } from "@/lib/test-hooks";
 import { SignalCard } from "@/components/signal-card";
 import { VillageScene } from "@/components/village-scene";
+import { WEEK_DONE_SUMMARY_ENABLED } from "@/features/week-done-summary/week-done-summary";
+import { WeekDoneSummary } from "@/features/week-done-summary/week-done-summary-view";
 import {
   bindViewer,
   getPlaySnapshot,
@@ -977,20 +979,25 @@ export function VillagePage({ initial }: Props) {
                 {WEEK_DONE_LINE}
               </p>
             ) : null}
-            <ul className="today-chores">
-              {chores.map((item) => (
-                <li key={item.label} data-chore={item.label} data-done={item.done ? "1" : "0"}>
-                  <button
-                    type="button"
-                    className="hud-btn hud-btn-ghost"
-                    disabled={item.done || !selfName}
-                    onClick={() => runChore(item.label)}
-                  >
-                    {choreButtonCopy(item.label, item.done, weekFacts.steps)}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            {/* PV-PM-015 checkpoint */}
+            {tally.complete && WEEK_DONE_SUMMARY_ENABLED ? (
+              <WeekDoneSummary />
+            ) : (
+              <ul className="today-chores">
+                {chores.map((item) => (
+                  <li key={item.label} data-chore={item.label} data-done={item.done ? "1" : "0"}>
+                    <button
+                      type="button"
+                      className="hud-btn hud-btn-ghost"
+                      disabled={item.done || !selfName}
+                      onClick={() => runChore(item.label)}
+                    >
+                      {choreButtonCopy(item.label, item.done, weekFacts.steps)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         ) : null}
       </div>

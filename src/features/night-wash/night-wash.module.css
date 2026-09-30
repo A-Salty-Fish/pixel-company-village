@@ -1,0 +1,11 @@
+/*
+  PV-PM-014. Tint, vignette, and windows are painted under the nameplates.
+  This frame color is the same still blue at the edges of the map.
+  减少动作 does not animate or remove it.
+  Turn the feature off with NIGHT_WASH_ENABLED in night-wash.ts.
+*/
+
+.frame {
+  background: #16305c !important;
+  animation: none !important;
+}
