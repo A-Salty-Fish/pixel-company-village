@@ -3,6 +3,8 @@
  * No chat text, no rankings, no server quota.
  */
 
+import { emptyYard, readYard, yardCopyLines, yardLook, type YardState } from "./yard";
+
 export const SEASON_FADE_MS = 400;
 export const NOD_THRESHOLD = 2;
 export const PIN_CAP = 3;
@@ -30,6 +32,7 @@ export const WAVE_SYSTEMS = [
   "dusk",
   "pins",
   "critters",
+  "yard",
   "water",
   "postcard",
   "chronicle",
@@ -58,7 +61,8 @@ export const WAVE_LABELS: Record<WaveSystemId, string> = {
   weekBoard: "周任务木牌",
   dusk: "安静时光",
   pins: "收藏名牌",
-  critters: "蝴蝶萤火",
+  critters: "虫鸟",
+  yard: "院里小事",
   water: "作物浇水",
   postcard: "明信片",
   chronicle: "村史",
@@ -127,6 +131,7 @@ export type WaveDBlob = {
   chronicle: ChronicleEvent[];
   seenDay: string | null;
   weekMarks: WeekMark | null;
+  yard: YardState;
 };
 
 export type WeekMark = { week: string; labels: string[] };
@@ -149,6 +154,7 @@ export const EMPTY_WAVE: WaveDBlob = {
   chronicle: [],
   seenDay: null,
   weekMarks: null,
+  yard: emptyYard(),
 };
 
 function hash(text: string) {
@@ -478,9 +484,16 @@ export function migrateWaveKey(
 
 export function critterKind(seasonId: string, hour: number, quiet: boolean, enabled: boolean) {
   if (!enabled || quiet) return "none" as const;
-  if (hour >= 19 || hour < 5) return "firefly" as const;
+  if (hour >= 22 || hour < 5) return "moth" as const;
+  if (hour >= 19) return "firefly" as const;
   if (seasonId === "winter") return "none" as const;
+  if (hour < 9) return "sparrow" as const;
   return "butterfly" as const;
+}
+
+/** Cool wash after dusk. Quiet villages stay unlit. */
+export function nightWash(hour: number, enabled: boolean) {
+  return enabled && (hour >= 20 || hour < 5);
 }
 
 export function waterOnce(blob: WaveDBlob, ymd: string) {
@@ -639,6 +652,7 @@ export function publicCopyLines() {
     strollStepLine(0, 1),
     strollStepLine(2, 3),
     strollStepLine(3, 3),
+    ...yardCopyLines(),
   ];
 }
 
@@ -765,6 +779,7 @@ export function sanitizeWave(value: unknown): WaveDBlob {
     chronicle,
     seenDay: typeof raw.seenDay === "string" ? raw.seenDay : null,
     weekMarks: readWeekMarks(raw.weekMarks),
+    yard: readYard(raw.yard),
   };
 }
 
@@ -773,8 +788,10 @@ export type WaveDecor = {
   showWeather: boolean;
   footprints: { x: number; y: number; alpha: number }[];
   porch: boolean;
-  critters: "none" | "butterfly" | "firefly";
+  critters: "none" | "butterfly" | "firefly" | "moth" | "sparrow";
   dusk: boolean;
+  night: boolean;
+  yard: ReturnType<typeof yardLook>;
   pins: string[];
   hats: string[];
   watered: boolean;
@@ -815,6 +832,8 @@ export function buildDecor(input: {
     porch: systemOn(blob, "porch") && blob.porch,
     critters: critterKind(input.seasonId, input.hour, input.quiet, systemOn(blob, "critters")),
     dusk: duskActive(input.hour, systemOn(blob, "dusk") && !input.quiet),
+    night: nightWash(input.hour, systemOn(blob, "dusk") && !input.quiet),
+    yard: yardLook(blob.yard, input.ymd, systemOn(blob, "yard"), input.reduced),
     pins: systemOn(blob, "pins") ? blob.pins : [],
     hats: systemOn(blob, "hats") ? blob.hats : [],
     watered: systemOn(blob, "water") && blob.waterDay === input.ymd,

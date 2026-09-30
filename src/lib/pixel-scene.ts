@@ -330,7 +330,7 @@ function drawMill(ctx: CanvasRenderingContext2D, angle: number) {
 
 function drawCritter(
   ctx: CanvasRenderingContext2D,
-  kind: "none" | "butterfly" | "firefly",
+  kind: "none" | "butterfly" | "firefly" | "moth" | "sparrow",
   x: number,
   y: number,
   index: number,
@@ -342,10 +342,111 @@ function drawCritter(
     ctx.fillRect(left, top, 2, 2);
     return;
   }
+  if (kind === "moth") {
+    ctx.fillStyle = index % 2 ? "#d5e4ef" : "#c4a060";
+    ctx.fillRect(left - 2, top, 2, 1);
+    ctx.fillRect(left + 1, top, 2, 1);
+    ctx.fillStyle = "#6a3d18";
+    ctx.fillRect(left, top, 1, 1);
+    return;
+  }
+  if (kind === "sparrow") {
+    ctx.fillStyle = "#8a5528";
+    ctx.fillRect(left, top, 3, 2);
+    ctx.fillStyle = "#c44b3a";
+    ctx.fillRect(left + 3, top, 1, 1);
+    return;
+  }
   ctx.fillStyle = index % 2 ? "#f4b4c4" : "#e7c86a";
   ctx.fillRect(left, top, 2, 2);
   ctx.fillRect(left - 3, top - 1, 2, 2);
   ctx.fillRect(left + 3, top - 1, 2, 2);
+}
+
+function drawYardCraft(
+  ctx: CanvasRenderingContext2D,
+  yard: NonNullable<SceneLife["decor"]>["yard"],
+  sway: number,
+) {
+  const lean = yard.sway ? Math.round(Math.sin(sway) * 1) : 0;
+  ctx.fillStyle = "#6a3d18";
+  ctx.fillRect(168, 508, 14, 10);
+  ctx.fillStyle = "#c4a060";
+  ctx.fillRect(170, 510, 10, 6);
+  ctx.fillStyle = "#8a5528";
+  ctx.fillRect(188, 514, 8, 6);
+  ctx.fillStyle = "#3a8fbc";
+  ctx.fillRect(190, 516, 4, 3);
+
+  ctx.fillStyle = "#5a3214";
+  ctx.fillRect(128, 588, 22, 14);
+  ctx.fillStyle = "#c44b3a";
+  ctx.fillRect(132, 584, 8, 4);
+  ctx.fillStyle = "#2a1a10";
+  ctx.fillRect(146, 592, 4, 6);
+
+  ctx.fillStyle = "#6a3d18";
+  ctx.fillRect(348 + lean, 430, 2, 28);
+  ctx.fillStyle = "#c4a060";
+  ctx.fillRect(342 + lean, 426, 14, 4);
+  ctx.fillStyle = "#2f6a3a";
+  ctx.fillRect(344 + lean, 448, 10, 3);
+
+  if (yard.wear) {
+    ctx.fillStyle = "#5a3a1c";
+    for (let i = 0; i < 8; i += 1) {
+      ctx.fillRect(160 + i * 36, 560 + (i % 2), 6, 2);
+      ctx.fillRect(168 + i * 36, 566, 4, 2);
+    }
+  }
+  if (yard.hen) {
+    ctx.fillStyle = "#fff6d8";
+    ctx.fillRect(118, 596, 6, 4);
+    ctx.fillStyle = "#c44b3a";
+    ctx.fillRect(124, 597, 2, 1);
+  }
+  if (yard.laundry) {
+    ctx.fillStyle = "#efe6d6";
+    ctx.fillRect(500, 188, 36, 1);
+    ctx.fillStyle = "#3a8fbc";
+    ctx.fillRect(508, 190, 6, 8);
+    ctx.fillStyle = "#f4b4c4";
+    ctx.fillRect(520, 190, 6, 8);
+  }
+  if (yard.stove) {
+    ctx.fillStyle = "#d46a32";
+    ctx.fillRect(1074, 948, 6, 5);
+    ctx.fillStyle = "#f2d15c";
+    ctx.fillRect(1076, 950, 2, 2);
+  }
+  if (yard.bell > 0) {
+    ctx.fillStyle = "#f2d15c";
+    for (let i = 0; i < yard.bell; i += 1) ctx.fillRect(86 + i * 4, 188, 2, 3);
+  }
+  if (yard.grain > 0) {
+    ctx.fillStyle = "#e7c86a";
+    for (let i = 0; i < yard.grain; i += 1) {
+      ctx.fillRect(390 + i * 6, 548, 2, 8);
+      ctx.fillRect(389 + i * 6, 546, 4, 2);
+    }
+  }
+  if (yard.shutters) {
+    ctx.fillStyle = "#5a3214";
+    ctx.fillRect(792, 158, 6, 8);
+    ctx.fillRect(800, 158, 6, 8);
+  }
+  if (yard.bowl) {
+    ctx.fillStyle = "#fff6d8";
+    ctx.fillRect(648, 992, 8, 3);
+    ctx.fillStyle = "#c4a060";
+    ctx.fillRect(650, 993, 4, 1);
+  }
+  if (yard.pepper) {
+    ctx.fillStyle = "#c44b3a";
+    ctx.fillRect(508, 160, 2, 8);
+    ctx.fillRect(511, 162, 2, 6);
+    ctx.fillRect(514, 164, 2, 4);
+  }
 }
 
 function drawSeasonSpeck(ctx: CanvasRenderingContext2D, seasonId: string, x: number, y: number) {
@@ -999,14 +1100,22 @@ function drawActors(
       });
     }
     if (decor.critters !== "none") {
+      const still = Boolean(life?.reduceMotion);
       for (let i = 0; i < 4; i += 1) {
         const x = 220 + i * 150;
         const y = 340 + (i % 2) * 70;
+        const bob = still ? 0 : Math.sin(t + i) * 3;
         queue.push({
           sort: y,
-          draw: () => drawCritter(ctx, decor.critters, x, y + Math.sin(t + i) * 3, i),
+          draw: () => drawCritter(ctx, decor.critters, x, y + bob, i),
         });
       }
+    }
+    if (decor.yard.on) {
+      queue.push({
+        sort: 520,
+        draw: () => drawYardCraft(ctx, decor.yard, t),
+      });
     }
     if (decor.stroll.length >= 2) {
       const stroll = decor.stroll;
@@ -1111,6 +1220,10 @@ export function paintVillage(
   }
   if (life?.decor?.dusk) {
     ctx.fillStyle = "rgba(88, 48, 24, 0.28)";
+    ctx.fillRect(0, 0, viewW, viewH);
+  }
+  if (life?.decor?.night) {
+    ctx.fillStyle = "rgba(16, 28, 64, 0.34)";
     ctx.fillRect(0, 0, viewW, viewH);
   }
   if (life?.decor && life.decor.stars > 0) {

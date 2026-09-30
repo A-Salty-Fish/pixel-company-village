@@ -422,6 +422,13 @@ export function VillageScene({
       data-camera-zoom={camMark.zoom}
       data-critters={life.decor?.critters ?? "none"}
       data-dusk={life.decor?.dusk ? "1" : "0"}
+      data-night={life.decor?.night ? "1" : "0"}
+      data-path-wear={life.decor?.yard.wear ? "1" : "0"}
+      data-yard-hen={life.decor?.yard.hen ? "1" : "0"}
+      data-yard-laundry={life.decor?.yard.laundry ? "1" : "0"}
+      data-yard-stove={life.decor?.yard.stove ? "1" : "0"}
+      data-yard-bell={String(life.decor?.yard.bell ?? 0)}
+      data-yard-grain={String(life.decor?.yard.grain ?? 0)}
       data-sitting={life.decor?.sit ? "1" : "0"}
       data-season={life.decor?.seasonId ?? ""}
       data-week-ribbon={life.decor?.weekRibbon ? "1" : "0"}

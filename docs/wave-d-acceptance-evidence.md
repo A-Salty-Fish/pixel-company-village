@@ -24,6 +24,7 @@ Playtest 2026-09-30 follow-ups:
 - Round 6: the strip counts 本周 n/3. A started stroll shows n/3 on the button. When all three are done, the canned line 「三件都做完了。布条只挂在这台电脑上。」 appears and the map sets data-week-ribbon. Closing the card or turning the lamp and bench back off does not erase that session's finished chores. The ribbon uses the existing week-board switch. Nothing new is stored. Local smoke: 53 passed.
 - PV-D-005: season notice and the gate visit were one shared session flag, so the next identity inherited the first finished chore. Those flags now live in a per-viewer book. `e2e/pv-d-005.spec.ts` checks B is 本周 0/3 with no ribbon, then A still has 3/3.
 - Round 7: finished chores are stored as canned labels on that viewer's wave record for the current week key only. A reload keeps the ribbon. Another identity stays at 0/3. Free text and unknown labels are dropped. Local smoke: 55 passed.
+- Round 8: nine canned yard acts live on the viewer wave record. A reload keeps the hen, the bell count, and a swept path. Another identity starts with an unworn path and no hen. Night wash and moth/sparrow/firefly/butterfly follow the clock only when the village is not quiet. `e2e/round8.spec.ts`.
 - Fresh storage: `comfortFromStorage` unit plus `a cleared profile keeps quiet village checked`.
 - Stale score days label the button 「本地互动」.
 - Comfort settings are grouped into 安静 / 装饰 / 名牌 / 我是谁.

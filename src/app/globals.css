@@ -674,6 +674,40 @@ a:focus-visible,
 .empty-yard-art span:nth-child(2) { height: 40px; background: #e7c8a0; }
 .empty-yard-art span:nth-child(3) { height: 22px; background: #c4a060; }
 
+.empty-yard p,
+.empty-dock {
+  max-width: 22rem;
+  letter-spacing: 0.02em;
+}
+
+.yard-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.yard-chip {
+  min-height: 2.25rem;
+  image-rendering: pixelated;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .empty-yard-art span,
+  .yard-chip,
+  .week-ribbon-note,
+  .empty-dock {
+    animation: none;
+    transition: none;
+  }
+}
+
+.farm-page[data-reduce-motion="1"] .empty-yard-art span,
+.farm-page[data-reduce-motion="1"] .yard-chip,
+.farm-page[data-reduce-motion="1"] .week-ribbon-note {
+  animation: none;
+  transition: none;
+}
+
 .thumb-bar {
   display: none;
 }

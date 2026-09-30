@@ -68,10 +68,12 @@ import {
   rememberViewerChores,
   WEEK_DONE_LINE,
   WEEK_KEPT_LINE,
+  systemOn,
   type ViewerChoreFlags,
   type WaveDBlob,
   type WaveSystemId,
 } from "@/lib/wave-d";
+import { playYard, type YardActId } from "@/lib/yard";
 import {
   addFeather,
   anonLine,
@@ -829,7 +831,7 @@ export function VillagePage({ initial }: Props) {
                 <span />
                 <span />
               </div>
-              <p>村里今天很安静。名册还是空的，小路和屋子先留在这里。</p>
+              <p>名册空着。小路先留在这里。</p>
             </div>
           ) : (
           <VillageScene
@@ -983,7 +985,7 @@ export function VillagePage({ initial }: Props) {
               onSecret={secretFeed}
             />
           ) : (
-            <p className="px-3 py-3 text-sm text-[#4a3a28]">点小人，或点下面名册。远景默认收起名牌，拉近或按「全显」再看。</p>
+            <p className="empty-dock px-3 py-3 text-sm text-[#4a3a28]">点小人，或点名册。</p>
           )}
         </div>
       </div>
@@ -1026,6 +1028,15 @@ export function VillagePage({ initial }: Props) {
         }}
         onHat={(name) => updateWave((current) => ({ ...current, hats: toggleHat(current.hats, name) }))}
         onInstrument={(id) => updateWave((current) => setInstrument(current, id as WaveDBlob["instrument"]))}
+        onYard={(id: YardActId) => {
+          if (!selfName || waveSnap.viewer !== selfName) {
+            setWaveLine("先选定「我是谁」，院里的事才记在这台电脑上。");
+            return;
+          }
+          const result = playYard(waveState.yard, id, clock.ymd, systemOn(waveState, "yard"));
+          setWaveLine(result.line);
+          if (result.ok) updateWave((current) => ({ ...current, yard: result.yard }));
+        }}
         onHome={() => {
           if (!selfName) {
             setWaveLine("先选定「我是谁」，镜头才回得了自己的小屋。");
