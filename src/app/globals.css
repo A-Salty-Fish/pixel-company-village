@@ -283,6 +283,25 @@ details.hud-panel {
   padding: 0.6rem 0.75rem;
 }
 
+.today-chores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.45rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.today-chores li {
+  border: 2px solid #6a3d18;
+  background: #efe0c0;
+  padding: 0.2rem 0.45rem;
+}
+
+.today-chores li[data-done="1"] {
+  background: #e7f3c8;
+}
+
 .season-spring { background: #e7f3c8; }
 .season-summer { background: #ffe7a3; }
 .season-autumn { background: #f0c48a; }

@@ -3,8 +3,8 @@
 Date: 2026-09-30. Gate: `pixel-village-wave-d-acceptance-2026-09-30`.
 
 ```text
-SHA: Round 3 branch cursor/wave-d-round-3-9062 (from main c8455eb)
-npm test: PASS (30, plus split clamp)
+SHA: Round 4 branch cursor/wave-d-round-4-9062 (from main 749b0e4)
+npm test: PASS (31, includes weekly chore checks)
 Playwright smoke: round 3 adds dialog Esc, 44px targets, and reduced motion on top of the 41-test undo smoke. Visual job stays continue-on-error with a 2% pixel tolerance.
 Privacy: PASS (e2e/privacy.spec.ts)
 Visual quiet/busy: PASS locally; CI job stays continue-on-error
@@ -19,6 +19,7 @@ Playtest 2026-09-30 follow-ups:
 - Kindness confirm still offers undo for 3 seconds, now inside `signal-actions`. Covered by `e2e/wave-c.spec.ts` and the narrow sheet test.
 - PV-D-003: the 3s deadline is stamped inside the undo row when that row mounts, for both 确认关照 and 匿名投喂. `e2e/undo-window.spec.ts` checks the first label is 「撤销（3秒）」, remaining time is still above 2s, the button is still there 2.5s later, and undo restores 今日 0/1. A slow confirm render no longer burns the first second before paint. Local smoke after the fix: 41 passed.
 - Round 3: the signal card is a non-modal dialog. Esc returns focus to that roster row and clears the open undo so reopening does not mint a new 3s window. Narrow split, close, password, and the name picker are at least 44px. Reduced motion drops the season fade. Dusk lights house windows, the bench has a back, and the stroll is stones.
+- Round 4: 本周小事 sits under the season banner. Water, diary, porch, pins, bench, a card, the gate, and the season banner check off the matching canned chore. Diary buttons show the canned sentence. Nothing is ranked or stored as free text.
 - Fresh storage: `comfortFromStorage` unit plus `a cleared profile keeps quiet village checked`.
 - Stale score days label the button 「本地互动」.
 - Comfort settings are grouped into 安静 / 装饰 / 名牌 / 我是谁.

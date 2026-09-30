@@ -232,6 +232,48 @@ export function weekBoard(weekKey: string) {
   };
 }
 
+export type WeekFacts = {
+  wateredToday: boolean;
+  cardOpen: boolean;
+  visitedGate: boolean;
+  porchOn: boolean;
+  diaryToday: boolean;
+  steps: number;
+  pinned: boolean;
+  resting: boolean;
+  noticedSeason: boolean;
+};
+
+/** Derived from local actions. Unknown labels stay undone and are never stored. */
+export function weekChores(weekKey: string, facts: WeekFacts) {
+  return weekBoard(weekKey).items.map((label) => ({ label, done: choreDone(label, facts) }));
+}
+
+function choreDone(label: string, facts: WeekFacts) {
+  switch (label) {
+    case "浇自己的田":
+      return facts.wateredToday;
+    case "看一张信号卡":
+      return facts.cardOpen;
+    case "在村口站一会儿":
+      return facts.visitedGate;
+    case "给门灯点一下":
+      return facts.porchOn;
+    case "收一句罐头":
+      return facts.diaryToday;
+    case "沿着小路走三步":
+      return facts.steps >= 3;
+    case "看季节色":
+      return facts.noticedSeason;
+    case "钉一枚名牌":
+      return facts.pinned;
+    case "把锄头放下":
+      return facts.resting;
+    default:
+      return false;
+  }
+}
+
 export function duskActive(hour: number, enabled: boolean) {
   return enabled && hour >= 17 && hour < 20;
 }

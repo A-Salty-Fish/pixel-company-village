@@ -57,6 +57,7 @@ import {
   togglePorch,
   visitorCopy,
   waterOnce,
+  weekChores,
   type WaveDBlob,
   type WaveSystemId,
 } from "@/lib/wave-d";
@@ -152,6 +153,7 @@ export function VillagePage({ initial }: Props) {
   const waveSnap = useSyncExternalStore(subscribeWave, getWaveSnapshot, getServerWaveSnapshot);
   const waveState = waveSnap.wave;
   const [homePulse, setHomePulse] = useState(0);
+  const [noticedSeason, setNoticedSeason] = useState(false);
   const [waveLine, setWaveLine] = useState<string | null>(null);
   const lastTap = useRef({ name: "", at: 0 });
   const play = playSnap.play;
@@ -578,6 +580,17 @@ export function VillagePage({ initial }: Props) {
   }, []);
 
   const waveStatusNow = selected ? waveStatus(selected.name) : null;
+  const weekFacts = {
+    wateredToday: waveState.waterDay === clock.ymd,
+    cardOpen: Boolean(selectedName),
+    visitedGate: homePulse > 0,
+    porchOn: waveState.porch,
+    diaryToday: waveState.diaryDay === clock.ymd && waveState.diaryIndex !== null,
+    steps: waveState.footprints.length,
+    pinned: waveState.pins.length > 0,
+    resting: Boolean(waveState.sit),
+    noticedSeason,
+  };
 
   return (
     <div
@@ -622,7 +635,26 @@ export function VillagePage({ initial }: Props) {
       {error ? <p className="hud-panel px-3 py-2 text-sm text-[#8a2020]">{error}</p> : null}
       {shelfLine ? <p className="px-1 text-xs text-[#6a3d18]">{shelfLine}</p> : null}
 
-      <SeasonBanner seasonLabel={season.label} seasonId={season.id} festival={festival} people={people} />
+      <SeasonBanner
+        seasonLabel={season.label}
+        seasonId={season.id}
+        festival={festival}
+        people={people}
+        onNotice={() => setNoticedSeason(true)}
+      />
+      {waveState.toggles.weekBoard ? (
+        <section className="hud-panel px-3 py-3" data-testid="today-chores">
+          <p className="pixel-label text-[#2a1a10]">本周小事</p>
+          <p className="mt-1 text-xs text-[#6a3d18]">做完会打勾。只记在这台电脑，不公示，也不跟别人比。</p>
+          <ul className="today-chores">
+            {weekChores(clock.weekKey, weekFacts).map((item) => (
+              <li key={item.label} data-chore={item.label} data-done={item.done ? "1" : "0"}>
+                {item.done ? "已做" : "还没"} · {item.label}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {visitorCopy(selfName, waveState.toggles.visitor) ? (
         <p className="hud-panel px-3 py-2 text-sm text-[#2a1a10]" data-testid="visitor-banner">
           {visitorCopy(selfName, waveState.toggles.visitor)}
@@ -821,6 +853,7 @@ export function VillagePage({ initial }: Props) {
         quoteTotal={quoteCount()}
         names={people.map((person) => person.name)}
         line={waveLine}
+        facts={weekFacts}
         onToggle={(id: WaveSystemId, on: boolean) => updateWave((current: WaveDBlob) => setToggle(current, id, on))}
         onDiary={(index) => {
           if (!selfName) return;
@@ -1040,11 +1073,13 @@ function SeasonBanner({
   seasonId,
   festival,
   people,
+  onNotice,
 }: {
   seasonLabel: string;
   seasonId: string;
   festival: { label: string; pa: string } | null;
   people: PersonWithState[];
+  onNotice: () => void;
 }) {
   const upcoming = nextFestival();
   const totals = teamTotals(people);
@@ -1056,6 +1091,7 @@ function SeasonBanner({
       data-season={seasonId}
       data-festival={festival ? festival.label : ""}
       data-season-fade="400"
+      onClick={onNotice}
     >
       <p className="pixel-label text-[#2a1a10]">
         {seasonLabel}

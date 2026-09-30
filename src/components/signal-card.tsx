@@ -63,8 +63,22 @@ export function SignalCard(props: Props) {
   const pending = KINDNESS_MENU.find((item) => item.id === menu);
   const actionLabel = interactionLabel(!props.dataDateDetail.includes("不是日历上的今天"));
   const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(props.onClose);
+  useEffect(() => {
+    onCloseRef.current = props.onClose;
+  });
   useEffect(() => {
     closeRef.current?.focus({ preventScroll: true });
+  }, []);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      onCloseRef.current();
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
   }, []);
   return (
     <aside
@@ -75,12 +89,6 @@ export function SignalCard(props: Props) {
       aria-labelledby="signal-sheet-title"
       data-signal-card={props.person.scored ? "scored" : "unscored"}
       data-testid="signal-card"
-      onKeyDown={(event) => {
-        if (event.key !== "Escape") return;
-        event.preventDefault();
-        event.stopPropagation();
-        props.onClose();
-      }}
     >
       <div className="signal-sheet-head hud-title" data-testid="signal-sheet-head">
         <span id="signal-sheet-title">信号卡 · {props.person.name}</span>

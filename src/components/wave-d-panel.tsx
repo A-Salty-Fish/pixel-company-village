@@ -9,6 +9,8 @@ import {
   diaryLine,
   postcardMeta,
   weekBoard,
+  type WeekFacts,
+  weekChores,
   type WaveDBlob,
   type WaveSystemId,
 } from "@/lib/wave-d";
@@ -22,6 +24,7 @@ type Props = {
   quoteTotal: number;
   names: string[];
   line: string | null;
+  facts: WeekFacts;
   onToggle: (id: WaveSystemId, on: boolean) => void;
   onDiary: (index: number) => void;
   onPorch: () => void;
@@ -37,6 +40,7 @@ type Props = {
 
 export function WaveDPanel(props: Props) {
   const board = weekBoard(props.weekKey);
+  const chores = weekChores(props.weekKey, props.facts);
   const diary = diaryLine(props.wave);
   const progress = atlasRatio(props.quoteUnlocked, props.quoteTotal);
   const card = postcardMeta(props.selfName, props.ymd);
@@ -65,9 +69,11 @@ export function WaveDPanel(props: Props) {
         <section data-testid="week-board">
           <h3 className="pixel-label">{board.title}</h3>
           <p className="mt-1 text-xs text-[#6a3d18]">{board.note}</p>
-          <ul className="mt-1 list-disc pl-4 text-xs">
-            {board.items.map((item) => (
-              <li key={item}>{item}</li>
+          <ul className="mt-1 space-y-1 text-xs" data-testid="week-chores">
+            {chores.map((item) => (
+              <li key={item.label} data-chore={item.label} data-done={item.done ? "1" : "0"}>
+                {item.done ? "已做" : "还没"} · {item.label}
+              </li>
             ))}
           </ul>
         </section>
@@ -85,7 +91,7 @@ export function WaveDPanel(props: Props) {
                 data-testid={`diary-${index}`}
                 onClick={() => props.onDiary(index)}
               >
-                {index + 1}
+                {line}
               </button>
             ))}
           </div>
