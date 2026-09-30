@@ -48,3 +48,6 @@
 - self-yard-marker：自家屋顶留一枚不闪的小钉，比「找我」的亮圈更淡，整天都在。关掉 `SELF_YARD_MARKER_ENABLED` 就只剩找我。
 - kindness-footprint-glow：本机有关照或熟识的小桩时，脚下多一圈软光，不用打开卡片也能指到。关掉 `KINDNESS_FOOTPRINT_GLOW_ENABLED` 就只剩小桩。
 - compact-settings-discover：体贴设置旁边有一次提示，写明减少动作和安静村子在这里。点掉之后只在这台电脑记一个「1」。关掉 `COMPACT_SETTINGS_DISCOVER_ENABLED` 就不显示。
+- PV-PM-016：夜里跟页头同一套钟点。安静村子也会铺一层冷色，屋子留着暖窗。减少动作时这层仍在，而且不动。关掉 `NIGHT_WASH_V2_ENABLED` 就回到原来的夜色。
+- PV-PM-017：本周三件做完后，可以「路过看一眼」。地图上留下一圈光，不是挥手。只记在这台电脑，不记说过的话。关掉 `POST_WEEK_PRESENCE_ENABLED` 就没有这一眼。
+- PV-PM-018：拉到中间一档时，没进名牌上限的人只露一个字，最多十个，安静时四个。全显名牌仍是整名。关掉 `NAMEPLATE_MID_ENABLED` 就只有原来的名牌。

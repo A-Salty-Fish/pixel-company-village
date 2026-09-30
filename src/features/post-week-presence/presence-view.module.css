@@ -1,0 +1,30 @@
+/* PV-PM-017. Set POST_WEEK_PRESENCE_ENABLED to false and drop this import to revert. */
+
+.panel {
+  margin-top: 8px;
+  padding: 8px;
+  border: 3px solid #6a3d18;
+  background: #f4e4c4;
+  animation: none;
+}
+
+.note,
+.done {
+  margin: 0;
+  color: #2a1a10;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.done {
+  font-weight: 700;
+}
+
+.act {
+  margin-top: 8px;
+}
+
+.panel,
+.act {
+  animation: none !important;
+}

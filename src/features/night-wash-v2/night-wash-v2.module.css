@@ -1,0 +1,16 @@
+/*
+  PV-PM-016. The canvas carries the cool wash. This frame matches NIGHT_FRAME
+  so the wooden edge is not still daytime green.
+  减少动作 does not animate it.
+  Turn the feature off with NIGHT_WASH_V2_ENABLED in night-wash-v2.ts.
+*/
+
+:global(.night-wash-active) {
+  background: #081018 !important;
+  animation: none !important;
+}
+
+.frame {
+  background: #081018 !important;
+  animation: none !important;
+}

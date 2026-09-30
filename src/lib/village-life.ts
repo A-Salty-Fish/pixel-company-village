@@ -86,6 +86,10 @@ export type SceneLife = {
   ritual?: { beat: "dawn" | "noon" | "dusk"; done: boolean } | null;
   /** Names this viewer has waved at or cared for. Static map posts. */
   bondMarks?: string[];
+  /** Same clock as the glance line. Night wash v2 follows this. */
+  sessionNight?: boolean;
+  /** Local passing glance after the week board is finished. */
+  presenceOn?: boolean;
   /** Find-me ring holds for at least 1.5s. Set each frame, not stored. */
   selfHighlight?: boolean;
 };
