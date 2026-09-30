@@ -411,6 +411,7 @@ export function VillageScene({
       zoomRef.current = z;
       setZoom(z);
       camRef.current = clampCamera(camRef.current.x, camRef.current.y, z);
+      setCamMark({ x: camRef.current.x, y: camRef.current.y, zoom: z });
       kickRef.current?.();
     };
 
@@ -476,6 +477,7 @@ export function VillageScene({
     zoomRef.current = z;
     setZoom(z);
     camRef.current = clampCamera(camRef.current.x, camRef.current.y, z);
+    setCamMark({ x: camRef.current.x, y: camRef.current.y, zoom: z });
     kickRef.current?.();
   };
 
