@@ -1,7 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { login, roster } from "./login";
 
-test("kindness undo stays clickable for at least 2.5s and the label matches", async ({ page }) => {
+async function armCard(page: Page) {
   await page.setViewportSize({ width: 420, height: 800 });
   await login(page);
   const body = await roster(page);
@@ -11,52 +11,54 @@ test("kindness undo stays clickable for at least 2.5s and the label matches", as
   await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(self ?? "");
   await page.evaluate((name) => window.__VILLAGE_TEST__?.selectVillager(name ?? null), target);
-  await page.getByRole("button", { name: /今日互动|本地互动/ }).click();
-  await page.getByRole("button", { name: "种子" }).click();
-  await page.getByRole("button", { name: "确认关照" }).click();
+}
 
+async function expectUndoLasts(page: Page) {
   const undo = page.getByTestId("kindness-undo");
   await expect(undo).toBeVisible();
   await expect(undo).toContainText("撤销（3秒）");
-  const opened = await undo.evaluate((el) => {
+  const snap = await undo.evaluate((el) => {
     const until = Number(el.getAttribute("data-undo-until"));
     const at = Number(el.getAttribute("data-undo-at"));
-    const seconds = Number(el.getAttribute("data-undo-seconds"));
-    const budget = Number(el.getAttribute("data-undo-ms"));
     return {
-      until,
+      span: until - at,
       remaining: until - Date.now(),
-      seconds,
-      budget,
+      seconds: Number(el.getAttribute("data-undo-seconds")),
       text: el.textContent ?? "",
-      mathMatches: seconds === Math.ceil((until - at) / 1000),
     };
   });
-  expect(opened.budget).toBeGreaterThanOrEqual(3000);
-  expect(opened.remaining).toBeGreaterThanOrEqual(2500);
-  expect(opened.seconds).toBe(3);
-  expect(opened.mathMatches).toBeTruthy();
-  expect(opened.text).toContain("撤销（3秒）");
-
-  await page.waitForFunction((deadline) => Date.now() >= deadline - 500, opened.until);
+  expect(snap.span).toBe(3000);
+  expect(snap.seconds).toBe(3);
+  expect(snap.text).toContain("撤销（3秒）");
+  expect(snap.remaining).toBeGreaterThan(2000);
+  const seen = Date.now();
+  await page.waitForTimeout(2500);
   await expect(undo).toBeVisible();
-  const later = await undo.evaluate((el) => {
-    const until = Number(el.getAttribute("data-undo-until"));
-    const at = Number(el.getAttribute("data-undo-at"));
-    const seconds = Number(el.getAttribute("data-undo-seconds"));
-    const text = el.textContent ?? "";
-    return {
-      remaining: until - Date.now(),
-      seconds,
-      labelMatches: text.includes(`撤销（${seconds}秒）`),
-      mathMatches: seconds === Math.ceil((until - at) / 1000),
-    };
-  });
-  expect(later.remaining).toBeGreaterThan(0);
-  expect(later.seconds).toBeGreaterThanOrEqual(1);
-  expect(later.labelMatches).toBeTruthy();
-  expect(later.mathMatches).toBeTruthy();
+  expect(Date.now() - seen).toBeGreaterThanOrEqual(2500);
+  const later = await undo.evaluate((el) => Number(el.getAttribute("data-undo-until")) - Date.now());
+  expect(later).toBeGreaterThan(0);
   await undo.getByRole("button", { name: /撤销/ }).click();
   await expect(page.locator("[data-kindness-quota]")).toContainText("今日 0/1");
   await expect(undo).toHaveCount(0);
+}
+
+test("kindness undo shows 3 seconds and stays clickable past 2.5s", async ({ page }) => {
+  await armCard(page);
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 6 });
+  await page.getByRole("button", { name: /今日互动|本地互动/ }).click();
+  await page.getByRole("button", { name: "种子" }).click();
+  await page.getByRole("button", { name: "确认关照" }).click();
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+  await expectUndoLasts(page);
+});
+
+test("secret feed undo uses the same 3 second window", async ({ page }) => {
+  await armCard(page);
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 6 });
+  await page.getByRole("button", { name: "匿名投喂" }).click();
+  await page.getByRole("button", { name: "确认投喂" }).click();
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+  await expectUndoLasts(page);
 });

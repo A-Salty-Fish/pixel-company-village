@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { KindnessUndo } from "@/components/kindness-undo";
 import { STATE_LABELS } from "@/lib/animation";
 import { interactionLabel, KINDNESS_MENU, type KindnessMenuId } from "@/lib/copy";
 import { AXIS_MARK, fishRatio, signalTag, taskRatio, workRatio } from "@/lib/interactions";
@@ -27,10 +28,7 @@ type Props = {
   canKindness: boolean;
   canWave: boolean;
   hasIdentity: boolean;
-  undoSeconds: number;
-  undoUntil: number;
-  undoAt: number;
-  undoMs: number;
+  undoSessionId: number | null;
   stickerLabels: string[];
   canSticker: boolean;
   anonNote: string | null;
@@ -39,6 +37,7 @@ type Props = {
   onKindness: (action: KindnessMenuId) => void;
   onWave: () => void;
   onUndo: () => void;
+  onUndoExpire: () => void;
   onSticker: () => void;
   onGarden: (crop: string) => void;
   onSecret: () => void;
@@ -232,20 +231,8 @@ export function SignalCard(props: Props) {
             </div>
           </div>
         ) : null}
-        {props.undoSeconds > 0 ? (
-          <div
-            className="hud-stat pixel-label flex flex-wrap items-center gap-2 text-[#2a1a10]"
-            data-testid="kindness-undo"
-            data-undo-until={props.undoUntil}
-            data-undo-at={props.undoAt}
-            data-undo-seconds={props.undoSeconds}
-            data-undo-ms={props.undoMs}
-          >
-            <span>刚才消耗了 1 次善意。</span>
-            <button type="button" className="hud-btn hud-btn-ghost" onClick={props.onUndo}>
-              撤销（{props.undoSeconds}秒）
-            </button>
-          </div>
+        {props.undoSessionId != null ? (
+          <KindnessUndo key={props.undoSessionId} onUndo={props.onUndo} onExpire={props.onUndoExpire} />
         ) : null}
         <button
           type="button"

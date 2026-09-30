@@ -389,11 +389,11 @@ export function undoStillOpen(until: number, now: number) {
   return now < until;
 }
 
-/** Whole seconds still shown on the undo button. Matches undoStillOpen: 0 means closed. */
+/** Whole seconds on the undo button. Closed at 0. While open, keep the label in 1..3. */
 export function undoSecondsLeft(until: number, now: number) {
   const left = until - now;
   if (left <= 0) return 0;
-  return Math.ceil(left / 1000);
+  return Math.min(3, Math.max(1, Math.ceil(left / 1000)));
 }
 
 export const ATLAS_FALLBACK = "图集没载上，田垄用色块先占着。名字仍可读。";
