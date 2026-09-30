@@ -60,6 +60,8 @@ import {
   choreStatusCopy,
   strollStepLine,
   weekTally,
+  emptyViewerChores,
+  rememberViewerChores,
   WEEK_DONE_LINE,
   addStrollStep,
   wreathColor,
@@ -123,6 +125,18 @@ test("weekly chores check off from local actions and ignore unknown labels", () 
   assert.equal(strollStepLine(0, 0), "脚印关着，这一步没记下。");
   assert.equal(WEEK_DONE_LINE.includes("聊天"), false);
   assert.equal(copyIsClean([WEEK_DONE_LINE, strollStepLine(0, 1)]), true);
+  let book = rememberViewerChores(new Map(), "甲", { season: true, gate: true, porch: true });
+  book = rememberViewerChores(book, "乙", { card: true });
+  const again = rememberViewerChores(book, "甲", { season: true });
+  assert.equal(again, book);
+  assert.equal(book.get("甲")?.season, true);
+  assert.equal(book.get("甲")?.gate, true);
+  assert.equal(book.get("乙")?.season, false);
+  assert.equal(book.get("乙")?.card, true);
+  assert.equal(book.get("甲")?.card, false);
+  assert.deepEqual(emptyViewerChores(), { card: false, porch: false, pin: false, sat: false, season: false, gate: false });
+  assert.equal(rememberViewerChores(book, "", { season: true }), book);
+  assert.equal(JSON.stringify([...book.values()]).includes("聊天"), false);
 });
 
 test("pins stay private and cap at three", () => {
