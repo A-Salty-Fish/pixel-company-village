@@ -1,5 +1,16 @@
 /** Honest date lines and other canned UI copy. No chat text. */
 
+export function lightLabel(hour: number) {
+  if (hour >= 17 && hour < 20) return "傍晚";
+  if (hour >= 20 || hour < 5) return "夜里";
+  return "白天";
+}
+
+export function glanceLine(input: { season: string; weather: string; light: string; selfName: string | null }) {
+  const who = input.selfName ? `我是${input.selfName}` : "还没选定我是谁";
+  return `${input.season} · ${input.weather} · ${input.light} · ${who}`;
+}
+
 export function scoreDateCopy(dataDate: string, today: string) {
   if (dataDate === today) {
     return {

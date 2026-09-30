@@ -3,6 +3,7 @@ import { login, roster } from "./login";
 
 test("a stale score day is not called today", async ({ page }) => {
   await login(page);
+  await page.getByTestId("score-meta").locator("summary").click();
   const date = page.getByTestId("score-date");
   await expect(date).toHaveAttribute("data-honesty", "stale");
   await expect(date).toContainText("最近一次评分日");

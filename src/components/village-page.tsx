@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { STATE_LABELS, STATE_ORDER, withStates } from "@/lib/animation";
-import { scoreDateCopy, waveHint } from "@/lib/copy";
+import { glanceLine, lightLabel, scoreDateCopy, waveHint } from "@/lib/copy";
 import {
   blockedKindnessFx,
   emoteFx,
@@ -17,6 +17,7 @@ import {
 import type { KindnessMenuId } from "@/lib/copy";
 import { ComfortSettings } from "@/components/comfort-settings";
 import { FirstRunGuide } from "@/components/first-run-guide";
+import { readVisit, VISIT_KEY, type VisitFlags } from "@/lib/first-run";
 import { HeaderRitual } from "@/components/header-ritual";
 import { PlayShelf } from "@/components/play-shelf";
 import { VillageLoopsPanel } from "@/components/village-loops-panel";
@@ -75,6 +76,7 @@ import {
   addStrollStep,
   strollStepLine,
   weekTally,
+  weatherFor,
   noteWeekChore,
   emptyViewerChores,
   rememberViewerChores,
@@ -183,6 +185,7 @@ export function VillagePage({ initial }: Props) {
   const [homePulse, setHomePulse] = useState(0);
   const [choreBook, setChoreBook] = useState<ReadonlyMap<string, ViewerChoreFlags>>(() => new Map());
   const [waveLine, setWaveLine] = useState<string | null>(null);
+  const [visitFlags, setVisitFlags] = useState<VisitFlags | null>(null);
   const [loopLine, setLoopLine] = useState<{ viewer: string; text: string } | null>(null);
   const loopSnap = useSyncExternalStore(subscribeLoops, getLoopSnapshot, getServerLoopSnapshot);
   const [nookLine, setNookLine] = useState<{ viewer: string; text: string } | null>(null);
@@ -342,6 +345,20 @@ export function VillagePage({ initial }: Props) {
   useEffect(() => {
     setRitualMark(loadRitual(selfName, clock.ymd));
   }, [selfName, clock.ymd]);
+
+  useEffect(() => {
+    setVisitFlags(readVisit(window.localStorage.getItem(VISIT_KEY)));
+  }, []);
+
+  useEffect(() => {
+    if (!visitFlags) return;
+    window.localStorage.setItem(VISIT_KEY, JSON.stringify(visitFlags));
+  }, [visitFlags]);
+
+  useEffect(() => {
+    if (!selfName) return;
+    setVisitFlags((current) => (current && !current.self ? { ...current, self: true } : current));
+  }, [selfName, visitFlags]);
 
   useEffect(() => {
     recordGarden(payload.date, people);
@@ -564,6 +581,7 @@ export function VillagePage({ initial }: Props) {
       return { ...noted, bonds: bumpBond(noted.bonds, name) };
     });
     updateWave((current) => bumpChronicle(current, today, "kindness"));
+    setVisitFlags((current) => (current && !current.social ? { ...current, social: true } : current));
   }
 
   function secretFeed() {
@@ -626,6 +644,7 @@ export function VillagePage({ initial }: Props) {
     if (selfName && name !== selfName) {
       commitPlay((current) => ({ ...current, bonds: bumpBond(current.bonds, name) }));
     }
+    setVisitFlags((current) => (current && !current.social ? { ...current, social: true } : current));
   }
 
   function emote(kind: "stretch" | "sit" | "clap" | "wave") {
@@ -761,6 +780,7 @@ export function VillagePage({ initial }: Props) {
       return;
     }
     if (chores.find((item) => item.label === label)?.done) return;
+    setVisitFlags((current) => (current && !current.yard ? { ...current, yard: true } : current));
     if (action === "water") {
       const result = waterOnce(waveState, clock.ymd);
       setWaveLine(result.line);
@@ -825,17 +845,28 @@ export function VillagePage({ initial }: Props) {
         <div className="hud-title">像素公司村</div>
         <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
-            <p className="text-[11px] tracking-[0.22em] text-[#8a5528]">COZY COMPANY FARM</p>
-            <p className="text-sm text-[#4a3a28]" data-testid="score-date" data-honesty={dateCopy.fresh ? "fresh" : "stale"}>
-              {dateCopy.headline} · 有分 {scoredCount} 人
-              {placeholderCount > 0 ? ` · 未评分 ${placeholderCount} 人` : ""}
+            <p className="text-sm text-[#2a1a10]" data-testid="village-glance">
+              {glanceLine({
+                season: season.label,
+                weather: weatherFor(clock.ymd).label,
+                light: lightLabel(clock.hour),
+                selfName,
+              })}
             </p>
-            <p className="text-xs text-[#6a3d18]" data-testid="score-date-detail">
-              {dateCopy.detail}
-            </p>
-            <p className="text-xs text-[#6a3d18]" data-testid="last-score-sync">
-              {loading ? "正在刷新…" : playSnap.syncedAt ? `上次成功 ${playSnap.syncedAt}` : "还没有成功读到分数"}
-            </p>
+            <details data-testid="score-meta">
+              <summary className="cursor-pointer text-xs text-[#6a3d18]">分数从哪来</summary>
+              <p className="mt-1 text-sm text-[#4a3a28]" data-testid="score-date" data-honesty={dateCopy.fresh ? "fresh" : "stale"}>
+                {dateCopy.headline}
+                {` · 有分 ${scoredCount} 人`}
+                {placeholderCount > 0 ? ` · 未评分 ${placeholderCount} 人` : ""}
+              </p>
+              <p className="text-xs text-[#6a3d18]" data-testid="score-date-detail">
+                {dateCopy.detail}
+              </p>
+              <p className="text-xs text-[#6a3d18]" data-testid="last-score-sync">
+                {loading ? "正在刷新…" : playSnap.syncedAt ? `上次成功 ${playSnap.syncedAt}` : "还没有成功读到分数"}
+              </p>
+            </details>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="hud-btn" onClick={refresh} disabled={loading} data-testid="refresh-scores" data-loading={loading ? "1" : "0"}>
@@ -859,6 +890,17 @@ export function VillagePage({ initial }: Props) {
           }}
         />
       </div>
+
+      {visitFlags ? (
+        <FirstRunGuide
+          flags={visitFlags}
+          onShowMotion={() => {
+            const panel = document.querySelector<HTMLDetailsElement>("[data-testid='wave-d-panel']");
+            if (panel) panel.open = true;
+            document.querySelector<HTMLInputElement>("[data-testid='reduce-motion-toggle']")?.focus();
+          }}
+        />
+      ) : null}
 
       {broadcast && dismissedBroadcast !== broadcastKey ? (
         <div className="hud-panel flex items-center justify-between gap-3 px-3 py-2" data-testid="village-broadcast">
@@ -924,13 +966,6 @@ export function VillagePage({ initial }: Props) {
         onComfort={(next: Comfort) => saveComfort(next)}
         onSelf={(name, nextPreset) => saveSelf(name, name ? nextPreset : null)}
         motionReduced={motion.reduced}
-      />
-      <FirstRunGuide
-        onShowMotion={() => {
-          const panel = document.querySelector<HTMLDetailsElement>("[data-testid='wave-d-panel']");
-          if (panel) panel.open = true;
-          document.querySelector<HTMLInputElement>("[data-testid='reduce-motion-toggle']")?.focus();
-        }}
       />
       <VillageHelp />
 
@@ -1157,7 +1192,10 @@ export function VillagePage({ initial }: Props) {
           }
           const result = playYard(waveState.yard, id, clock.ymd, systemOn(waveState, "yard"));
           setWaveLine(result.line);
-          if (result.ok) updateWave((current) => ({ ...current, yard: result.yard }));
+          if (result.ok) {
+            updateWave((current) => ({ ...current, yard: result.yard }));
+            setVisitFlags((current) => (current && !current.yard ? { ...current, yard: true } : current));
+          }
         }}
         onLane={(id: LaneActId) => {
           if (!selfName || waveSnap.viewer !== selfName) {

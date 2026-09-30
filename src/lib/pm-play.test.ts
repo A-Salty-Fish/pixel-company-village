@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { GUIDE_KEY, GUIDE_LINES, guideSeen } from "@/lib/first-run";
+import { GUIDE_KEY, GUIDE_LINES, guideSeen, readVisit, visitComplete, visitStep } from "@/lib/first-run";
+import { glanceLine, lightLabel } from "@/lib/copy";
 import { emoteFx, kindnessFx, socialReplyFor, socialReplyMark, SOCIAL_KIND_REPLY, SOCIAL_WAVE_REPLY, withSocialReply } from "@/lib/interactions";
 import { DEFAULT_COMFORT } from "@/lib/village-life";
 import { choreAction, choreWorldOf, copyIsClean, noteWeekChore, weekBoard, EMPTY_WAVE, type WeekFacts } from "@/lib/wave-d";
@@ -70,4 +71,16 @@ test("first-run guide stores a seen flag and keeps quiet village on", () => {
   assert.equal(guideSeen("聊天原文"), false);
   assert.equal(DEFAULT_COMFORT.quiet, true);
   assert.match(GUIDE_LINES.join(""), /减动开关/);
+  assert.match(GUIDE_LINES.join(""), /村里新事/);
+  const fresh = readVisit(null);
+  assert.equal(visitStep(fresh), "self");
+  assert.equal(visitComplete(fresh), false);
+  const dirty = readVisit(JSON.stringify({ self: true, yard: "聊天原文", social: false }));
+  assert.equal(dirty.yard, false);
+  assert.equal(dirty.self, true);
+  assert.equal(visitStep({ self: true, yard: true, social: false }), "social");
+  assert.equal(visitComplete({ self: true, yard: true, social: true }), true);
+  const glance = glanceLine({ season: "秋日田色", weather: "晴", light: lightLabel(10), selfName: null });
+  assert.match(glance, /还没选定我是谁/);
+  assert.equal(glance.includes("有分"), false);
 });
