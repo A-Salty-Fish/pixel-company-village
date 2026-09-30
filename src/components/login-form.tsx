@@ -32,7 +32,7 @@ export function LoginForm({ errorCode }: Props) {
                 autoComplete="current-password"
                 required
                 data-testid="login-password"
-                className="w-full border-[3px] border-[#6a3d18] bg-[#fffaf0] px-3 py-2 text-[#2a1a10] outline-none"
+                className="min-h-11 w-full border-[3px] border-[#6a3d18] bg-[#fffaf0] px-3 py-2 text-[#2a1a10]"
               />
             </label>
             {error ? (

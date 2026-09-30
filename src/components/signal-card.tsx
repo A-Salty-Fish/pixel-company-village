@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { KindnessUndo } from "@/components/kindness-undo";
 import { STATE_LABELS } from "@/lib/animation";
 import { interactionLabel, KINDNESS_MENU, type KindnessMenuId } from "@/lib/copy";
@@ -62,15 +62,29 @@ export function SignalCard(props: Props) {
   const rings = ringClosure(person);
   const pending = KINDNESS_MENU.find((item) => item.id === menu);
   const actionLabel = interactionLabel(!props.dataDateDetail.includes("不是日历上的今天"));
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    closeRef.current?.focus({ preventScroll: true });
+  }, []);
   return (
     <aside
+      id="signal-card-dialog"
       className="signal-card hud-panel"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="signal-sheet-title"
       data-signal-card={props.person.scored ? "scored" : "unscored"}
       data-testid="signal-card"
+      onKeyDown={(event) => {
+        if (event.key !== "Escape") return;
+        event.preventDefault();
+        event.stopPropagation();
+        props.onClose();
+      }}
     >
       <div className="signal-sheet-head hud-title" data-testid="signal-sheet-head">
-        <span>信号卡 · {props.person.name}</span>
-        <button type="button" className="hud-icon" onClick={props.onClose} aria-label="关闭信号卡">
+        <span id="signal-sheet-title">信号卡 · {props.person.name}</span>
+        <button ref={closeRef} type="button" className="hud-icon" onClick={props.onClose} aria-label="关闭信号卡">
           ×
         </button>
       </div>
@@ -324,7 +338,7 @@ function HistoryWindow({
   return (
     <div data-testid="history-window" data-history-source={source} data-recorded-days={recordedDays}>
       <div className="pixel-label mb-1 text-[#6a3d18]">近 {windowDays} 日数值</div>
-      <div className="history-grid" aria-label="近 30 日数值，只在这张卡上">
+      <div className="history-grid" aria-hidden="true">
         {days.map((day) => (
           <span
             key={day.date}

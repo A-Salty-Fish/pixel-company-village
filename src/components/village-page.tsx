@@ -44,9 +44,13 @@ import {
   bumpChronicle,
   isolatePeople,
   postcardMeta,
+  SPLIT_CARD,
+  SPLIT_MAP,
+  clampSplit,
   setDiary,
   setInstrument,
   setToggle,
+  stepSplit,
   pinResult,
   sitDown,
   toggleHat,
@@ -232,7 +236,7 @@ export function VillagePage({ initial }: Props) {
     try {
       const raw = window.sessionStorage.getItem("village:split-v1");
       const next = raw ? Number(raw) : NaN;
-      if (Number.isFinite(next)) setSplit(Math.min(0.82, Math.max(0.28, next)));
+      if (Number.isFinite(next)) setSplit(clampSplit(next));
     } catch {
       /* session storage can be blocked */
     }
@@ -578,6 +582,7 @@ export function VillagePage({ initial }: Props) {
   return (
     <div
       className="farm-page mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-3 py-4 sm:px-5"
+      data-reduce-motion={motion.reduced ? "1" : "0"}
       data-bad-isolated={badNote ? "1" : "0"}
       data-roster-mode={rosterMode}
     >
@@ -637,6 +642,7 @@ export function VillagePage({ initial }: Props) {
       <div
         className="village-stage"
         data-card-open={selected ? "1" : "0"}
+        data-split={split.toFixed(2)}
         style={{ ["--map-fr" as string]: String(split), ["--dock-fr" as string]: String(1 - split) }}
       >
         <div className="village-map-slot">
@@ -686,15 +692,35 @@ export function VillagePage({ initial }: Props) {
           data-testid="split-bar"
           role="separator"
           aria-orientation="horizontal"
-          aria-label="调整地图和信号卡"
+          aria-label="调整地图和信号卡，上下方向键微调"
+          aria-valuemin={28}
+          aria-valuemax={78}
+          aria-valuenow={Math.round(split * 100)}
+          aria-valuetext={`地图 ${Math.round(split * 100)}%`}
           tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.target !== event.currentTarget) return;
+            if (event.key === "ArrowUp") {
+              event.preventDefault();
+              setSplit((value) => stepSplit(value, -0.04));
+            } else if (event.key === "ArrowDown") {
+              event.preventDefault();
+              setSplit((value) => stepSplit(value, 0.04));
+            } else if (event.key === "Home") {
+              event.preventDefault();
+              setSplit(SPLIT_CARD);
+            } else if (event.key === "End") {
+              event.preventDefault();
+              setSplit(SPLIT_MAP);
+            }
+          }}
           onPointerDown={(event) => {
             const stage = event.currentTarget.parentElement;
             if (!stage) return;
             const rect = stage.getBoundingClientRect();
             const move = (ev: PointerEvent) => {
               const ratio = (ev.clientY - rect.top) / Math.max(1, rect.height);
-              setSplit(Math.min(0.72, Math.max(0.28, ratio)));
+              setSplit(clampSplit(ratio));
             };
             const up = () => {
               window.removeEventListener("pointermove", move);
@@ -709,7 +735,7 @@ export function VillagePage({ initial }: Props) {
             className="split-chip"
             data-testid="split-map"
             onPointerDown={(event) => event.stopPropagation()}
-            onClick={() => setSplit(0.78)}
+            onClick={() => setSplit(SPLIT_MAP)}
           >
             全地图
           </button>
@@ -718,7 +744,7 @@ export function VillagePage({ initial }: Props) {
             className="split-chip"
             data-testid="split-card"
             onPointerDown={(event) => event.stopPropagation()}
-            onClick={() => setSplit(0.32)}
+            onClick={() => setSplit(SPLIT_CARD)}
           >
             全卡片
           </button>
@@ -757,7 +783,14 @@ export function VillagePage({ initial }: Props) {
               canSticker={Boolean(selfName) && play.stickerDay !== clock.ymd && play.stickers.length < STICKERS.length}
               anonNote={anonLine(anon, clock.ymd, selected.name)}
               gardenCrop={play.garden2[selected.name] ?? null}
-              onClose={() => setSelectedName(null)}
+              onClose={() => {
+                const name = selected.name;
+                setSelectedName(null);
+                setUndo(null);
+                requestAnimationFrame(() => {
+                  document.querySelector<HTMLButtonElement>(`[data-roster-name="${CSS.escape(name)}"]`)?.focus({ preventScroll: true });
+                });
+              }}
               onKindness={confirmKindness}
               onWave={wave}
               onUndo={undoLast}
@@ -905,6 +938,9 @@ export function VillagePage({ initial }: Props) {
                   data-roster-item
                   data-roster-name={person.name}
                   aria-label={`${person.name}，${person.scored ? "有分" : "未评分"}`}
+                  aria-expanded={active}
+                  aria-controls="signal-card-dialog"
+                  aria-current={active ? "true" : undefined}
                   onClick={() => pick(person.name)}
                   onKeyDown={(event) => moveRosterFocus(event, index)}
                   className={`flex items-center justify-between gap-3 px-3 py-2 text-left ${active ? "hud-roster hud-roster-on" : "hud-roster"}`}

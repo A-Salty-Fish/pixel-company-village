@@ -396,6 +396,21 @@ export function undoSecondsLeft(until: number, now: number) {
   return Math.min(3, Math.max(1, Math.ceil(left / 1000)));
 }
 
+export const SPLIT_MIN = 0.28;
+export const SPLIT_MAX = 0.78;
+export const SPLIT_CARD = 0.32;
+export const SPLIT_MAP = 0.78;
+
+export function clampSplit(value: number) {
+  if (!Number.isFinite(value)) return 0.46;
+  const stepped = Math.round(value * 100) / 100;
+  return Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, stepped));
+}
+
+export function stepSplit(value: number, delta: number) {
+  return clampSplit(Math.round((value + delta) * 100) / 100);
+}
+
 export const ATLAS_FALLBACK = "图集没载上，田垄用色块先占着。名字仍可读。";
 
 export function touchWaveDay(blob: WaveDBlob, ymd: string): WaveDBlob {
