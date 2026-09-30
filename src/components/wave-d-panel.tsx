@@ -11,6 +11,7 @@ import {
   weekBoard,
   type WeekFacts,
   weekChores,
+  choreStatusCopy,
   type WaveDBlob,
   type WaveSystemId,
 } from "@/lib/wave-d";
@@ -72,7 +73,7 @@ export function WaveDPanel(props: Props) {
           <ul className="mt-1 space-y-1 text-xs" data-testid="week-chores">
             {chores.map((item) => (
               <li key={item.label} data-chore={item.label} data-done={item.done ? "1" : "0"}>
-                {item.done ? "已做" : "还没"} · {item.label}
+                {choreStatusCopy(item.label, item.done, props.facts.steps)}
               </li>
             ))}
           </ul>

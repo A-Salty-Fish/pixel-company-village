@@ -739,6 +739,19 @@ function drawBench(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.fillRect(left + 6, top + 3, 2, 4);
 }
 
+function drawWeekRibbon(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  const left = Math.round(x);
+  const top = Math.round(y);
+  ctx.fillStyle = "#6a3d18";
+  ctx.fillRect(left, top, 2, 16);
+  ctx.fillStyle = "#c44b3a";
+  ctx.fillRect(left + 2, top + 2, 12, 7);
+  ctx.fillStyle = "#f4d7a1";
+  ctx.fillRect(left + 2, top + 5, 12, 2);
+  ctx.fillStyle = "#8a2020";
+  ctx.fillRect(left + 12, top + 9, 3, 4);
+}
+
 function drawStroll(ctx: CanvasRenderingContext2D, points: { x: number; y: number }[]) {
   ctx.fillStyle = "#efe0c0";
   for (let i = 0; i < points.length; i += 1) {
@@ -1000,6 +1013,12 @@ function drawActors(
       queue.push({
         sort: 8,
         draw: () => drawStroll(ctx, stroll),
+      });
+    }
+    if (decor.weekRibbon) {
+      queue.push({
+        sort: 140,
+        draw: () => drawWeekRibbon(ctx, 88, 128),
       });
     }
     if (decor.dusk) {

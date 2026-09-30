@@ -56,6 +56,11 @@ import {
   weekBoard,
   weekChores,
   choreAction,
+  choreButtonCopy,
+  choreStatusCopy,
+  strollStepLine,
+  weekTally,
+  WEEK_DONE_LINE,
   addStrollStep,
   wreathColor,
 } from "./wave-d";
@@ -106,6 +111,18 @@ test("weekly chores check off from local actions and ignore unknown labels", () 
   const held = addStrollStep(stepped, 4);
   assert.equal(held.footprints.length, 3);
   assert.equal(JSON.stringify(held).includes("聊天"), false);
+  assert.equal(weekTally(weekChores("2026-W39", quiet)).complete, false);
+  assert.equal(weekTally(done).complete, true);
+  assert.equal(weekTally(done).done, 3);
+  assert.equal(choreButtonCopy("沿着小路走三步", false, 0), "去做 · 沿着小路走三步");
+  assert.equal(choreButtonCopy("沿着小路走三步", false, 2), "去做 · 沿着小路走三步 · 2/3");
+  assert.equal(choreButtonCopy("浇自己的田", true, 0), "已做 · 浇自己的田");
+  assert.equal(choreStatusCopy("沿着小路走三步", false, 1), "还没 · 沿着小路走三步 · 1/3");
+  assert.equal(strollStepLine(0, 1), "沿小路走了一步。已走 1/3。");
+  assert.equal(strollStepLine(2, 3), "沿小路走满三步了。");
+  assert.equal(strollStepLine(0, 0), "脚印关着，这一步没记下。");
+  assert.equal(WEEK_DONE_LINE.includes("聊天"), false);
+  assert.equal(copyIsClean([WEEK_DONE_LINE, strollStepLine(0, 1)]), true);
 });
 
 test("pins stay private and cap at three", () => {
@@ -295,6 +312,41 @@ test("acceptance helpers: fade, water day, migration, seasons, particles, shapes
   assert.equal(spinning.mill, true);
   assert.equal(spinning.millSpin, true);
   assert.equal(spinning.critters, "butterfly");
+  assert.equal(spinning.weekRibbon, false);
+  assert.equal(
+    buildDecor({
+      blob: EMPTY_WAVE,
+      ymd: "2026-09-30",
+      hour: 12,
+      seasonId: "summer",
+      quiet: false,
+      reduced: false,
+      festival: false,
+      familiarity: {},
+      selfName: null,
+      fedNames: [],
+      now: 0,
+      weekDone: true,
+    }).weekRibbon,
+    true,
+  );
+  assert.equal(
+    buildDecor({
+      blob: setToggle(EMPTY_WAVE, "weekBoard", false),
+      ymd: "2026-09-30",
+      hour: 12,
+      seasonId: "summer",
+      quiet: false,
+      reduced: false,
+      festival: false,
+      familiarity: {},
+      selfName: null,
+      fedNames: [],
+      now: 0,
+      weekDone: true,
+    }).weekRibbon,
+    false,
+  );
   const watered = waterOnce(EMPTY_WAVE, "2026-09-30");
   assert.equal(watered.ok, true);
   if (!watered.ok) return;

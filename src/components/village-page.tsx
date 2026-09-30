@@ -59,7 +59,11 @@ import {
   waterOnce,
   weekChores,
   choreAction,
+  choreButtonCopy,
   addStrollStep,
+  strollStepLine,
+  weekTally,
+  WEEK_DONE_LINE,
   type WaveDBlob,
   type WaveSystemId,
 } from "@/lib/wave-d";
@@ -349,6 +353,34 @@ export function VillagePage({ initial }: Props) {
     return out;
   }, [people, insights]);
   const spotlights = festival ? stageNames(people.map((person) => person.name), payload.date) : [];
+  const keptChore = useRef(new Map<string, { card: boolean; porch: boolean; pin: boolean; sat: boolean }>());
+  const viewerKey = selfName ?? "";
+  let kept = keptChore.current.get(viewerKey);
+  if (!kept) {
+    kept = { card: false, porch: false, pin: false, sat: false };
+    keptChore.current.set(viewerKey, kept);
+  }
+  const seenViewer = useRef<string | null>(null);
+  const justSwitched = seenViewer.current !== viewerKey;
+  seenViewer.current = viewerKey;
+  const waveMatches = waveSnap.viewer === selfName;
+  if (!justSwitched && selectedName) kept.card = true;
+  if (waveMatches && waveState.porch) kept.porch = true;
+  if (waveMatches && waveState.pins.length > 0) kept.pin = true;
+  if (waveMatches && waveState.sit) kept.sat = true;
+  const weekFacts = {
+    wateredToday: waveState.waterDay === clock.ymd,
+    cardOpen: kept.card,
+    visitedGate: homePulse > 0,
+    porchOn: kept.porch || waveState.porch,
+    diaryToday: waveState.diaryDay === clock.ymd && waveState.diaryIndex !== null,
+    steps: waveState.footprints.length,
+    pinned: kept.pin,
+    resting: kept.sat,
+    noticedSeason,
+  };
+  const chores = weekChores(clock.weekKey, weekFacts);
+  const tally = weekTally(chores);
   const decor = buildDecor({
     blob: waveState,
     ymd: clock.ymd,
@@ -361,6 +393,7 @@ export function VillagePage({ initial }: Props) {
     selfName,
     fedNames: anon[clock.ymd] ?? [],
     now: nowMs(),
+    weekDone: tally.complete,
   });
   const life: SceneLife = {
     quiet: comfort.quiet,
@@ -582,17 +615,6 @@ export function VillagePage({ initial }: Props) {
   }, []);
 
   const waveStatusNow = selected ? waveStatus(selected.name) : null;
-  const weekFacts = {
-    wateredToday: waveState.waterDay === clock.ymd,
-    cardOpen: Boolean(selectedName),
-    visitedGate: homePulse > 0,
-    porchOn: waveState.porch,
-    diaryToday: waveState.diaryDay === clock.ymd && waveState.diaryIndex !== null,
-    steps: waveState.footprints.length,
-    pinned: waveState.pins.length > 0,
-    resting: Boolean(waveState.sit),
-    noticedSeason,
-  };
 
   function runChore(label: string) {
     const action = choreAction(label);
@@ -629,8 +651,10 @@ export function VillagePage({ initial }: Props) {
       return;
     }
     if (action === "steps") {
-      updateWave((current) => addStrollStep(current, nowMs()));
-      setWaveLine("沿小路走了一步。");
+      const before = waveState.footprints.length;
+      const next = addStrollStep(waveState, nowMs());
+      if (next !== waveState) updateWave(() => next);
+      setWaveLine(strollStepLine(before, next.footprints.length));
       return;
     }
     if (action === "season") {
@@ -704,12 +728,23 @@ export function VillagePage({ initial }: Props) {
         onNotice={() => setNoticedSeason(true)}
       />
       {waveState.toggles.weekBoard ? (
-        <section className="hud-panel px-3 py-3" data-testid="today-chores">
+        <section
+          className="hud-panel px-3 py-3"
+          data-testid="today-chores"
+          data-week-done={tally.complete ? "1" : "0"}
+        >
           <p className="pixel-label text-[#2a1a10]">本周小事</p>
-          <p className="mt-1 text-xs text-[#6a3d18]">点一下就做。做完会停住。只记在这台电脑，不公示，也不跟别人比。</p>
+          <p className="mt-1 text-xs text-[#6a3d18]" data-testid="week-tally">
+            本周 {tally.done}/{tally.total}。点一下就做。做完会停住。只记在这台电脑，不公示，也不跟别人比。
+          </p>
           <p className="mt-1 text-xs text-[#6a3d18]">可在村里新事里关掉。</p>
+          {tally.complete ? (
+            <p className="week-ribbon-note" data-testid="week-done">
+              {WEEK_DONE_LINE}
+            </p>
+          ) : null}
           <ul className="today-chores">
-            {weekChores(clock.weekKey, weekFacts).map((item) => (
+            {chores.map((item) => (
               <li key={item.label} data-chore={item.label} data-done={item.done ? "1" : "0"}>
                 <button
                   type="button"
@@ -717,7 +752,7 @@ export function VillagePage({ initial }: Props) {
                   disabled={item.done || !selfName}
                   onClick={() => runChore(item.label)}
                 >
-                  {item.done ? "已做" : "去做"} · {item.label}
+                  {choreButtonCopy(item.label, item.done, weekFacts.steps)}
                 </button>
               </li>
             ))}
