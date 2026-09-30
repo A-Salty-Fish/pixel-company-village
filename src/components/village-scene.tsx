@@ -441,6 +441,7 @@ export function VillageScene({
       data-sitting={life.decor?.sit ? "1" : "0"}
       data-season={life.decor?.seasonId ?? ""}
       data-week-ribbon={life.decor?.weekRibbon ? "1" : "0"}
+      data-bond-posts={String(life.bondMarks?.length ?? 0)}
       data-world-water={life.decor?.world.water ? "1" : "0"}
       data-world-card={life.decor?.world.card ? "1" : "0"}
       data-world-gate={life.decor?.world.gate ? "1" : "0"}

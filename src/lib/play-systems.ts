@@ -2,6 +2,7 @@
  * Wave C play rules. Viewer-local, canned copy, no chat text, no rankings.
  */
 import { shiftYmd } from "./quota-rules";
+import { readBonds } from "./social-bond";
 
 export const PARTICLE_BUDGET = 8;
 export const GLYPH_BUDGET = 6;
@@ -72,6 +73,7 @@ export type PlayBlob = {
   bellDay: string | null;
   emoteAt: number;
   secretDays: string[];
+  bonds: Record<string, number>;
 };
 
 export const EMPTY_PLAY: PlayBlob = {
@@ -88,6 +90,7 @@ export const EMPTY_PLAY: PlayBlob = {
   bellDay: null,
   emoteAt: 0,
   secretDays: [],
+  bonds: {},
 };
 
 export type AnonFeed = Record<string, string[]>;
@@ -381,6 +384,7 @@ export function sanitizePlay(value: unknown): PlayBlob {
     bellDay: typeof raw.bellDay === "string" ? raw.bellDay : null,
     emoteAt: typeof raw.emoteAt === "number" ? raw.emoteAt : 0,
     secretDays: strings(raw.secretDays),
+    bonds: readBonds(raw.bonds),
   };
 }
 

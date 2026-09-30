@@ -86,6 +86,7 @@ import {
   type WaveSystemId,
 } from "@/lib/wave-d";
 import { playLane, type LaneActId } from "@/lib/lane";
+import { bondLine, bondNames, bumpBond, dropBond } from "@/lib/social-bond";
 import { playYard, type YardActId } from "@/lib/yard";
 import {
   addFeather,
@@ -374,8 +375,13 @@ export function VillagePage({ initial }: Props) {
   const insights = useMemo(() => (prefs.rev > 0 ? scoreInsights(clock.weekKey) : {}), [prefs.rev, clock.weekKey]);
   const familiarity = useMemo(() => {
     const counts = prefs.rev > 0 ? kindnessDayCounts() : {};
-    return Object.fromEntries(people.map((person) => [person.name, familiarityLevel(counts[person.name] ?? 0)]));
-  }, [people, prefs.rev]);
+    return Object.fromEntries(
+      people.map((person) => [
+        person.name,
+        familiarityLevel((counts[person.name] ?? 0) + (play.bonds[person.name] ?? 0)),
+      ]),
+    );
+  }, [people, prefs.rev, play.bonds]);
   const clubs = useMemo(() => {
     const out: Record<string, "work" | "fish" | "task"> = {};
     for (const person of people) {
@@ -500,6 +506,7 @@ export function VillagePage({ initial }: Props) {
       ribbon: tally.complete,
     },
     ritual: ritualMark ? { beat: ritualMark.beat, done: true } : null,
+    bondMarks: bondNames(play.bonds),
   };
 
   function resolveKindness(target: string) {
@@ -550,7 +557,12 @@ export function VillagePage({ initial }: Props) {
     setFx(spent.sundayBonus ? { ...event, line: `${event.line} 周日的田边多亮了一下。` } : event);
     beginUndo(selected.name, false);
     const today = shanghaiClock().ymd;
-    commitPlay((current) => noteKindness(current, today));
+    const name = selected.name;
+    commitPlay((current) => {
+      const noted = noteKindness(current, today);
+      if (!selfName || name === selfName) return noted;
+      return { ...noted, bonds: bumpBond(noted.bonds, name) };
+    });
     updateWave((current) => bumpChronicle(current, today, "kindness"));
   }
 
@@ -566,8 +578,13 @@ export function VillagePage({ initial }: Props) {
       setFx(blockedKindnessFx(selected.name, spent.line));
       return;
     }
-    updateAnon((current) => markAnonFeed(current, today.ymd, selected.name));
-    commitPlay((current) => noteKindness(markSecretDay(current, today.ymd), today.ymd));
+    const fed = selected.name;
+    updateAnon((current) => markAnonFeed(current, today.ymd, fed));
+    commitPlay((current) => {
+      const noted = noteKindness(markSecretDay(current, today.ymd), today.ymd);
+      if (fed === selfName) return noted;
+      return { ...noted, bonds: bumpBond(noted.bonds, fed) };
+    });
     const started = nowMs();
     setFx({
       id: started,
@@ -591,7 +608,7 @@ export function VillagePage({ initial }: Props) {
     commitPlay((current) => {
       let next = undo.secret ? forgetSecretDay(current, today.ymd) : current;
       if (!kindnessOnDay(today.ymd, selfName)) next = forgetKindnessDay(next, today.ymd);
-      return next;
+      return { ...next, bonds: dropBond(next.bonds, undo.name) };
     });
     setUndo(null);
     setFx(null);
@@ -605,6 +622,10 @@ export function VillagePage({ initial }: Props) {
       return;
     }
     setFx(withSocialReply(emoteFx(selected.name, "wave"), selfName, familiarity[selected.name] ?? 0));
+    const name = selected.name;
+    if (selfName && name !== selfName) {
+      commitPlay((current) => ({ ...current, bonds: bumpBond(current.bonds, name) }));
+    }
   }
 
   function emote(kind: "stretch" | "sit" | "clap" | "wave") {
@@ -1034,6 +1055,7 @@ export function VillagePage({ initial }: Props) {
               disclaimer={payload.disclaimer}
               line={fx && fx.actor === selected.name ? fx.line : null}
               socialReply={fx && fx.actor === selected.name ? socialReplyMark(fx, selfName) : null}
+              bondNote={bondLine(familiarity[selected.name] ?? 0)}
               waveHint={waveHint({
                 hasIdentity: Boolean(selfName),
                 allowed: Boolean(waveStatusNow?.allowed),
@@ -1253,6 +1275,7 @@ export function VillagePage({ initial }: Props) {
                   type="button"
                   data-roster-item
                   data-roster-name={person.name}
+                  data-bond={String(familiarity[person.name] ?? 0)}
                   aria-label={`${person.name}，${person.scored ? "有分" : "未评分"}`}
                   aria-expanded={active}
                   aria-controls="signal-card-dialog"
@@ -1268,7 +1291,14 @@ export function VillagePage({ initial }: Props) {
                     </div>
                     <div className="text-xs text-[#6a3d18]">{rosterLine(person, comfort.hideScores, person.name === selfName)}</div>
                   </div>
-                  <span className="hud-chip">{person.scored ? STATE_LABELS[person.state] : "未评分"}</span>
+                  <span className="hud-chip">
+                    {(familiarity[person.name] ?? 0) > 0 ? (
+                      <i className="bond-pips" data-testid="bond-pips" aria-hidden>
+                        {"●".repeat(familiarity[person.name] ?? 0)}
+                      </i>
+                    ) : null}
+                    {person.scored ? STATE_LABELS[person.state] : "未评分"}
+                  </span>
                 </button>
               );
             })}
