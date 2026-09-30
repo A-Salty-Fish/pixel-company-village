@@ -63,6 +63,35 @@ import {
   headerWaveLine,
   headerWaveTarget,
 } from "@/features/header-wave-receipt/header-wave-receipt";
+import {
+  STAY_AWHILE_ENABLED,
+  STAY_DONE,
+  STAY_NOTE,
+  advanceStay,
+  buildStayPool,
+  loadBeatDone,
+  sampleStaySlots,
+  stayVisible,
+  storeBeatDone,
+  type StayCandidate,
+} from "@/features/stay-awhile/stay-awhile";
+import { StayCorner } from "@/features/stay-awhile/stay-corner";
+import { TOY_DOCK_ENABLED, recallMap, toyDockLocksScroll } from "@/features/toy-dock/toy-dock";
+import { ToyDock } from "@/features/toy-dock/toy-dock-view";
+import {
+  CO_PRESENCE_ENABLED,
+  pickCoPresence,
+  readCoPresenceToggle,
+  writeCoPresenceToggle,
+  type CoPresenceEvent,
+} from "@/features/co-presence/co-presence";
+import { CoPresenceToggle } from "@/features/co-presence/co-presence-toggle";
+import {
+  VILLAGE_FEEDBACK_MS,
+  villageFeedback,
+  type VillageFeedback,
+} from "@/features/village-feedback/village-feedback";
+import { FeedbackStrip } from "@/features/village-feedback/feedback-strip";
 import { POST_WEEK_PRESENCE_ENABLED, loadGlance, presencePhase, storeGlance, type GlanceSave } from "@/features/post-week-presence/presence";
 import { PostWeekPresence } from "@/features/post-week-presence/presence-view";
 import {
@@ -247,6 +276,19 @@ export function VillagePage({ initial }: Props) {
   const [ambientOn, setAmbientOn] = useState(false);
   const [gestureMark, setGestureMark] = useState<{ id: GestureId; audio: "played" | "silent" } | null>(null);
   const [headerWave, setHeaderWave] = useState<{ line: string; until: number } | null>(null);
+  const [beatDone, setBeatDone] = useState(false);
+  const [stayCooled, setStayCooled] = useState<Record<string, number>>({});
+  const [stayHeld, setStayHeld] = useState<string[]>([]);
+  const [stayNow, setStayNow] = useState(() => Date.now());
+  const [stayFocus, setStayFocus] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<(VillageFeedback & { x: number; y: number; at: number; pulse: boolean }) | null>(null);
+  const [coOn, setCoOn] = useState(true);
+  const [coEvent, setCoEvent] = useState<(CoPresenceEvent & { at: number }) | null>(null);
+  const actedAt = useRef(Date.now());
+  const lastCoAt = useRef<number | null>(null);
+  const noteRef = useRef<
+    (input: { toast: string; targetId: string; state: string; x?: number; y?: number; aim?: boolean }) => boolean
+  >(() => false);
   const headerRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     const node = headerRef.current;
@@ -612,6 +654,7 @@ export function VillagePage({ initial }: Props) {
       ? { lantern: loopBlob.lanternGlow, scare: loopBlob.scareTips, pebbles: loopPebbles }
       : null,
     mapAim: mapAim ? { kind: mapAim.kind, x: mapAim.x, y: mapAim.y, at: mapAim.at } : null,
+    feedbackPulse: feedback?.pulse ? { x: feedback.x, y: feedback.y } : null,
     sfxMuted: comfort.sfxMuted,
     presenceOn:
       presencePhase({
@@ -663,6 +706,23 @@ export function VillagePage({ initial }: Props) {
   function aimMap(kind: string, x: number, y: number) {
     const at = Date.now();
     setMapAim({ token: at, kind, x, y, at });
+  }
+
+  function noteFeedback(input: { toast: string; targetId: string; state: string; x?: number; y?: number; aim?: boolean }) {
+    const beat = villageFeedback(input);
+    if (!beat) return false;
+    const pulse = input.x != null && input.y != null;
+    setFeedback({ ...beat, x: input.x ?? 0, y: input.y ?? 0, at: Date.now(), pulse });
+    if (input.aim !== false && pulse) aimMap(beat.targetId, input.x ?? 0, input.y ?? 0);
+    return true;
+  }
+  noteRef.current = noteFeedback;
+
+  function holdMap() {
+    if (!TOY_DOCK_ENABLED) return;
+    const node = document.querySelector<HTMLElement>("[data-testid='village-map-slot']");
+    recallMap(node);
+    window.requestAnimationFrame(() => recallMap(node));
   }
 
   function passGlance() {
@@ -818,6 +878,14 @@ export function VillagePage({ initial }: Props) {
       });
       setHeaderWave({ line, until: started + HEADER_WAVE_MS });
       markGesture("wave");
+      const spot = target ?? (self ? { name: self.name, x: self.x, y: self.y } : null);
+      noteFeedback({
+        toast: line,
+        targetId: target?.name ?? selfName,
+        state: "waved",
+        x: spot?.x,
+        y: spot?.y,
+      });
       return;
     }
     setFx(emoteFx(selfName, kind));
@@ -914,7 +982,17 @@ export function VillagePage({ initial }: Props) {
     setLoopLine({ viewer: selfName, text: result.line });
     if (YARD_TOY_FOCUS_ENABLED && isToyId(id)) {
       const spot = toyAnchor(id);
-      aimMap(id, spot.x, spot.y);
+      const state =
+        id === "lantern"
+          ? result.view.blob.lanternGlow
+            ? "亮"
+            : "灭"
+          : id === "scarecrow"
+            ? String(result.view.blob.scareTips)
+            : String(result.view.pebbles);
+      const sent = noteFeedback({ toast: result.line, targetId: id, state, x: spot.x, y: spot.y });
+      if (!sent) aimMap(id, spot.x, spot.y);
+      if (toyDockLocksScroll(id)) holdMap();
     }
   }
 
@@ -969,6 +1047,8 @@ export function VillagePage({ initial }: Props) {
       updateWave((current) => (current.porch ? current : togglePorch(current)));
       setWaveLine("门灯点上了。");
       markGesture("lamp");
+      const home = selfName ? placeVillagers(people).find((person) => person.name === selfName) : null;
+      noteFeedback({ toast: "门灯点上了。", targetId: "lamp", state: "on", x: home?.homeX, y: home?.homeY });
       return;
     }
     if (action === "diary") {
@@ -1010,6 +1090,139 @@ export function VillagePage({ initial }: Props) {
     const self = selfName ? placeVillagers(people).find((person) => person.name === selfName) ?? null : null;
     return pickNextBeat(self ? { x: self.x, y: self.y } : null);
   }, [tally.complete, selfName, people]);
+  const stayOn = STAY_AWHILE_ENABLED && stayVisible(tally.complete, beatDone);
+  const stayPool = useMemo(() => {
+    if (!stayOn) return [];
+    const placed = placeVillagers(people);
+    const self = selfName ? placed.find((person) => person.name === selfName) ?? null : null;
+    return buildStayPool({
+      self: self ? { x: self.x, y: self.y, homeX: self.homeX, homeY: self.homeY } : null,
+      people: placed.map((person) => ({ name: person.name, x: person.x, y: person.y })),
+      selfName,
+    });
+  }, [stayOn, people, selfName]);
+  const stayOrigin = useMemo(() => {
+    if (!selfName) return null;
+    const self = placeVillagers(people).find((person) => person.name === selfName);
+    return self ? { x: self.x, y: self.y } : null;
+  }, [selfName, people]);
+  const staySlots = useMemo(
+    () => sampleStaySlots({ pool: stayPool, now: stayNow, cooled: stayCooled, held: stayHeld, origin: stayOrigin }),
+    [stayPool, stayNow, stayCooled, stayHeld, stayOrigin],
+  );
+  const stayKey = staySlots.map((slot) => slot.id).join("|");
+  const coBag = useRef({ people, selfName, reduced: motion.reduced });
+  coBag.current = { people, selfName, reduced: motion.reduced };
+
+  useEffect(() => {
+    if (!selfName) {
+      setBeatDone(false);
+      return;
+    }
+    setBeatDone(loadBeatDone(selfName, clock.weekKey));
+  }, [selfName, clock.weekKey]);
+
+  useEffect(() => {
+    if (!stayOn) return;
+    const id = window.setInterval(() => setStayNow(Date.now()), 5000);
+    return () => window.clearInterval(id);
+  }, [stayOn]);
+
+  useEffect(() => {
+    setStayHeld(stayKey ? stayKey.split("|") : []);
+  }, [stayKey]);
+
+  useEffect(() => {
+    if (!feedback) return;
+    const id = window.setTimeout(() => setFeedback(null), VILLAGE_FEEDBACK_MS);
+    return () => window.clearTimeout(id);
+  }, [feedback]);
+
+  useEffect(() => {
+    if (!stayFocus) return;
+    const id = window.setTimeout(() => setStayFocus(null), 4000);
+    return () => window.clearTimeout(id);
+  }, [stayFocus]);
+
+  useEffect(() => {
+    setCoOn(readCoPresenceToggle());
+  }, []);
+
+  useEffect(() => {
+    const mark = () => {
+      actedAt.current = Date.now();
+    };
+    window.addEventListener("pointerdown", mark);
+    return () => window.removeEventListener("pointerdown", mark);
+  }, []);
+
+  useEffect(() => {
+    if (!CO_PRESENCE_ENABLED) return;
+    const id = window.setInterval(() => {
+      const now = Date.now();
+      const bag = coBag.current;
+      const placed = placeVillagers(bag.people);
+      const self = bag.selfName ? (placed.find((person) => person.name === bag.selfName) ?? null) : null;
+      const nearby = self
+        ? placed.filter((person) => {
+            if (person.name === self.name) return false;
+            const dx = person.x - self.x;
+            const dy = person.y - self.y;
+            return dx * dx + dy * dy <= 96 * 96;
+          })
+        : [];
+      const event = pickCoPresence({
+        toggle: readCoPresenceToggle(),
+        idleMs: now - actedAt.current,
+        sinceLastMs: lastCoAt.current == null ? Number.POSITIVE_INFINITY : now - lastCoAt.current,
+        nearby: nearby.map((person) => ({ name: person.name, x: person.x, y: person.y })),
+        self: self ? { x: self.x, y: self.y } : null,
+        lamp: self ? { x: self.homeX, y: self.homeY } : { x: 400, y: 360 },
+        lake: { x: 128, y: 80 },
+        salt: Math.floor(now / 60_000),
+        reduced: bag.reduced,
+      });
+      if (!event) return;
+      lastCoAt.current = now;
+      setCoEvent({ ...event, at: now });
+    }, 15_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!coEvent) return;
+    noteRef.current({
+      toast: coEvent.line,
+      targetId: coEvent.id,
+      state: coEvent.id,
+      x: coEvent.x,
+      y: coEvent.y,
+    });
+    if (coEvent.anim && selfName) {
+      setFx({
+        id: coEvent.at,
+        kind: coEvent.id === "sit" ? "sit" : coEvent.id === "brush" ? "wave" : "nod",
+        actor: selfName,
+        partner: coEvent.partner ?? undefined,
+        line: coEvent.line,
+        startedAt: coEvent.at,
+        duration: 2800,
+      });
+    }
+  }, [coEvent, selfName]);
+
+  function runStay(slot: StayCandidate) {
+    const now = Date.now();
+    const next = advanceStay(slot.id, now, stayCooled);
+    setStayCooled(next.cooled);
+    setStayNow(now);
+    if (next.swapped) setStayHeld((ids) => ids.filter((item) => item !== slot.id));
+    setStayFocus(slot.id);
+    setWaveLine(STAY_DONE);
+    const sent = noteFeedback({ toast: STAY_DONE, targetId: slot.id, state: "done", x: slot.x, y: slot.y });
+    if (!sent) aimMap(slot.id, slot.x, slot.y);
+  }
+
   const dayMark = scoreDayMark(dateCopy.fresh, comfort.quiet);
   const ritualShown = ritualMark ? RITUAL_BEATS[ritualMark.beat] : ritualBeat(clock.hour);
   const openParchment = (id: "ritual" | "week" | "season") => {
@@ -1031,6 +1244,11 @@ export function VillagePage({ initial }: Props) {
       data-gesture-audio={gestureMark?.audio ?? "silent"}
       data-gesture-bed={ambientBedOn({ muted: comfort.sfxMuted, ambient: ambientOn, reduceMotion: motion.reduced }) ? "live" : "off"}
       data-header-wave={headerWave ? "receipt" : "off"}
+      data-stay-focus={stayFocus ?? ""}
+      data-co-presence={coEvent?.id ?? "off"}
+      data-co-presence-on={coOn ? "1" : "0"}
+      data-feedback-target={feedback?.targetId ?? ""}
+      data-feedback-state={feedback?.state ?? ""}
     >
       <LightSfxBridge muted={comfort.sfxMuted} reduceMotion={motion.reduced} />
       <div className="village-hero" data-testid="village-hero">
@@ -1116,8 +1334,19 @@ export function VillagePage({ initial }: Props) {
             data-testid="next-beat"
             data-next-id={nextBeat.id}
             onClick={() => {
-              aimMap(nextBeat.id, nextBeat.x, nextBeat.y);
+              if (selfName) {
+                storeBeatDone(selfName, clock.weekKey);
+                setBeatDone(true);
+              }
               setWaveLine(NEXT_BEAT_DONE);
+              const sent = noteFeedback({
+                toast: NEXT_BEAT_DONE,
+                targetId: nextBeat.id,
+                state: "aimed",
+                x: nextBeat.x,
+                y: nextBeat.y,
+              });
+              if (!sent) aimMap(nextBeat.id, nextBeat.x, nextBeat.y);
             }}
           >
             {nextBeatLabel(nextBeat)}
@@ -1238,6 +1467,7 @@ export function VillagePage({ initial }: Props) {
               <p>名册空着。小路先留在这里。</p>
             </div>
           ) : (
+          <>
           <VillageScene
             people={people}
             selectedName={selectedName}
@@ -1257,6 +1487,15 @@ export function VillagePage({ initial }: Props) {
             onFindMe={() => {
               markGesture("find");
               visitOwnGate();
+              const home = selfName ? placeVillagers(people).find((person) => person.name === selfName) : null;
+              noteFeedback({
+                toast: "找到了。",
+                targetId: selfName ?? "self",
+                state: "found",
+                x: home?.x,
+                y: home?.y,
+                aim: false,
+              });
             }}
             mapAim={mapAim}
             ambientOn={ambientOn}
@@ -1275,6 +1514,28 @@ export function VillagePage({ initial }: Props) {
               });
             }}
           />
+          <FeedbackStrip beat={feedback} />
+          <div className="map-corner" data-testid="map-corner">
+            {stayOn ? <StayCorner note={STAY_NOTE} slots={staySlots} onPick={runStay} /> : null}
+            {TOY_DOCK_ENABLED ? (
+              <ToyDock
+                look={{ lantern: loopBlob.lanternGlow, scare: loopBlob.scareTips, pebbles: loopPebbles }}
+                pulse={mapAim && isToyId(mapAim.kind) ? mapAim.kind : ""}
+                disabled={!selfName}
+                onAct={runLoop}
+              />
+            ) : null}
+            {CO_PRESENCE_ENABLED ? (
+              <CoPresenceToggle
+                on={coOn}
+                onToggle={(on) => {
+                  setCoOn(on);
+                  writeCoPresenceToggle(on);
+                }}
+              />
+            ) : null}
+          </div>
+          </>
           )}
         </div>
         <div
@@ -1457,8 +1718,13 @@ export function VillagePage({ initial }: Props) {
           if (result.ok) updateWave(() => result.blob);
         }}
         onPorch={() => {
+          const nextOn = !waveState.porch;
           updateWave((current) => togglePorch(current));
           markGesture("lamp");
+          const home = selfName ? placeVillagers(people).find((person) => person.name === selfName) : null;
+          const toast = nextOn ? "门灯点上了。" : "门灯灭了。";
+          setWaveLine(toast);
+          noteFeedback({ toast, targetId: "lamp", state: nextOn ? "on" : "off", x: home?.homeX, y: home?.homeY });
         }}
         onWater={() => {
           if (!selfName) return;

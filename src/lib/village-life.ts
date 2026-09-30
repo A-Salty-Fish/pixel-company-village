@@ -106,6 +106,8 @@ export type SceneLife = {
   mapAim?: { kind: string; x: number; y: number; at: number } | null;
   /** Existing mute flag, so the map toggle can read it. */
   sfxMuted?: boolean;
+  /** PV-PM-033 shared map pulse. World pixels, not a sentence. */
+  feedbackPulse?: { x: number; y: number } | null;
 };
 
 export const DEFAULT_COMFORT: Comfort = {
