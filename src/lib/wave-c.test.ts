@@ -99,6 +99,7 @@ test("familiarity stays a private step function", () => {
 test("load stages time out before a blank map can sit forever", () => {
   assert.equal(deriveLoadStage({ elapsedMs: 10, artReady: false, rosterCount: 0, failed: false }), "terrain");
   assert.equal(deriveLoadStage({ elapsedMs: 700, artReady: false, rosterCount: 12, failed: false }), "roster");
+  assert.equal(deriveLoadStage({ elapsedMs: 1600, artReady: false, rosterCount: 12, failed: false }), "villagers");
   assert.equal(deriveLoadStage({ elapsedMs: 9000, artReady: false, rosterCount: 12, failed: false }), "timeout");
   assert.equal(deriveLoadStage({ elapsedMs: 9000, artReady: true, rosterCount: 12, failed: false }), "ready");
 });

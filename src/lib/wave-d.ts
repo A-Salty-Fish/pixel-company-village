@@ -229,10 +229,44 @@ export function duskActive(hour: number, enabled: boolean) {
   return enabled && hour >= 17 && hour < 20;
 }
 
+export const PIN_BLOCKED = "最多钉三枚名牌。";
+
+export function pinResult(pins: string[], name: string) {
+  if (pins.includes(name)) return { pins: pins.filter((item) => item !== name), hint: "" };
+  if (pins.length >= PIN_CAP) return { pins, hint: PIN_BLOCKED };
+  return { pins: [...pins, name], hint: "" };
+}
+
 export function togglePin(pins: string[], name: string) {
-  if (pins.includes(name)) return pins.filter((item) => item !== name);
-  if (pins.length >= PIN_CAP) return pins;
-  return [...pins, name];
+  return pinResult(pins, name).pins;
+}
+
+export function seasonDecorLayer(seasonId: string) {
+  if (seasonId === "spring") return "flower" as const;
+  if (seasonId === "summer") return "leaf" as const;
+  if (seasonId === "autumn") return "fruit" as const;
+  return "snow" as const;
+}
+
+export function particleAllowance(quiet: boolean, festival: boolean) {
+  if (quiet) return 0;
+  return festival ? PARTICLE_CAP : 4;
+}
+
+export const LEGACY_WAVE_KEY = "village:wave-d-v0";
+
+/** Copy an unscoped Wave D blob onto the viewer key once, then delete the old key. */
+export function migrateWaveKey(
+  viewer: string,
+  read: (key: string) => string | null,
+  write: (key: string, value: string | null) => void,
+) {
+  const legacy = read(LEGACY_WAVE_KEY);
+  if (!legacy || !viewer) return false;
+  const nextKey = waveStorageKey(viewer);
+  if (!read(nextKey)) write(nextKey, legacy);
+  write(LEGACY_WAVE_KEY, null);
+  return true;
 }
 
 export function critterKind(seasonId: string, hour: number, quiet: boolean, enabled: boolean) {
@@ -305,7 +339,7 @@ export function atlasRatio(unlocked: number, total: number) {
 
 export function starBudget(festival: boolean, quiet: boolean, enabled: boolean) {
   if (!enabled || quiet) return 0;
-  return festival ? Math.min(12, PARTICLE_CAP + 4) : Math.min(6, PARTICLE_CAP);
+  return festival ? PARTICLE_CAP : 4;
 }
 
 export function decorParticleCount(requested: number, quiet: boolean, budget = PARTICLE_CAP) {

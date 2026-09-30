@@ -74,4 +74,6 @@ npm run test:e2e
 npm run test:e2e:visual
 ```
 
-Playwright 读取 `SITE_PASSWORD`（环境变量或 `.env.local`），开发服务器用的是同一个值。视觉对比（`@visual`）失败不会挡住 `test:e2e`。GitHub Actions 使用公开的 CI 演示口令 `ci-demo-pass`，不读取生产密码；Vercel 生产环境仍然使用你自己的 `SITE_PASSWORD`。基线画的是演示名册；不要在开着正式名册的环境里更新截图。
+Playwright 读取 `SITE_PASSWORD`（环境变量或 `.env.local`），开发服务器用的是同一个值。视觉对比（`@visual`）失败不会挡住 `test:e2e`。基线里有安静村子和忙村各一张地图。GitHub Actions 使用公开的 CI 演示口令 `ci-demo-pass`，不读取生产密码；Vercel 生产环境仍然使用你自己的 `SITE_PASSWORD`。基线画的是演示名册；不要在开着正式名册的环境里更新截图。
+
+收藏名牌最多三枚，第四枚会提示「最多钉三枚名牌」。换「我是谁」之后钉、浇水和善意额度都跟着名字走。旧的未分人键 `village:wave-d-v0` 会在选定自己时迁到 `village:viewer:<名字>:wave-d`，然后删掉旧键。

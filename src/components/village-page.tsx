@@ -29,7 +29,15 @@ import {
   updateAnon,
   updatePlay,
 } from "@/lib/play-store";
-import { bindWave, getServerWaveSnapshot, getWaveSnapshot, subscribeWave, sweepVillageStorage, updateWave } from "@/lib/wave-d-store";
+import {
+  bindWave,
+  getServerWaveSnapshot,
+  getWaveSnapshot,
+  migrateLegacyWave,
+  subscribeWave,
+  sweepVillageStorage,
+  updateWave,
+} from "@/lib/wave-d-store";
 import {
   acceptTap,
   buildDecor,
@@ -39,9 +47,9 @@ import {
   setDiary,
   setInstrument,
   setToggle,
+  pinResult,
   sitDown,
   toggleHat,
-  togglePin,
   togglePorch,
   undoStillOpen,
   visitorCopy,
@@ -120,7 +128,7 @@ type Props = {
   initial: ScorePayload;
 };
 
-type UndoState = { name: string; until: number; secret: boolean };
+type UndoState = { name: string; until: number; secret: boolean; viewer: string };
 
 export function VillagePage({ initial }: Props) {
   const [payload, setPayload] = useState(initial);
@@ -147,15 +155,32 @@ export function VillagePage({ initial }: Props) {
   const play = playSnap.play;
   const anon = playSnap.anon;
   const [undo, setUndo] = useState<UndoState | null>(null);
+  const [pinHint, setPinHint] = useState("");
+  const [rosterMode, setRosterMode] = useState<"live" | "empty">("live");
+  const [badNote, setBadNote] = useState(0);
+  const kindnessAt = useRef(0);
   const [nowTick, setNowTick] = useState(() => nowMs());
   const [dismissedBroadcast, setDismissedBroadcast] = useState<string | null>(null);
   const [vignette, setVignette] = useState<{ title: string; lines: [string, string] } | null>(null);
   const [shelfLine, setShelfLine] = useState<string | null>(null);
   const systemReduced = useSyncExternalStore(subscribeSystemReduced, systemReducedSnapshot, () => false);
-  const people = useMemo(
-    () => withStates(isolatePeople(payload.people).people as VillagePerson[]),
-    [payload.people],
-  );
+  const people = useMemo(() => {
+    if (rosterMode === "empty") return [];
+    const raw = badNote
+      ? [
+          ...payload.people,
+          {
+            name: "坏档",
+            scored: true as const,
+            msgs: Number.NaN,
+            work: Number.NaN,
+            fish: Number.NaN,
+            on_task: Number.NaN,
+          },
+        ]
+      : payload.people;
+    return withStates(isolatePeople(raw).people as VillagePerson[]);
+  }, [payload.people, rosterMode, badNote]);
   const selected = people.find((person) => person.name === selectedName) ?? null;
   const history =
     selected && prefs.rev > 0
@@ -195,6 +220,35 @@ export function VillagePage({ initial }: Props) {
     // until the next local event.
     window.location.replace("/login");
   }
+
+  useEffect(() => {
+    if (selfName) migrateLegacyWave(selfName);
+  }, [selfName]);
+
+  useEffect(() => {
+    setUndo(null);
+  }, [selfName]);
+
+  const [splitReady, setSplitReady] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem("village:split-v1");
+      const next = raw ? Number(raw) : NaN;
+      if (Number.isFinite(next)) setSplit(Math.min(0.82, Math.max(0.28, next)));
+    } catch {
+      /* session storage can be blocked */
+    }
+    setSplitReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!splitReady) return;
+    try {
+      window.sessionStorage.setItem("village:split-v1", String(split));
+    } catch {
+      /* session storage can be blocked */
+    }
+  }, [split, splitReady]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -371,12 +425,16 @@ export function VillagePage({ initial }: Props) {
   }
 
   function beginUndo(name: string, secret: boolean) {
-    setUndo({ name, until: nowMs() + UNDO_MS, secret });
+    if (!selfName) return;
+    setUndo({ name, until: nowMs() + UNDO_MS, secret, viewer: selfName });
     setNowTick(nowMs());
   }
 
   function confirmKindness(action: KindnessMenuId) {
     if (!selected) return;
+    const now = nowMs();
+    if (!acceptTap(kindnessAt.current, now, 400)) return;
+    kindnessAt.current = now;
     const spent = resolveKindness(selected.name);
     if (!spent.ok) {
       if (selfName) setFx(blockedKindnessFx(selected.name, spent.line));
@@ -417,7 +475,10 @@ export function VillagePage({ initial }: Props) {
   }
 
   function undoLast() {
-    if (!undo || !selfName) return;
+    if (!undo || !selfName || undo.viewer !== selfName) {
+      setUndo(null);
+      return;
+    }
     if (!undoStillOpen(undo.until, nowMs())) {
       setUndo(null);
       return;
@@ -525,13 +586,19 @@ export function VillagePage({ initial }: Props) {
         setClock(shanghaiClock());
       },
       forceLoadTimeout: () => setForceTimeout(true),
+      clearRoster: () => setRosterMode("empty"),
+      injectBadRecord: () => setBadNote(1),
     });
   }, []);
 
   const waveStatusNow = selected ? waveStatus(selected.name) : null;
 
   return (
-    <div className="farm-page mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-3 py-4 sm:px-5">
+    <div
+      className="farm-page mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-3 py-4 sm:px-5"
+      data-bad-isolated={badNote ? "1" : "0"}
+      data-roster-mode={rosterMode}
+    >
       <header className="hud-panel" data-testid="village-header">
         <div className="hud-title">像素公司村</div>
         <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-start sm:justify-between">
@@ -578,11 +645,12 @@ export function VillagePage({ initial }: Props) {
         comfort={comfort}
         selfName={selfName}
         preset={preset}
-        names={people.map((person) => person.name)}
+        names={(rosterMode === "empty" ? payload.people : people).map((person) => person.name)}
         onComfort={(next: Comfort) => saveComfort(next)}
         onSelf={(name, nextPreset) => saveSelf(name, name ? nextPreset : null)}
         motionReduced={motion.reduced}
       />
+      <VillageHelp />
 
       <div
         className="village-stage"
@@ -590,6 +658,16 @@ export function VillagePage({ initial }: Props) {
         style={{ ["--map-fr" as string]: String(split), ["--dock-fr" as string]: String(1 - split) }}
       >
         <div className="village-map-slot">
+          {people.length === 0 ? (
+            <div className="empty-yard" data-testid="empty-yard">
+              <div className="empty-yard-art" aria-hidden>
+                <span />
+                <span />
+                <span />
+              </div>
+              <p>村里今天很安静。名册还是空的，小路和屋子先留在这里。</p>
+            </div>
+          ) : (
           <VillageScene
             people={people}
             selectedName={selectedName}
@@ -619,6 +697,7 @@ export function VillagePage({ initial }: Props) {
               });
             }}
           />
+          )}
         </div>
         <div
           className="split-bar"
@@ -642,7 +721,26 @@ export function VillagePage({ initial }: Props) {
             window.addEventListener("pointermove", move);
             window.addEventListener("pointerup", up);
           }}
-        />
+        >
+          <button
+            type="button"
+            className="split-chip"
+            data-testid="split-map"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => setSplit(0.78)}
+          >
+            全地图
+          </button>
+          <button
+            type="button"
+            className="split-chip"
+            data-testid="split-card"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => setSplit(0.32)}
+          >
+            全卡片
+          </button>
+        </div>
         <div className="village-dock" data-testid="village-dock" data-open={selected ? "1" : "0"}>
           {selected ? (
             <SignalCard
@@ -721,7 +819,12 @@ export function VillagePage({ initial }: Props) {
           setWaveLine(result.line);
           if (result.ok) updateWave(() => result.blob);
         }}
-        onPin={(name) => updateWave((current) => ({ ...current, pins: togglePin(current.pins, name) }))}
+        pinHint={pinHint}
+        onPin={(name) => {
+          const result = pinResult(waveState.pins, name);
+          setPinHint(result.hint);
+          updateWave((current) => ({ ...current, pins: pinResult(current.pins, name).pins }));
+        }}
         onHat={(name) => updateWave((current) => ({ ...current, hats: toggleHat(current.hats, name) }))}
         onInstrument={(id) => updateWave((current) => setInstrument(current, id as WaveDBlob["instrument"]))}
         onHome={() => {
@@ -745,6 +848,22 @@ export function VillagePage({ initial }: Props) {
           setWaveLine(`${meta.caption}。已存到这台电脑。`);
         }}
       />
+
+      <div className="thumb-bar" data-testid="thumb-bar">
+        <button type="button" className="hud-btn" data-testid="thumb-home" disabled={!selfName} onClick={() => {
+          if (!selfName) return;
+          setHomePulse((value) => value + 1);
+          setWaveLine("镜头回到自己的小屋。");
+        }}>
+          回家
+        </button>
+        <button type="button" className="hud-btn hud-btn-ghost" onClick={() => {
+          document.querySelector<HTMLElement>("[data-testid='comfort-settings']")?.setAttribute("open", "");
+          document.querySelector<HTMLElement>("[data-testid='self-picker']")?.focus();
+        }}>
+          我是谁
+        </button>
+      </div>
 
       <PlayShelf
         selfName={selfName}
@@ -842,6 +961,20 @@ function formatClock() {
   }).format(new Date());
 }
 
+function VillageHelp() {
+  return (
+    <details className="hud-panel" data-testid="village-help">
+      <summary className="hud-title cursor-pointer">村里图例</summary>
+      <div className="space-y-2 px-3 py-3 text-sm text-[#2a1a10]">
+        <p>琥珀名牌是有分的彩猫，灰名牌是未评分的灰猫。远景默认收起名牌，点「全显」可以都打开。</p>
+        <p>安静村子默认开着，花瓣和广播会少很多。关掉之后，蝴蝶和萤火才会出现。</p>
+        <p>干活是方块，摸鱼是波浪，在任务上是等号。颜色只是辅助，形状也分得开。</p>
+        <p>这里不收录说过的话。善意、挥手和田里的小玩具都记在这台电脑的「我是谁」上。</p>
+      </div>
+    </details>
+  );
+}
+
 function moveRosterFocus(event: KeyboardEvent<HTMLButtonElement>, index: number) {
   if (event.key !== "ArrowDown" && event.key !== "ArrowUp" && event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
   event.preventDefault();
@@ -887,6 +1020,7 @@ function SeasonBanner({
       data-testid="season-banner"
       data-season={seasonId}
       data-festival={festival ? festival.label : ""}
+      data-season-fade="400"
     >
       <p className="pixel-label text-[#2a1a10]">
         {seasonLabel}

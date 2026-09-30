@@ -34,6 +34,7 @@ export function ComfortSettings({
         <p className="text-xs leading-5 text-[#6a3d18]">
           这些开关存在这台浏览器。我是谁：{selfName ?? "还没选定"}。善意、挥手、状态和田历都记在这个显示名上，换一台电脑不会跟着走。
         </p>
+        <p className="pixel-label">安静与装饰</p>
         <label className="flex items-start gap-2 text-sm text-[#2a1a10]">
           <input
             type="checkbox"
@@ -42,6 +43,7 @@ export function ComfortSettings({
           />
           <span>安静村子：少一点花瓣、广播和头顶小动作。新来的人默认开着。</span>
         </label>
+        <p className="pixel-label">名牌</p>
         <label className="flex items-start gap-2 text-sm text-[#2a1a10]">
           <input
             type="checkbox"
@@ -96,8 +98,9 @@ export function ComfortSettings({
           <input type="checkbox" checked disabled data-testid="mute-stub" />
           <span>环境音保持关闭。这一轮没有声音。</span>
         </label>
+        <p className="pixel-label">我是谁</p>
         <label className="block space-y-1 text-sm text-[#2a1a10]">
-          <span className="pixel-label">我是谁</span>
+          <span className="pixel-label">选择自己的名字</span>
           <select
             className="hud-select"
             data-testid="self-picker"

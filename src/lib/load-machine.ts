@@ -15,6 +15,7 @@ export function deriveLoadStage(input: {
   if (input.forcedTimeout) return "timeout";
   if (input.failed) return "failed";
   if (input.elapsedMs >= ART_TIMEOUT_MS) return "timeout";
+  if (input.rosterCount > 0 && input.elapsedMs >= 1400) return "villagers";
   if (input.rosterCount > 0 && input.elapsedMs >= 450) return "roster";
   return "terrain";
 }

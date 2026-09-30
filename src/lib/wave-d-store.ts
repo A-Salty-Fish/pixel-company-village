@@ -1,4 +1,12 @@
-import { EMPTY_WAVE, sanitizeWave, storageSweepPlan, touchWaveDay, waveStorageKey, type WaveDBlob } from "@/lib/wave-d";
+import {
+  EMPTY_WAVE,
+  migrateWaveKey,
+  sanitizeWave,
+  storageSweepPlan,
+  touchWaveDay,
+  waveStorageKey,
+  type WaveDBlob,
+} from "@/lib/wave-d";
 
 function readRaw(key: string) {
   if (typeof window === "undefined") return null;
@@ -31,6 +39,28 @@ export function loadWave(viewer: string | null): WaveDBlob {
 
 export function saveWave(viewer: string, blob: WaveDBlob) {
   writeRaw(waveStorageKey(viewer), JSON.stringify(sanitizeWave(blob)));
+}
+
+export function migrateLegacyWave(viewer: string | null) {
+  if (!viewer || typeof window === "undefined") return false;
+  return migrateWaveKey(
+    viewer,
+    (key) => {
+      try {
+        return window.localStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    },
+    (key, value) => {
+      try {
+        if (value === null) window.localStorage.removeItem(key);
+        else window.localStorage.setItem(key, value);
+      } catch {
+        /* private mode */
+      }
+    },
+  );
 }
 
 export function sweepVillageStorage() {

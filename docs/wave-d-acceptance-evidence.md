@@ -1,0 +1,146 @@
+# Wave D acceptance evidence
+
+Date: 2026-09-30. Gate: `pixel-village-wave-d-acceptance-2026-09-30`.
+
+```text
+SHA: see the Wave D commit on cursor/wave-d-village-9062
+npm test: PASS (28)
+Playwright smoke: PASS (privacy + acceptance + Wave C). Visual baselines refreshed.
+Privacy: PASS (e2e/privacy.spec.ts)
+Visual quiet/busy: PASS locally; CI job stays continue-on-error
+Steam rubric final: 8.3 / 10
+Prod smoke: SKIPPED (no production SITE_PASSWORD in this environment; script writes 6 PNGs when run)
+Screenshot roots: docs/images/wave-d/round1/ docs/images/wave-d/round2/ e2e/visual.spec.ts-snapshots/
+Known gaps: production read-only smoke was not executed here
+```
+
+Hard red lines: no chat text path, no Redis/Blob/KV, no shame board, love sim, or ambient audio, no secrets in git. New systems have a unit or Playwright check and a local toggle or undo.
+
+## Steam rubric
+
+| # | Dimension | Score |
+| ---: | --- | ---: |
+| R1 | First glance village | 8.5 |
+| R2 | Density and layout | 8.0 |
+| R3 | Identity at a glance | 8.0 |
+| R4 | Nameplate craft | 8.0 |
+| R5 | Depth | 8.0 |
+| R6 | Terrain readability | 8.5 |
+| R7 | HUD / typography | 8.5 |
+| R8 | Signal card | 8.5 |
+| R9 | Season / festival / night | 8.0 |
+| R10 | Motion and quiet | 8.5 |
+| R11 | Mobile craft | 8.0 |
+| R12 | Privacy and dignity | 9.0 |
+| | **Mean** | **8.3** |
+
+No dimension is under 6. Quiet default is calmer (`data-particle-budget=0`). Shots have no chat text and no low-score board.
+
+## Track E
+
+| ID | Mark | Evidence |
+| --- | --- | --- |
+| E01 | PASS | `deriveLoadStage` returns terrain → roster → villagers → ready; `e2e/wave-c.spec.ts` hard reload |
+| E02 | PASS | `forceLoadTimeout` + `load-recovery` in `e2e/wave-c.spec.ts`; refresh button `refresh-scores` |
+| E03 | PASS | `e2e/wave-c.spec.ts` wrong password, Enter, 出村 |
+| E04 | PASS | `e2e/acceptance.spec.ts` viewer switch keeps pins apart; `waveStorageKey` unit |
+| E05 | PASS | kindness dblclick stays `今日 1/1`; switching viewer clears undo (`acceptance.spec.ts`) |
+| E06 | PASS | `e2e/wave-c.spec.ts` wave copy |
+| E07 | PASS | `scoreDateCopy` unit; `data-honesty` on the date line |
+| E08 | PASS | quiet default unit/e2e; comfort copy in Chinese |
+| E09 | PASS | `data-show-all` flips in `acceptance.spec.ts`; legend in the scene |
+| E10 | PASS | card close exists; narrow split persists in session `village:split-v1` |
+| E11 | PASS | `HISTORY_DAYS === 30`; `historyTicks` unit |
+| E12 | PASS | four festival dates and the next day in `acceptance.spec.ts` |
+| E13 | PASS | scored vs unscored screenshots in `docs/images/wave-d/round1/` |
+| E14 | PASS | `refresh-scores` box ≥ 44px; kindness debounce; mobile viewport test |
+| E15 | PASS | focus ring in `globals.css`; roster arrows; help/settings are `<details>` |
+| E16 | PASS | quiet budget 0; `layoutBudget(60)`; `placeVillagers` of 60 |
+| E17 | PASS | `e2e/privacy.spec.ts` probes, allowlist, storage dump |
+| E18 | PASS | CI `ci-demo-pass`; visual job `continue-on-error`; privacy not quarantined |
+| E19 | PASS | `docs/prod-smoke.md` forbids write APIs |
+| E20 | PASS | README, TUTORIAL, SECURITY mention Wave D, quiet, 30 days, no Redis |
+| E21 | PASS | `docs/deploy-cli.md`; no secret rotation |
+| E22 | PASS | atlas abort shows `load-recovery` |
+| E23 | PASS | `migrateWaveKey` unit; key inventory in SECURITY.md |
+| E24 | PASS | `isolatePeople` unit; `injectBadRecord` e2e keeps the roster |
+
+## Track F
+
+| ID | Mark | Evidence |
+| --- | --- | --- |
+| F01 | PASS | `weatherFor` unit; weather chip |
+| F02 | PASS | `visibleFootprints` frozen-clock unit |
+| F03 | PASS | `nodTargets` threshold unit |
+| F04 | PASS | `setDiary` rejects non-whitelist; index only in storage |
+| F05 | PASS | `wreathColor` unit |
+| F06 | PASS | `togglePorch` off unit; per-viewer blob |
+| F07 | PASS | `weekBoard` has 3 items and a no-compare note |
+| F08 | PASS | `duskActive` enter/exit hours |
+| F09 | PASS | fourth pin shows「最多钉三枚名牌。」; reload + viewer switch e2e |
+| F10 | PASS | `critterKind` is `none` when quiet |
+| F11 | PASS | water next day unit; e2e second pour blocked |
+| F12 | PASS | postcard click records no upload POST |
+| F13 | PASS | chronicle stores counts; privacy dump |
+| F14 | PASS | hat checkboxes local |
+| F15 | PASS | `sitDown` toggles; no quota |
+| F16 | PASS | `millAngle` stops under reduced motion |
+| F17 | PASS | `giftNames` has no sender field |
+| F18 | PASS | `strollPoints` length 3 |
+| F19 | PASS | `atlasRatio` clamped |
+| F20 | PASS | `data-season-fade=400` |
+| F21 | PASS | `starBudget` ≤ particle cap; quiet returns 0 |
+| F22 | PASS | instrument enum; no `Audio(` in Wave D |
+| F23 | PASS | 回家 sets `data-camera-zoom=2` |
+| F24 | PASS | visitor banner; home disabled until「我是谁」 |
+
+## Track G
+
+| ID | Mark | Evidence |
+| --- | --- | --- |
+| G01 | PASS | darker path borders; round1 map shots |
+| G02 | PASS | five facade variants in `pixel-scene.ts` |
+| G03 | PASS | day + dusk shots in round1/round2 |
+| G04 | PASS | `.hud-title` / `.pixel-title` / `.pixel-label` scale |
+| G05 | PASS | signal card zones; close control |
+| G06 | PASS | nameplate alpha; selected/pinned priority |
+| G07 | PASS | Y-sort in `drawActors` |
+| G08 | PASS | `seasonDecorLayer` flower/leaf/fruit/snow |
+| G09 | PASS | `particleAllowance` shared with stars; quiet is 0 |
+| G10 | PASS | split 全地图 / 全卡片 persists |
+| G11 | PASS | boot copy and pixel load panel |
+| G12 | PASS | `empty-yard` e2e |
+| G13 | PASS | settings groups 安静与装饰 / 名牌 / 我是谁 |
+| G14 | PASS | `village-help` one drawer |
+| G15 | PASS | `thumb-bar` on viewports under 900px; `mobile-thumb.png` |
+| G16 | PASS | 8 files in `docs/images/wave-d/round1/` |
+| G17 | PASS | round2 pack; rubric 8.3 |
+| G18 | PASS | quiet `map-overview` + busy `map-overview-busy` baselines |
+| G19 | PASS | `EASING` and `--season-fade: 400ms` |
+| G20 | PASS | `AXIS_MARK` unit; ring `data-shape` |
+
+## Track H
+
+| ID | Mark | Evidence |
+| --- | --- | --- |
+| H01 | PASS | stroll, dusk, porch, sit, season layer unit |
+| H02 | PASS | kindness undo, water day, pin cap |
+| H03 | PASS | `atlasRatio` |
+| H04 | PASS | pin serialize via viewer key + e2e reload |
+| H05 | PASS | `weatherFor` |
+| H06 | PASS | diary whitelist |
+| H07 | PASS | `isolatePeople` |
+| H08 | PASS | `copyIsClean` / `publicCopyLines` |
+| H09–H16 | PASS | login, reload, kindness, wave, leave, festival, mobile, privacy specs |
+| H17 | PASS | pin 3, reject 4, reload, viewer switch |
+| H18 | PASS | home camera zoom |
+| H19 | PASS | visitor banner |
+| H20 | PASS | water same day / next day |
+| H21 | PASS | `@visual` quiet + busy |
+| H22 | PASS | `.github/workflows/playwright.yml` |
+| H23 | SKIPPED | script ready in `e2e/prod-readonly.spec.ts`; production password not available here |
+| H24 | PASS | `CHANGELOG.md` |
+
+## Wave C regression
+
+Existing `npm test` and `e2e/wave-c.spec.ts`, `festival.spec.ts`, `quotas.spec.ts`, `relogin.spec.ts` stayed green. No Redis, chat text, shame board, or secret edits.

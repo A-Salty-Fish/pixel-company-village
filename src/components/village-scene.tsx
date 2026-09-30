@@ -19,6 +19,7 @@ import type { VillageFx } from "@/lib/interactions";
 import { deriveLoadStage, loadStageLabel, type LoadStage } from "@/lib/load-machine";
 import { hitSpot } from "@/lib/play-systems";
 import type { PersonWithState } from "@/lib/types";
+import { EASING, particleAllowance } from "@/lib/wave-d";
 import { availabilityFor, shanghaiClock, type SceneLife } from "@/lib/village-life";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
@@ -77,6 +78,11 @@ export function VillageScene({
   const forceRef = useRef(forceTimeout);
   const startCam = defaultCamera();
   const [zoom, setZoom] = useState(startCam.zoom);
+  const [camMark, setCamMark] = useState({
+    x: Math.round(startCam.x),
+    y: Math.round(startCam.y),
+    zoom: startCam.zoom,
+  });
   const zoomRef = useRef(startCam.zoom);
   const camRef = useRef({ x: startCam.x, y: startCam.y });
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
@@ -106,7 +112,9 @@ export function VillageScene({
     const nextZoom = 2;
     zoomRef.current = nextZoom;
     setZoom(nextZoom);
-    camRef.current = cameraFocus(person, nextZoom);
+    const focus = cameraFocus(person, nextZoom);
+    camRef.current = focus;
+    setCamMark({ x: Math.round(focus.x), y: Math.round(focus.y), zoom: nextZoom });
     kickRef.current?.();
   }, [homePulse, life.selfName]);
 
@@ -229,8 +237,8 @@ export function VillageScene({
       const selected = list.find((v) => v.name === selectedRef.current);
       if (selected && !drag.current) {
         const target = cameraFocus(selected, zoomRef.current);
-        camRef.current.x += (target.x - camRef.current.x) * 0.08;
-        camRef.current.y += (target.y - camRef.current.y) * 0.08;
+        camRef.current.x += (target.x - camRef.current.x) * EASING.camera;
+        camRef.current.y += (target.y - camRef.current.y) * EASING.camera;
       }
       camRef.current = clampCamera(camRef.current.x, camRef.current.y, zoomRef.current);
       const emphasize = new Set<string>();
@@ -406,6 +414,13 @@ export function VillageScene({
       data-load-stage={shownStage}
       data-bell={life.bell ? "1" : "0"}
       data-festival-skin={life.festivalId ?? ""}
+      data-show-all={life.showAllPlates ? "1" : "0"}
+      data-quiet={life.quiet ? "1" : "0"}
+      data-particle-budget={particleAllowance(Boolean(life.quiet), Boolean(life.festivalId))}
+      data-camera-x={camMark.x}
+      data-camera-y={camMark.y}
+      data-camera-zoom={camMark.zoom}
+      data-critters={life.decor?.critters ?? "none"}
     >
       {shownStage === "timeout" || shownStage === "failed" ? (
         <div className="load-recovery" data-testid="load-recovery">

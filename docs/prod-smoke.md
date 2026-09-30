@@ -8,6 +8,8 @@ PLAYWRIGHT_PROD=1 PLAYWRIGHT_BASE_URL=https://pixel-company-village.vercel.app S
 
 密码从环境变量读，不要写进仓库，也不要打进日志。
 
+脚本在通过时把 6 张图写到 `tmp/prod-smoke/`（已 gitignore）：`01-gate.png`、`02-map-ready.png`、`03-roster.png`、`04-scored-card.png`、`05-unscored-or-empty.png`、`06-left-village.png`。过程中不允许成功的 POST 打到 `/api/kindness`、`/api/wave` 或 ingest。没有生产口令时不要猜密码，把这一项标成跳过。
+
 手测时：
 
 1. 打开站点，确认未登录会停在口令墙。

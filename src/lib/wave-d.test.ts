@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { festivalOf, shanghaiClock } from "./village-life";
+import { AXIS_MARK } from "./interactions";
+import { placeVillagers } from "./pixel-scene";
+import { HISTORY_DAYS, festivalOf, shanghaiClock } from "./village-life";
 import {
   CANNED_DIARY,
   EMPTY_WAVE,
@@ -19,9 +21,14 @@ import {
   homeReady,
   isolatePeople,
   layoutBudget,
+  LEGACY_WAVE_KEY,
   millAngle,
+  migrateWaveKey,
   nodTargets,
+  particleAllowance,
+  pinResult,
   postcardMeta,
+  seasonDecorLayer,
   publicCopyLines,
   pushFootprint,
   sanitizeWave,
@@ -32,7 +39,9 @@ import {
   storageSweepPlan,
   strollPoints,
   togglePin,
+  togglePorch,
   touchWaveDay,
+  visibleFootprints,
   undoStillOpen,
   visitorCopy,
   waterOnce,
@@ -53,8 +62,10 @@ test("pins stay private and cap at three", () => {
   pins = togglePin(pins, "林小满");
   pins = togglePin(pins, "周晚风");
   pins = togglePin(pins, "苏星河");
-  pins = togglePin(pins, "第四人");
+  const blocked = pinResult(pins, "第四人");
+  pins = blocked.pins;
   assert.equal(pins.length, PIN_CAP);
+  assert.equal(blocked.hint.includes("最多钉三枚"), true);
   assert.equal(pins.includes("第四人"), false);
   pins = togglePin(pins, "林小满");
   assert.equal(pins.includes("林小满"), false);
@@ -193,4 +204,51 @@ test("four festival clocks resolve without throwing", () => {
     assert.equal(decor.stars, 0);
     assert.equal(decor.showWeather, true);
   }
+});
+
+test("acceptance helpers: fade, water day, migration, seasons, particles, shapes", () => {
+  const steps = pushFootprint([], { x: 3, y: 4 }, 1_000);
+  assert.equal(visibleFootprints(steps, 1_000 + 9_000).length, 0);
+  assert.equal(visibleFootprints(steps, 1_500).length, 1);
+  const watered = waterOnce(EMPTY_WAVE, "2026-09-30");
+  assert.equal(watered.ok, true);
+  if (!watered.ok) return;
+  assert.equal(waterOnce(watered.blob, "2026-09-30").ok, false);
+  assert.equal(waterOnce(watered.blob, "2026-10-01").ok, true);
+  const store = new Map<string, string>([[LEGACY_WAVE_KEY, "{\"porch\":true}"]]);
+  assert.equal(
+    migrateWaveKey(
+      "林小满",
+      (key) => store.get(key) ?? null,
+      (key, value) => {
+        if (value === null) store.delete(key);
+        else store.set(key, value);
+      },
+    ),
+    true,
+  );
+  assert.equal(store.has(LEGACY_WAVE_KEY), false);
+  assert.equal(store.get(waveStorageKey("林小满"))?.includes("porch"), true);
+  assert.equal(migrateWaveKey("林小满", (key) => store.get(key) ?? null, () => {}), false);
+  assert.deepEqual(
+    ["spring", "summer", "autumn", "winter"].map((id) => seasonDecorLayer(id)),
+    ["flower", "leaf", "fruit", "snow"],
+  );
+  assert.equal(particleAllowance(true, true), 0);
+  assert.equal(particleAllowance(false, true) <= 8, true);
+  assert.equal(new Set(Object.values(AXIS_MARK)).size, 3);
+  assert.equal(HISTORY_DAYS, 30);
+  assert.equal(weekBoard("2026-W40").items.length, 3);
+  assert.equal(togglePorch(togglePorch(EMPTY_WAVE)).porch, false);
+  const crowd = placeVillagers(
+    Array.from({ length: 60 }, (_, index) => ({
+      name: `村民${index}`,
+      scored: false as const,
+      state: "wander" as const,
+      speed: 1,
+      plot: index,
+    })),
+  );
+  assert.equal(crowd.length, 60);
+  assert.equal(layoutBudget(crowd.length).labels, "stable");
 });

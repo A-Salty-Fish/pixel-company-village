@@ -26,6 +26,7 @@ type Props = {
   onDiary: (index: number) => void;
   onPorch: () => void;
   onWater: () => void;
+  pinHint?: string;
   onPin: (name: string) => void;
   onHat: (name: string) => void;
   onInstrument: (id: string | null) => void;
@@ -42,7 +43,7 @@ export function WaveDPanel(props: Props) {
     <details className="hud-panel" data-testid="wave-d-panel">
       <summary className="hud-title cursor-pointer">村里新事</summary>
       <div className="space-y-4 px-3 py-3 text-sm text-[#2a1a10]">
-        <p className="text-xs leading-5 text-[#6a3d18]">这些都留在这台浏览器，可以关掉。没有聊天原文，也不跟别人比。</p>
+        <p className="text-xs leading-5 text-[#6a3d18]">这些都留在这台浏览器，可以关掉。不收录说过的话，也不跟别人比。</p>
         <section data-testid="wave-toggles">
           <h3 className="pixel-label">开关</h3>
           <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -80,6 +81,7 @@ export function WaveDPanel(props: Props) {
                 type="button"
                 className="hud-btn hud-btn-ghost"
                 disabled={!props.selfName}
+                data-testid={`diary-${index}`}
                 onClick={() => props.onDiary(index)}
               >
                 {index + 1}
@@ -105,6 +107,11 @@ export function WaveDPanel(props: Props) {
               </button>
             ))}
           </div>
+          {props.pinHint ? (
+            <p className="mt-2 text-xs text-[#8a2020]" data-testid="pin-hint">
+              {props.pinHint}
+            </p>
+          ) : null}
         </section>
 
         <section data-testid="hat-board">
@@ -175,7 +182,11 @@ export function WaveDPanel(props: Props) {
             </ul>
           )}
         </section>
-        {props.line ? <p className="text-xs text-[#6a3d18]">{props.line}</p> : null}
+        {props.line ? (
+          <p className="text-xs text-[#6a3d18]" data-testid="wave-line">
+            {props.line}
+          </p>
+        ) : null}
       </div>
     </details>
   );

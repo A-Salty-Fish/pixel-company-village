@@ -22,6 +22,20 @@ test("frozen map overview @visual", async ({ page }) => {
   await expect(map).toHaveScreenshot("map-overview.png", { animations: "disabled" });
 });
 
+test("busy map overview @visual", async ({ page }) => {
+  await login(page);
+  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByRole("checkbox", { name: /安静村子/ }).uncheck();
+  await page.evaluate(() => {
+    window.__VILLAGE_TEST__?.setClock("2026-09-26T02:00:00.000Z");
+    window.__VILLAGE_TEST__?.freezeAnimations(true);
+  });
+  const map = page.locator("[data-village-host='ready']");
+  await expect(map).toHaveAttribute("data-quiet", "0");
+  await expect(map).toHaveAttribute("data-particle-budget", /[1-9]/);
+  await expect(map).toHaveScreenshot("map-overview-busy.png", { animations: "disabled" });
+});
+
 test("scored signal card @visual", async ({ page }) => {
   await login(page);
   await page.evaluate(() => {

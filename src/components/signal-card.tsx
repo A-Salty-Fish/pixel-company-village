@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { STATE_LABELS } from "@/lib/animation";
 import { KINDNESS_MENU, type KindnessMenuId } from "@/lib/copy";
-import { fishRatio, signalTag, taskRatio, workRatio } from "@/lib/interactions";
+import { AXIS_MARK, fishRatio, signalTag, taskRatio, workRatio } from "@/lib/interactions";
 import { GARDEN_CROPS } from "@/lib/play-systems";
 import type { PersonWithState } from "@/lib/types";
 import { messageSparkCount, RING_CLOSE, ringClosure, type Availability } from "@/lib/village-life";
@@ -166,7 +166,7 @@ export function SignalCard(props: Props) {
             <div className="hud-stat flex items-baseline justify-between gap-3" data-msg-spark>
               <div>
                 <div className="pixel-label text-[#6a3d18]">消息火花</div>
-                <div className="text-[11px] text-[#6a3d18]/80">只计条数，不是第四环，没有聊天原文</div>
+                <div className="text-[11px] text-[#6a3d18]/80">只计条数，不是第四环，不收录说过的话</div>
               </div>
               <div className="flex items-center gap-2">
                 <span className="spark-row" aria-hidden>
@@ -298,8 +298,8 @@ function Ring({
         />
       </svg>
       <div className="pixel-label text-[#2a1a10]">
-        <span className={`pattern-mark pattern-${tone}`} aria-hidden>
-          {tone === "work" ? "■" : tone === "fish" ? "～" : "＝"}
+        <span className={`pattern-mark pattern-${tone}`} data-shape={AXIS_MARK[tone]} aria-hidden>
+          {AXIS_MARK[tone]}
         </span>
         {label}
       </div>

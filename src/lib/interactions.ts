@@ -31,6 +31,13 @@ const QUOTES = [
   "村子很小，心事可以走一圈。",
 ];
 
+/** Shape marks so work / fish / on-task are not hue-only. */
+export const AXIS_MARK = {
+  work: "■",
+  fish: "～",
+  task: "＝",
+} as const;
+
 const WORK_MAX = 3;
 
 export function workRatio(work: number) {
