@@ -1,5 +1,6 @@
 import type { VillageFx } from "@/lib/interactions";
 import {
+  HOUSE_FACES,
   RIDGE,
   ambientMotes,
   bedCrops,
@@ -26,6 +27,22 @@ import {
   type PropSeed,
 } from "@/lib/map-craft";
 import { blitLabel, getLabelSprite, type LabelMode } from "@/lib/pixel-label";
+import {
+  EMPTY_LANDMARK,
+  gateFlowers,
+  handToolPixels,
+  homesteadPixels,
+  homesteadProps,
+  landmarkPixels,
+  nightHour,
+  nightSky,
+  pondFish,
+  seasonBedPixels,
+  seasonMark,
+  seasonWindowTint,
+  weatherGround,
+  type HomeProp,
+} from "@/lib/season-craft";
 import { VILLAGE_CAPACITY } from "@/lib/capacity";
 import { FLOWER_MARK_CAP, GATHER_SPOTS, GLYPH_BUDGET, PARTICLE_BUDGET, VIEWPOINTS } from "@/lib/play-systems";
 import { artReady, drawSprite, spriteFrame, type SpriteFrame } from "@/lib/sprites";
@@ -82,6 +99,8 @@ let groundCanvas: HTMLCanvasElement | null = null;
 let worldCanvas: HTMLCanvasElement | null = null;
 const propList: { name: string; x: number; y: number; sort: number }[] = [];
 let pixelProps: PropSeed[] = [];
+let homeProps: HomeProp[] = [];
+let gateBlooms: { sprite: string; x: number; y: number }[] = [];
 const POND = { c0: 2, r0: 2, c1: 13, r1: 7 };
 
 function paintPixels(ctx: CanvasRenderingContext2D, pixels: Pixel[]) {
@@ -261,6 +280,8 @@ function ensureGround() {
   }
   paintPixels(ctx, fencePosts(fences));
   paintPixels(ctx, grassTufts(COLS, ROWS, path, pond, plots));
+  gateBlooms = gateFlowers(fences);
+  homeProps = homesteadProps(plots);
 
   for (let i = 0; i < 160; i += 1) {
     const c = (i * 17 + 3) % COLS;
@@ -327,6 +348,7 @@ function ensureGround() {
     if (index % 5 === 0) pushProp(`farm_${Math.floor(index / 5) % 8}`, plot.x + 88, plot.y + 36);
   }
   for (const ridge of RIDGE) pushProp(ridge.sprite, ridge.x, ridge.y);
+  for (const flower of gateBlooms) pushProp(flower.sprite, flower.x, flower.y);
   pixelProps = [];
   for (const prop of yardProps(plots)) {
     if (prop.kind === "sprite" && prop.sprite) pushProp(prop.sprite, prop.x, prop.y);
@@ -474,6 +496,7 @@ function drawVillager(
     ctx.fillRect(Math.round(x + read.pip.x), Math.round(y + read.pip.y), read.pip.w, read.pip.h);
   }
   drawSprite(ctx, catFrame(color, person.dir, anim, frame), x, y);
+  if (read.far && person.scored) paintPixels(ctx, handToolPixels(person.identity.tool, x, y));
   if (selected || life?.neighbors.includes(person.name)) {
     ctx.strokeStyle = selected ? "#fff6d8" : "#f2d15c";
     ctx.lineWidth = 2;
@@ -1064,7 +1087,27 @@ function drawActors(
         draw: () => paintPixels(ctx, panes),
       });
     }
+    if (decor.dusk) {
+      const tint = seasonWindowTint(decor.seasonId, HOUSE_FACES);
+      queue.push({
+        sort: 13,
+        draw: () => paintPixels(ctx, tint),
+      });
+    }
   }
+  for (const prop of homeProps) {
+    const pixels = homesteadPixels(prop);
+    queue.push({
+      sort: prop.sort,
+      draw: () => paintPixels(ctx, pixels),
+    });
+  }
+  const edge = life?.edge ?? { ...EMPTY_LANDMARK, reduced: Boolean(life?.reduceMotion) };
+  const marks = landmarkPixels(edge, life?.reduceMotion ? 0 : t);
+  queue.push({
+    sort: 24,
+    draw: () => paintPixels(ctx, marks),
+  });
   const lit = Boolean(life?.decor?.dusk || life?.decor?.porch);
   for (const prop of pixelProps) {
     const pixels = propPixels(prop, lit);
@@ -1133,8 +1176,28 @@ export function paintVillage(
   world.imageSmoothingEnabled = false;
   world.clearRect(0, 0, WORLD_W, WORLD_H);
   world.drawImage(groundCanvas, 0, 0);
-  drawWater(world, life?.reduceMotion ? 0 : t);
-  paintPixels(world, pondLife(POND, life?.reduceMotion ? 0 : t, Boolean(life?.reduceMotion)));
+  const still = Boolean(life?.reduceMotion);
+  drawWater(world, still ? 0 : t);
+  paintPixels(world, pondLife(POND, still ? 0 : t, still));
+  paintPixels(world, pondFish(POND, still ? 0 : t, still));
+  const beds: { x: number; y: number; stage: number }[] = [];
+  for (let index = 0; index < VILLAGE_CAPACITY; index += 1) {
+    beds.push(...bedCrops({ ...plotAt(index), index }));
+  }
+  paintPixels(world, seasonBedPixels(beds, life?.decor?.seasonId ?? "spring", still ? 0 : t, still));
+  if (life?.decor?.showWeather) {
+    paintPixels(
+      world,
+      weatherGround({
+        id: life.decor.weatherId,
+        cols: COLS,
+        rows: ROWS,
+        t: still ? 0 : t,
+        reduced: still,
+        quiet: Boolean(life.quiet),
+      }),
+    );
+  }
   drawActors(world, villagers, t, selectedName, fx, life, zoom);
 
   const span = viewSpan(zoom);
@@ -1158,6 +1221,11 @@ export function paintVillage(
   if (life?.decor?.dusk) {
     ctx.fillStyle = "rgba(88, 48, 24, 0.28)";
     ctx.fillRect(0, 0, viewW, viewH);
+  }
+  if (nightHour(shanghaiClock().hour)) {
+    ctx.fillStyle = "rgba(16, 28, 64, 0.34)";
+    ctx.fillRect(0, 0, viewW, viewH);
+    paintPixels(ctx, nightSky(viewW, viewH, life?.reduceMotion ? 0 : t, Boolean(life?.reduceMotion)));
   }
   if (life?.decor && life.decor.stars > 0) {
     for (let i = 0; i < life.decor.stars; i += 1) {
@@ -1201,6 +1269,7 @@ export function paintVillage(
       quiet: Boolean(life?.quiet),
     }),
   );
+  paintPixels(ctx, seasonMark(life?.decor?.seasonId ?? "spring", viewW, viewH));
   drawNameLabels(ctx, villagers, zoom, camX, camY, emphasize, viewW, viewH, dpr, life);
 }
 

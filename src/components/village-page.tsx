@@ -40,9 +40,10 @@ import {
   sweepVillageStorage,
   updateWave,
 } from "@/lib/wave-d-store";
-import { applyLoop, emptyLoops, loopSalt, type LoopId } from "@/lib/village-loops";
+import { applyLoop, emptyLoops, lanternGlow, loopSalt, scareLean, type LoopId } from "@/lib/village-loops";
 import { bindLoops, getLoopSnapshot, getServerLoopSnapshot, subscribeLoops, updateLoops, updatePebbles } from "@/lib/village-loops-store";
-import { applyNook, emptyNook, emptySession, nookSalt, type NookId } from "@/lib/yard-nook";
+import { applyNook, emptyNook, emptySession, laundrySway, nookSalt, shutterSwing, type NookId } from "@/lib/yard-nook";
+import type { LandmarkLook } from "@/lib/season-craft";
 import { bindNook, getNookSnapshot, getServerNookSnapshot, subscribeNook, updateNook, updateNookSession } from "@/lib/yard-nook-store";
 import {
   acceptTap,
@@ -473,6 +474,22 @@ export function VillagePage({ initial }: Props) {
     bell: playSnap.bell,
     gardenCrops: play.garden2,
     decor,
+    edge: {
+      reduced: motion.reduced,
+      lantern: lanternGlow(loopBlob.lanternGlow, motion.reduced),
+      lean: scareLean(loopBlob.scareTips),
+      gateOpen: loopBlob.gateOpen,
+      picnic: loopBlob.picnicDown,
+      pebbles: loopPebbles,
+      laundry: laundrySway(nookBlob.laundryPin, motion.reduced),
+      shutter: shutterSwing(nookBlob.shutterOpen, motion.reduced),
+      wood: nookBlob.woodLogs,
+      bridge: nookBlob.bridgeDown,
+      pots: nookSession.pots,
+      kettle: nookBlob.kettleDay === clock.ymd,
+      barrel: nookBlob.barrelDay === clock.ymd,
+      cat: true,
+    } satisfies LandmarkLook,
   };
 
   function resolveKindness(target: string) {
@@ -1050,6 +1067,8 @@ export function VillagePage({ initial }: Props) {
         facts={weekFacts}
         marks={choreMarks}
         onToggle={(id: WaveSystemId, on: boolean) => updateWave((current: WaveDBlob) => setToggle(current, id, on))}
+        motionReduced={motion.reduced}
+        onReduceMotion={(on) => saveComfort({ ...comfort, reduceMotion: on, motionOverride: true })}
         onDiary={(index) => {
           if (!selfName) return;
           const result = setDiary(waveState, clock.ymd, index);
@@ -1252,6 +1271,7 @@ function VillageHelp() {
         <p>干活是方块，摸鱼是波浪，在任务上是等号。颜色只是辅助，形状也分得开。</p>
         <p>这里不收录说过的话。善意、挥手和田里的小玩具都记在这台电脑的「我是谁」上。</p>
         <p>村里小玩有十处：信箱、稻草人、水井、菜畦、石子、灯笼、告示、鸡舍、篱门、野餐垫。进度跟着「我是谁」。石子只留在这个标签页，灯笼在减少动作时不闪。</p>
+        <p>减动开关在村里新事的开关里。点一下就停住装饰晃动。系统开了减少动态时也会停。</p>
         <p>屋边角落还有水壶、水漂、柴堆、衣绳、石桥、猫、雨水桶、路口牌、花盆和窗板。水漂和花盆只留这个标签页。减少动作时衣绳和窗板不再晃。</p>
       </div>
     </details>

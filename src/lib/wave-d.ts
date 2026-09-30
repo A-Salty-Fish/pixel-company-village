@@ -6,6 +6,8 @@
 import { WEATHER_NOTES } from "@/lib/map-craft";
 
 export const SEASON_FADE_MS = 400;
+export const REDUCE_MOTION_LABEL = "减动";
+export const REDUCE_MOTION_NOTE = "停住装饰晃动。系统开了减少动态时也会停。";
 export const NOD_THRESHOLD = 2;
 export const PIN_CAP = 3;
 export const FOOTPRINT_CAP = 8;
@@ -638,6 +640,8 @@ export function publicCopyLines() {
     ATLAS_FALLBACK,
     WEEK_DONE_LINE,
     WEEK_KEPT_LINE,
+    REDUCE_MOTION_LABEL,
+    REDUCE_MOTION_NOTE,
     strollStepLine(0, 0),
     strollStepLine(0, 1),
     strollStepLine(2, 3),

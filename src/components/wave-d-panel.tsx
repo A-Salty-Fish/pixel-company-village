@@ -3,6 +3,8 @@
 import {
   CANNED_DIARY,
   INSTRUMENTS,
+  REDUCE_MOTION_LABEL,
+  REDUCE_MOTION_NOTE,
   WAVE_LABELS,
   WAVE_SYSTEMS,
   atlasRatio,
@@ -29,6 +31,8 @@ type Props = {
   facts: WeekFacts;
   marks?: WeekMark | null;
   onToggle: (id: WaveSystemId, on: boolean) => void;
+  motionReduced: boolean;
+  onReduceMotion: (on: boolean) => void;
   onDiary: (index: number) => void;
   onPorch: () => void;
   onWater: () => void;
@@ -54,6 +58,15 @@ export function WaveDPanel(props: Props) {
         <p className="text-xs leading-5 text-[#6a3d18]">这些都留在这台浏览器，可以关掉。不收录说过的话，也不跟别人比。</p>
         <section data-testid="wave-toggles">
           <h3 className="pixel-label">开关</h3>
+          <label className="motion-switch" data-testid="reduce-motion-toggle">
+            <input
+              type="checkbox"
+              checked={props.motionReduced}
+              onChange={(event) => props.onReduceMotion(event.target.checked)}
+            />
+            <span className="pixel-label">{REDUCE_MOTION_LABEL}</span>
+            <span className="motion-switch-note">{REDUCE_MOTION_NOTE}</span>
+          </label>
           <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
             {WAVE_SYSTEMS.map((id) => (
               <label key={id} className="flex items-center gap-2 text-xs">
