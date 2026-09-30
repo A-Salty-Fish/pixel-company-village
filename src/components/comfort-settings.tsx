@@ -84,6 +84,7 @@ export function ComfortSettings({
             <label className="flex items-start gap-2 text-sm text-[#2a1a10]">
               <input
                 type="checkbox"
+                data-testid="reduce-motion"
                 checked={motionReduced}
                 onChange={(event) =>
                   onComfort({ ...comfort, reduceMotion: event.target.checked, motionOverride: true })

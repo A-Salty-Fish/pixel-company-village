@@ -429,6 +429,12 @@ export function VillageScene({
       data-yard-stove={life.decor?.yard.stove ? "1" : "0"}
       data-yard-bell={String(life.decor?.yard.bell ?? 0)}
       data-yard-grain={String(life.decor?.yard.grain ?? 0)}
+      data-lane-well={life.decor?.lane.well ? "1" : "0"}
+      data-lane-lantern={life.decor?.lane.lantern ? "1" : "0"}
+      data-lane-ducks={String(life.decor?.lane.ducks ?? 0)}
+      data-lane-gate={life.decor?.lane.gate ? "1" : "0"}
+      data-lane-stone={String(life.decor?.lane.stone ?? 0)}
+      data-lane-bob={life.decor?.lane.bob ? "1" : "0"}
       data-sitting={life.decor?.sit ? "1" : "0"}
       data-season={life.decor?.seasonId ?? ""}
       data-week-ribbon={life.decor?.weekRibbon ? "1" : "0"}

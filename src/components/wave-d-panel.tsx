@@ -1,5 +1,6 @@
 "use client";
 
+import { LANE_ACTS, type LaneActId } from "@/lib/lane";
 import { YARD_ACTS, type YardActId } from "@/lib/yard";
 import {
   CANNED_DIARY,
@@ -43,6 +44,7 @@ type Props = {
   onHome: () => void;
   onPostcard: () => void;
   onYard: (id: YardActId) => void;
+  onLane: (id: LaneActId) => void;
 };
 
 export function WaveDPanel(props: Props) {
@@ -166,6 +168,28 @@ export function WaveDPanel(props: Props) {
                 {act.label}
                 {act.id === "bell" ? ` ${props.wave.yard.bell}/3` : ""}
                 {act.id === "grain" ? ` ${props.wave.yard.grain}/3` : ""}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section data-testid="lane-acts">
+          <h3 className="pixel-label">路边小事</h3>
+          <p className="mt-1 text-xs text-[#6a3d18]">只做罐头动作。石头和鸭子最多三次。</p>
+          <div className="yard-acts mt-2">
+            {LANE_ACTS.map((act) => (
+              <button
+                key={act.id}
+                type="button"
+                className="hud-btn hud-btn-ghost yard-chip lane-chip"
+                disabled={!props.selfName || !props.wave.toggles.lane}
+                data-testid={`lane-${act.id}`}
+                data-lane-act={act.id}
+                onClick={() => props.onLane(act.id)}
+              >
+                {act.label}
+                {act.id === "stone" ? ` ${props.wave.lane.stone}/3` : ""}
+                {act.id === "ducks" ? ` ${props.wave.lane.ducks}/3` : ""}
               </button>
             ))}
           </div>

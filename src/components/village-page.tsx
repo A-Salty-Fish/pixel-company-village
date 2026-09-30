@@ -82,6 +82,7 @@ import {
   type WaveDBlob,
   type WaveSystemId,
 } from "@/lib/wave-d";
+import { playLane, type LaneActId } from "@/lib/lane";
 import { playYard, type YardActId } from "@/lib/yard";
 import {
   addFeather,
@@ -1101,6 +1102,15 @@ export function VillagePage({ initial }: Props) {
           const result = playYard(waveState.yard, id, clock.ymd, systemOn(waveState, "yard"));
           setWaveLine(result.line);
           if (result.ok) updateWave((current) => ({ ...current, yard: result.yard }));
+        }}
+        onLane={(id: LaneActId) => {
+          if (!selfName || waveSnap.viewer !== selfName) {
+            setWaveLine("先选定「我是谁」，路边的事才记在这台电脑上。");
+            return;
+          }
+          const result = playLane(waveState.lane, id, clock.ymd, systemOn(waveState, "lane"));
+          setWaveLine(result.line);
+          if (result.ok) updateWave((current) => ({ ...current, lane: result.lane }));
         }}
         onHome={() => {
           if (!selfName) {

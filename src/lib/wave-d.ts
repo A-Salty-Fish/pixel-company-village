@@ -3,6 +3,7 @@
  * No chat text, no rankings, no server quota.
  */
 
+import { emptyLane, laneCopyLines, laneLook, readLane, type LaneState } from "./lane";
 import { emptyYard, readYard, yardCopyLines, yardLook, type YardState } from "./yard";
 
 export const SEASON_FADE_MS = 400;
@@ -33,6 +34,7 @@ export const WAVE_SYSTEMS = [
   "pins",
   "critters",
   "yard",
+  "lane",
   "water",
   "postcard",
   "chronicle",
@@ -63,6 +65,7 @@ export const WAVE_LABELS: Record<WaveSystemId, string> = {
   pins: "收藏名牌",
   critters: "虫鸟",
   yard: "院里小事",
+  lane: "路边小事",
   water: "作物浇水",
   postcard: "明信片",
   chronicle: "村史",
@@ -132,6 +135,7 @@ export type WaveDBlob = {
   seenDay: string | null;
   weekMarks: WeekMark | null;
   yard: YardState;
+  lane: LaneState;
 };
 
 export type WeekMark = { week: string; labels: string[] };
@@ -155,6 +159,7 @@ export const EMPTY_WAVE: WaveDBlob = {
   seenDay: null,
   weekMarks: null,
   yard: emptyYard(),
+  lane: emptyLane(),
 };
 
 function hash(text: string) {
@@ -684,6 +689,7 @@ export function publicCopyLines() {
     strollStepLine(2, 3),
     strollStepLine(3, 3),
     ...yardCopyLines(),
+    ...laneCopyLines(),
   ];
 }
 
@@ -811,6 +817,7 @@ export function sanitizeWave(value: unknown): WaveDBlob {
     seenDay: typeof raw.seenDay === "string" ? raw.seenDay : null,
     weekMarks: readWeekMarks(raw.weekMarks),
     yard: readYard(raw.yard),
+    lane: readLane(raw.lane),
   };
 }
 
@@ -823,6 +830,7 @@ export type WaveDecor = {
   dusk: boolean;
   night: boolean;
   yard: ReturnType<typeof yardLook>;
+  lane: ReturnType<typeof laneLook>;
   pins: string[];
   hats: string[];
   watered: boolean;
@@ -868,6 +876,7 @@ export function buildDecor(input: {
     dusk: duskActive(input.hour, systemOn(blob, "dusk") && !input.quiet),
     night: nightWash(input.hour, systemOn(blob, "dusk") && !input.quiet),
     yard: yardLook(blob.yard, input.ymd, systemOn(blob, "yard"), input.reduced),
+    lane: laneLook(blob.lane, input.ymd, systemOn(blob, "lane"), input.reduced),
     pins: systemOn(blob, "pins") ? blob.pins : [],
     hats: systemOn(blob, "hats") ? blob.hats : [],
     watered: systemOn(blob, "water") && blob.waterDay === input.ymd,
