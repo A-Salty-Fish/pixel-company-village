@@ -24,6 +24,10 @@ import { FIND_ME_HOLD_MS, FIND_ME_LABEL, plateLegend } from "@/lib/worldcraft";
 import { availabilityFor, shanghaiClock, type SceneLife } from "@/lib/village-life";
 import { NIGHT_WASH_ENABLED, nightWashMark } from "@/features/night-wash/night-wash";
 import nightWashStyles from "@/features/night-wash/night-wash.module.css";
+import { ambientLifeMark, ambientSpeckCount } from "@/features/ambient-life/ambient-life";
+import { kindnessGlowMark } from "@/features/kindness-footprint-glow/kindness-footprint-glow";
+import { groundClusterCount, groundPropMark } from "@/features/season-ground-props/season-ground-props";
+import { selfYardMark } from "@/features/self-yard-marker/self-yard-marker";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
 
@@ -458,6 +462,12 @@ export function VillageScene({
       data-season={life.decor?.seasonId ?? ""}
       data-week-ribbon={life.decor?.weekRibbon ? "1" : "0"}
       data-bond-posts={String(life.bondMarks?.length ?? 0)}
+      data-ambient-life={ambientLifeMark(life.quiet, life.reduceMotion)}
+      data-ambient-count={String(ambientSpeckCount(life.quiet, life.reduceMotion))}
+      data-ground-props={groundPropMark(life.decor?.seasonId ?? "", life.quiet)}
+      data-ground-prop-count={String(groundClusterCount(life.decor?.seasonId ?? "", life.quiet))}
+      data-self-yard={selfYardMark(Boolean(life.selfName))}
+      data-kindness-glow={kindnessGlowMark(life.bondMarks?.length ?? 0)}
       data-world-water={life.decor?.world.water ? "1" : "0"}
       data-world-card={life.decor?.world.card ? "1" : "0"}
       data-world-gate={life.decor?.world.gate ? "1" : "0"}

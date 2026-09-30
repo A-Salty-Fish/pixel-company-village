@@ -2,6 +2,7 @@
 
 import type { Comfort, StatusId } from "@/lib/village-life";
 import { STATUS_PRESETS } from "@/lib/village-life";
+import { SettingsDiscover } from "@/features/compact-settings-discover/discover-badge";
 
 type Props = {
   comfort: Comfort;
@@ -23,6 +24,9 @@ export function ComfortSettings({
   onSelf,
 }: Props) {
   return (
+    <>
+    {/* compact-settings-discover checkpoint */}
+    <SettingsDiscover />
     <details
       className="hud-panel"
       data-comfort-settings
@@ -147,5 +151,6 @@ export function ComfortSettings({
         </details>
       </div>
     </details>
+    </>
   );
 }
