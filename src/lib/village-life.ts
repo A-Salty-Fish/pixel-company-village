@@ -86,6 +86,8 @@ export type SceneLife = {
   ritual?: { beat: "dawn" | "noon" | "dusk"; done: boolean } | null;
   /** Names this viewer has waved at or cared for. Static map posts. */
   bondMarks?: string[];
+  /** Find-me ring holds for at least 1.5s. Set each frame, not stored. */
+  selfHighlight?: boolean;
 };
 
 export const DEFAULT_COMFORT: Comfort = {

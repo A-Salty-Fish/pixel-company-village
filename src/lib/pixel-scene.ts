@@ -14,7 +14,7 @@ import {
   nearPorch,
   porchPixels,
   proximityNods,
-  showNameplate,
+  selectPanoramaPlates,
   type Pixel,
 } from "@/lib/worldcraft";
 import { ritualSeal } from "@/lib/header-ritual";
@@ -1303,6 +1303,16 @@ function drawActors(
       sort: self.y + 1,
       draw: () => paintPixels(ctx, findMeRing(self.x, self.y, Boolean(life?.reduceMotion), t)),
     });
+    if (life?.selfHighlight) {
+      queue.push({
+        sort: self.y + 2,
+        draw: () =>
+          paintPixels(
+            ctx,
+            findMeRing(self.x, self.y, true, 0).map((pixel) => ({ ...pixel, color: "#f2d15c" })),
+          ),
+      });
+    }
   }
   if (life?.decor?.dusk) {
       for (const house of HOUSE_FACES) {
@@ -1363,16 +1373,16 @@ export function paintVillage(
   fx: VillageFx | null = null,
   life: SceneLife | null = null,
 ) {
-  if (!artReady()) return;
+  if (!artReady()) return 0;
   ensureGround();
-  if (!groundCanvas) return;
+  if (!groundCanvas) return 0;
   if (!worldCanvas) {
     worldCanvas = document.createElement("canvas");
     worldCanvas.width = WORLD_W;
     worldCanvas.height = WORLD_H;
   }
   const world = worldCanvas.getContext("2d");
-  if (!world) return;
+  if (!world) return 0;
   world.imageSmoothingEnabled = false;
   world.clearRect(0, 0, WORLD_W, WORLD_H);
   world.drawImage(groundCanvas, 0, 0);
@@ -1420,7 +1430,7 @@ export function paintVillage(
       drawSeasonSpeck(ctx, life.decor.seasonId, sx, sy);
     }
   }
-  drawNameLabels(ctx, villagers, zoom, camX, camY, emphasize, viewW, viewH, dpr, life);
+  return drawNameLabels(ctx, villagers, zoom, camX, camY, emphasize, viewW, viewH, dpr, life);
 }
 
 const FAMILIAR_RIM = ["", "#c4a060", "#d4a017", "#2f6a3a"];
@@ -1444,12 +1454,24 @@ export function drawNameLabels(
   const viewWorldH = span.h;
   const cssW = viewW / dpr;
   const pitchCss = (PITCH_X * cssW * zoom) / WORLD_W;
+  const showAll = Boolean(life?.showAllPlates);
   let cssScale = zoom >= 3 ? 3 : 2;
-  if (pitchCss < 72) cssScale = 1;
+  if (pitchCss < 72 || (showAll && zoom < 2)) cssScale = 1;
   const scale = cssScale * Math.max(1, Math.round(dpr));
   const placed: { x: number; y: number; w: number; h: number }[] = [];
-  const showAll = Boolean(life?.showAllPlates);
   const pins = new Set(life?.decor?.pins ?? []);
+  const quiet = Boolean(life?.quiet);
+  const picked = new Set(
+    selectPanoramaPlates({
+      people: villagers.map((person) => ({ name: person.name, x: person.x, y: person.y })),
+      selfName: life?.selfName ?? null,
+      pins: [...pins],
+      hot: [...emphasize],
+      showAll,
+      quiet,
+    }),
+  );
+  let drawn = 0;
 
   const ordered = [...villagers].sort((a, b) => {
     const ah = emphasize.has(a.name) || pins.has(a.name) ? 0 : 1;
@@ -1459,14 +1481,14 @@ export function drawNameLabels(
   });
 
   for (const person of ordered) {
+    if (!picked.has(person.name)) continue;
     const pinned = pins.has(person.name);
-    const hot = emphasize.has(person.name) || pinned;
-    if (!showNameplate(zoom, hot, showAll, Boolean(life?.quiet))) continue;
+    const hot = emphasize.has(person.name) || pinned || person.name === life?.selfName;
     const mode: LabelMode = hot ? "hot" : person.scored ? "scored" : "muted";
     const sprite = getLabelSprite(person.name, mode);
     if (!sprite) continue;
     const sx = ((person.x - camX) / viewWorldW) * viewW;
-    const sy = ((person.y - 34 - camY) / viewWorldH) * viewH;
+    const sy = ((person.y - 28 - camY) / viewWorldH) * viewH;
     const dw = sprite.w * scale;
     const dh = sprite.h * scale;
     const x = sx - dw / 2;
@@ -1474,16 +1496,18 @@ export function drawNameLabels(
     if (x > viewW || y > viewH || x + dw < 0 || y + dh < 0) continue;
     const box = { x, y, w: dw, h: dh };
     const hit = placed.some((other) => overlaps(box, other));
-    if (hit && !hot) continue;
+    if (hit && !showAll && !hot) continue;
     placed.push(box);
     const level = life?.familiarity[person.name] ?? 0;
     if (level > 0) {
       ctx.fillStyle = FAMILIAR_RIM[level] ?? FAMILIAR_RIM[1];
-      ctx.fillRect(Math.round(x - 2), Math.round(y - 2), dw + 4, dh + 4);
+      ctx.fillRect(Math.round(x - 1), Math.round(y - 1), dw + 2, dh + 2);
     }
     const alpha = hot ? 1 : mode === "muted" ? 0.7 : 0.92;
     blitLabel(ctx, sprite, x, y, scale, alpha);
+    drawn += 1;
   }
+  return drawn;
 }
 
 function overlaps(

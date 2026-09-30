@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { GUIDE_KEY, GUIDE_LINES, guideSeen, readVisit, visitComplete, visitStep } from "@/lib/first-run";
 import { glanceLine, lightLabel } from "@/lib/copy";
-import { emoteFx, kindnessFx, socialReplyFor, socialReplyMark, SOCIAL_KIND_REPLY, SOCIAL_WAVE_REPLY, withSocialReply } from "@/lib/interactions";
+import { emoteFx, kindnessFx, socialReplyFor, socialReplyMark, SOCIAL_KIND_REPLY, SOCIAL_WAVE_REPLY, WAVE_REPLY_MS, withSocialReply } from "@/lib/interactions";
 import { DEFAULT_COMFORT } from "@/lib/village-life";
 import { choreAction, choreWorldOf, copyIsClean, noteWeekChore, weekBoard, EMPTY_WAVE, type WeekFacts } from "@/lib/wave-d";
 
@@ -35,6 +35,8 @@ test("a finished chore lights one world mark and a kept label survives", () => {
 
 test("wave and kindness toward someone else get one canned reply", () => {
   const wave = withSocialReply(emoteFx("林小满", "wave"), "周野");
+  assert.equal(wave.duration, WAVE_REPLY_MS);
+  assert.equal(WAVE_REPLY_MS <= 3000 && WAVE_REPLY_MS >= 1500, true);
   assert.equal(wave.partner, "周野");
   assert.match(wave.line, new RegExp(SOCIAL_WAVE_REPLY));
   const self = withSocialReply(emoteFx("周野", "wave"), "周野");

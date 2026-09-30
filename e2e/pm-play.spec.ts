@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, roster } from "./login";
+import { login, openWeekBoard, roster } from "./login";
 
 const WORLD: Record<string, string> = {
   浇自己的田: "water",
@@ -40,6 +40,7 @@ test("finishing a weekly chore leaves a world mark", async ({ page }) => {
   const self = body.people[0]?.name ?? "";
   await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(self);
+  await openWeekBoard(page);
   const row = page.getByTestId("today-chores").locator("[data-chore]").first();
   const label = (await row.getAttribute("data-chore")) ?? "";
   const key = WORLD[label];

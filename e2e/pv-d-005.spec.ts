@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, roster } from "./login";
+import { login, openWeekBoard, roster } from "./login";
 
 test("weekly chore progress stays with the viewer who finished it", async ({ page }) => {
   await login(page);
@@ -8,6 +8,7 @@ test("weekly chore progress stays with the viewer who finished it", async ({ pag
   expect(first && second && first !== second).toBeTruthy();
   await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(first ?? "");
+  await openWeekBoard(page);
   const strip = page.getByTestId("today-chores");
   await expect(strip.getByTestId("week-tally")).toContainText("本周 0/3");
   await expect(strip.locator("[data-done='1']")).toHaveCount(0);

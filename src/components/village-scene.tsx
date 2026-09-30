@@ -20,7 +20,7 @@ import { deriveLoadStage, loadStageLabel, type LoadStage } from "@/lib/load-mach
 import { hitSpot } from "@/lib/play-systems";
 import type { PersonWithState } from "@/lib/types";
 import { EASING, particleAllowance } from "@/lib/wave-d";
-import { FIND_ME_LABEL, plateLegend } from "@/lib/worldcraft";
+import { FIND_ME_HOLD_MS, FIND_ME_LABEL, plateLegend } from "@/lib/worldcraft";
 import { availabilityFor, shanghaiClock, type SceneLife } from "@/lib/village-life";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
@@ -91,6 +91,7 @@ export function VillageScene({
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const kickRef = useRef<(() => void) | null>(null);
   const wheelAt = useRef(0);
+  const glowUntilRef = useRef(0);
 
   useEffect(() => {
     villagersRef.current = villagers;
@@ -157,7 +158,7 @@ export function VillageScene({
     let canvas = canvasRef.current;
     if (!canvas || canvas.parentElement !== host) {
       canvas = document.createElement("canvas");
-      canvas.className = "pixelated block h-auto w-full cursor-grab active:cursor-grabbing";
+      canvas.className = "pixelated block h-full w-full cursor-grab active:cursor-grabbing";
       canvas.setAttribute("role", "img");
       canvas.setAttribute(
         "aria-label",
@@ -186,7 +187,7 @@ export function VillageScene({
     const resize = () => {
       const dpr = Math.max(1, Math.round(window.devicePixelRatio || 1));
       const cssW = Math.max(1, Math.floor(host.clientWidth));
-      const cssH = Math.max(1, Math.round((cssW * WORLD_H) / WORLD_W));
+      const cssH = Math.max(1, Math.floor(host.clientHeight) || Math.round((cssW * WORLD_H) / WORLD_W));
       canvas.style.width = `${cssW}px`;
       canvas.style.height = `${cssH}px`;
       const nextW = cssW * dpr;
@@ -248,10 +249,16 @@ export function VillageScene({
       if (selectedRef.current) emphasize.add(selectedRef.current);
       if (hoverRef.current) emphasize.add(hoverRef.current);
       const activeFx = fxRef.current;
-      if (activeFx && Date.now() - activeFx.startedAt < activeFx.duration && activeFx.partner) {
+      const nowMs = Date.now();
+      if (activeFx && nowMs - activeFx.startedAt < activeFx.duration && activeFx.partner) {
         emphasize.add(activeFx.partner);
       }
-      paintVillage(
+      const highlight = nowMs < glowUntilRef.current;
+      host.dataset.selfHighlight = highlight ? "1" : "0";
+      host.dataset.waveReply =
+        activeFx && activeFx.kind === "wave" && nowMs - activeFx.startedAt < activeFx.duration ? "1" : "0";
+      if (lifeRef.current) lifeRef.current.selfHighlight = highlight;
+      const plateCount = paintVillage(
         ctx,
         canvas.width,
         canvas.height,
@@ -266,6 +273,7 @@ export function VillageScene({
         activeFx && Date.now() - activeFx.startedAt < activeFx.duration ? activeFx : null,
         lifeRef.current,
       );
+      host.dataset.plateCount = String(plateCount);
       canvas.dataset.villageReady = "1";
     };
 
@@ -411,8 +419,7 @@ export function VillageScene({
   return (
     <div
       ref={hostRef}
-      className="pixel-frame relative overflow-hidden bg-[#3c6e32]"
-      style={{ aspectRatio: `${WORLD_W} / ${WORLD_H}` }}
+      className="pixel-frame relative h-full overflow-hidden bg-[#3c6e32]"
       data-village-host={ready ? "ready" : "boot"}
       data-load-stage={shownStage}
       data-bell={life.bell ? "1" : "0"}
@@ -452,6 +459,10 @@ export function VillageScene({
       data-world-pin={life.decor?.world.pin ? "1" : "0"}
       data-world-rest={life.decor?.world.rest ? "1" : "0"}
       data-plate-lod={life.quiet && !life.showAllPlates ? "quiet" : "open"}
+      data-plate-cap={life.showAllPlates ? "all" : life.quiet ? "4" : "8"}
+      data-plate-count="0"
+      data-self-highlight="0"
+      data-wave-reply="0"
       data-ritual-done={life.ritual?.done ? "1" : "0"}
       data-ritual-beat={life.ritual?.beat ?? ""}
     >
@@ -538,14 +549,17 @@ export function VillageScene({
           aria-pressed={life.showAllPlates}
           onClick={onTogglePlates}
         >
-          {life.showAllPlates ? "收起" : "全显"}
+          {life.showAllPlates ? "收起名牌" : "全显名牌"}
         </button>
         <button
           type="button"
           className="hud-icon hud-icon-find"
           data-testid="find-me"
           disabled={!life.selfName}
-          onClick={onFindMe}
+          onClick={() => {
+            glowUntilRef.current = Date.now() + FIND_ME_HOLD_MS;
+            onFindMe?.();
+          }}
         >
           {FIND_ME_LABEL}
         </button>

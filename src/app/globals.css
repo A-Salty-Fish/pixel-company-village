@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-body);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -73,6 +73,7 @@
   --chart-4: #c44b3a;
   --chart-5: #7a4aaa;
   --radius: 0.625rem;
+  --font-body: "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", "WenQuanYi Micro Hei", "Droid Sans Fallback", sans-serif;
   --sidebar: #fff6d8;
   --sidebar-foreground: #2a1a10;
   --sidebar-primary: #3a7d4a;
@@ -89,7 +90,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-sans), "WenQuanYi Micro Hei", "Droid Sans Fallback", sans-serif;
+    font-family: var(--font-body);
   }
   html {
     @apply font-sans;
@@ -491,7 +492,7 @@ a:focus-visible,
     box-shadow: 0 -6px 0 #3d2a1c;
   }
 
-  .village-stage[data-card-open="1"] ~ .thumb-bar {
+  .farm-page:has(.village-stage[data-card-open="1"]) .thumb-bar {
     display: none;
   }
 }
@@ -929,5 +930,128 @@ a:focus-visible,
   .loop-spot[data-sway="sway"] .loop-spot-art,
   .loop-spot[data-swing="swing"] .loop-spot-art {
     animation: none;
+  }
+}
+
+.village-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  height: 100dvh;
+  min-height: 0;
+}
+
+.parchment-stack {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.village-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem 0.6rem;
+  padding: 0.35rem 0.6rem 0.2rem;
+}
+
+.glance-line,
+.visitor-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visitor-line {
+  margin: 0;
+  color: #2a1a10;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.parchment-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.parchment-badge {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.2rem 0.65rem;
+  background: #f6e6c0;
+  color: #2a1a10;
+  border: 3px solid #6a3d18;
+  box-shadow: 2px 2px 0 #3d2a1c;
+}
+
+.parchment-badge[aria-expanded="true"] {
+  background: #fff6d8;
+}
+
+.parchment-panel {
+  max-height: 34dvh;
+  overflow: auto;
+}
+
+.parchment-panel[hidden] {
+  display: none;
+}
+
+.village-hero .village-stage {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  height: auto;
+  min-height: 0;
+}
+
+.village-hero .village-map-slot,
+.village-hero .empty-yard {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.village-hero [data-village-host] {
+  aspect-ratio: auto;
+  height: 100%;
+  min-height: 0;
+}
+
+@media (max-width: 899px) {
+  html {
+    scroll-padding-top: calc(var(--village-header-h, 7.5rem) + 0.35rem);
+  }
+
+  .village-hero {
+    height: calc(100dvh - 5rem);
+  }
+
+  .village-hero .village-stage {
+    height: auto;
+    min-height: 0;
+  }
+
+  .parchment-stack {
+    padding-top: var(--village-header-h, 0px);
+  }
+
+  .village-header {
+    position: fixed;
+    top: 0;
+    left: 0.75rem;
+    right: 0.75rem;
+    z-index: 80;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 899px) {
+  .village-header {
+    left: 1.25rem;
+    right: 1.25rem;
   }
 }

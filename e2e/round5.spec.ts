@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, roster } from "./login";
+import { login, openWeekBoard, roster } from "./login";
 
 test("a weekly chore can be finished from the board and then stays done", async ({ page }) => {
   await login(page);
@@ -8,6 +8,7 @@ test("a weekly chore can be finished from the board and then stays done", async 
   expect(self).toBeTruthy();
   await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(self ?? "");
+  await openWeekBoard(page);
   const row = page.getByTestId("today-chores").locator("[data-chore]").first();
   const button = row.getByRole("button");
   await expect(button).toBeEnabled();

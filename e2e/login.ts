@@ -14,6 +14,11 @@ export async function login(page: Page) {
   await page.waitForFunction(() => window.__VILLAGE_TEST__?.ready());
 }
 
+export async function openWeekBoard(page: Page) {
+  const badge = page.getByTestId("week-badge");
+  if ((await badge.getAttribute("aria-expanded")) !== "true") await badge.click();
+}
+
 export async function roster(page: Page) {
   const scores = await page.request.get("/api/scores");
   if (!scores.ok()) throw new Error("scores_unavailable");
