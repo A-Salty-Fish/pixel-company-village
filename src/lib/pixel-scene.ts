@@ -17,6 +17,7 @@ import {
   showNameplate,
   type Pixel,
 } from "@/lib/worldcraft";
+import { ritualSeal } from "@/lib/header-ritual";
 
 export const WORLD_W = 1216;
 export const WORLD_H = 1120;
@@ -1287,8 +1288,9 @@ function drawActors(
   const home = self ? { x: self.homeX + 48, y: self.homeY + 24 } : null;
   paintPixels(ctx, landmarkPixels(home));
   if (life?.craft) paintPixels(ctx, chorePixels(life.craft));
+  if (life?.ritual?.done) paintPixels(ctx, ritualSeal(life.ritual.beat));
   if (self) {
-    const lampOn = Boolean(life?.decor?.porch);
+    const lampOn = Boolean(life?.decor?.porch) || (life?.ritual?.done === true && life.ritual.beat === "dawn");
     const homeNear = nearPorch(self, { x: self.homeX, y: self.homeY });
     paintPixels(ctx, porchPixels(homeNear, lampOn, Boolean(life?.reduceMotion), t), self.homeX, self.homeY);
     queue.push({

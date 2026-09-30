@@ -451,6 +451,8 @@ export function VillageScene({
       data-world-pin={life.decor?.world.pin ? "1" : "0"}
       data-world-rest={life.decor?.world.rest ? "1" : "0"}
       data-plate-lod={life.quiet && !life.showAllPlates ? "quiet" : "open"}
+      data-ritual-done={life.ritual?.done ? "1" : "0"}
+      data-ritual-beat={life.ritual?.beat ?? ""}
     >
       {shownStage === "timeout" || shownStage === "failed" ? (
         <div className="load-recovery" data-testid="load-recovery">
