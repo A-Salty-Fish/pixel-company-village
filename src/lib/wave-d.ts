@@ -321,6 +321,37 @@ function choreDone(label: string, facts: WeekFacts) {
 
 export type ChoreAction = "water" | "card" | "gate" | "porch" | "diary" | "steps" | "season" | "pin" | "rest";
 
+export type ChoreWorld = Record<ChoreAction, boolean>;
+
+const CHORE_LABEL: Record<ChoreAction, string> = {
+  water: "浇自己的田",
+  card: "看一张信号卡",
+  gate: "在村口站一会儿",
+  porch: "给门灯点一下",
+  diary: "收一句罐头",
+  steps: "沿着小路走三步",
+  season: "看季节色",
+  pin: "钉一枚名牌",
+  rest: "把锄头放下",
+};
+
+/** A finished chore leaves a mark. Kept labels from this week count even after a refresh. */
+export function choreWorldOf(facts: WeekFacts, weekKey?: string, marks?: WeekMark | null): ChoreWorld {
+  const saved = weekKey ? keptChoreLabels(weekKey, marks) : new Set<string>();
+  const on = (action: ChoreAction, live: boolean) => live || saved.has(CHORE_LABEL[action]);
+  return {
+    water: on("water", facts.wateredToday),
+    card: on("card", facts.cardOpen),
+    gate: on("gate", facts.visitedGate),
+    porch: on("porch", facts.porchOn),
+    diary: on("diary", facts.diaryToday),
+    steps: on("steps", facts.steps >= 3),
+    season: on("season", facts.noticedSeason),
+    pin: on("pin", facts.pinned),
+    rest: on("rest", facts.resting),
+  };
+}
+
 /** Only the nine canned chores map to an action. Anything else is ignored. */
 export function choreAction(label: string): ChoreAction | null {
   switch (label) {
@@ -807,6 +838,7 @@ export type WaveDecor = {
   seasonId: string;
   seasonParticles: number;
   weekRibbon: boolean;
+  world: ChoreWorld;
 };
 
 export function buildDecor(input: {
@@ -822,6 +854,8 @@ export function buildDecor(input: {
   fedNames: string[];
   now: number;
   weekDone?: boolean;
+  facts?: WeekFacts;
+  weekKey?: string;
 }): WaveDecor {
   const { blob } = input;
   const weather = weatherFor(input.ymd);
@@ -849,5 +883,20 @@ export function buildDecor(input: {
     seasonId: input.seasonId,
     seasonParticles: systemOn(blob, "seasonFade") ? decorParticleCount(input.festival ? 6 : 4, input.quiet) : 0,
     weekRibbon: Boolean(input.weekDone) && systemOn(blob, "weekBoard"),
+    world: choreWorldOf(
+      input.facts ?? {
+        wateredToday: false,
+        cardOpen: false,
+        visitedGate: false,
+        porchOn: false,
+        diaryToday: false,
+        steps: 0,
+        pinned: false,
+        resting: false,
+        noticedSeason: false,
+      },
+      input.weekKey,
+      blob.weekMarks,
+    ),
   };
 }

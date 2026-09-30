@@ -8,12 +8,14 @@ import {
   emoteFx,
   jokeFx,
   kindnessFx,
+  withSocialReply,
   quoteByIndex,
   quoteCount,
   type VillageFx,
 } from "@/lib/interactions";
 import type { KindnessMenuId } from "@/lib/copy";
 import { ComfortSettings } from "@/components/comfort-settings";
+import { FirstRunGuide } from "@/components/first-run-guide";
 import { PlayShelf } from "@/components/play-shelf";
 import { VillageLoopsPanel } from "@/components/village-loops-panel";
 import { YardNookPanel } from "@/components/yard-nook-panel";
@@ -448,6 +450,8 @@ export function VillagePage({ initial }: Props) {
     fedNames: anon[clock.ymd] ?? [],
     now: nowMs(),
     weekDone: tally.complete,
+    facts: weekFacts,
+    weekKey: clock.weekKey,
   });
   const life: SceneLife = {
     quiet: comfort.quiet,
@@ -521,7 +525,7 @@ export function VillagePage({ initial }: Props) {
       if (selfName) setFx(blockedKindnessFx(selected.name, spent.line));
       return;
     }
-    const event = kindnessFx(action, selected.name);
+    const event = withSocialReply(kindnessFx(action, selected.name), selfName);
     setFx(spent.sundayBonus ? { ...event, line: `${event.line} 周日的田边多亮了一下。` } : event);
     beginUndo(selected.name, false);
     const today = shanghaiClock().ymd;
@@ -579,7 +583,7 @@ export function VillagePage({ initial }: Props) {
       setFx(blockedKindnessFx(selected.name, spent.line));
       return;
     }
-    setFx(emoteFx(selected.name, "wave"));
+    setFx(withSocialReply(emoteFx(selected.name, "wave"), selfName));
   }
 
   function emote(kind: "stretch" | "sit" | "clap" | "wave") {
@@ -799,6 +803,8 @@ export function VillagePage({ initial }: Props) {
           </div>
         </div>
       </header>
+
+      <FirstRunGuide />
 
       {broadcast && dismissedBroadcast !== broadcastKey ? (
         <div className="hud-panel flex items-center justify-between gap-3 px-3 py-2" data-testid="village-broadcast">

@@ -85,6 +85,17 @@ export function emoteFx(actor: string, kind: "stretch" | "sit" | "clap" | "wave"
   return makeFx(kind, actor);
 }
 
+export const SOCIAL_WAVE_REPLY = "对方也挥了回来。";
+export const SOCIAL_KIND_REPLY = "对方点了点头，回了一颗小种子。";
+
+/** A wave or kindness toward someone else gets one canned reply. Nothing is stored. */
+export function withSocialReply(fx: VillageFx, selfName: string | null): VillageFx {
+  if (!selfName || fx.actor === selfName) return fx;
+  if (fx.kind === "wave") return { ...fx, partner: selfName, line: `${fx.line} ${SOCIAL_WAVE_REPLY}` };
+  if (isKindnessKind(fx.kind)) return { ...fx, partner: selfName, line: `${fx.line} ${SOCIAL_KIND_REPLY}` };
+  return fx;
+}
+
 export function rollOpeningEvent(name: string, people: PersonWithState[], random = Math.random) {
   if (random() > 0.42) return null;
   return rollPlayEvent(name, people, random);
