@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start --port 43123",
     "lint": "eslint",
-    "test": "tsx --test src/lib/wave-c.test.ts src/lib/wave-d.test.ts src/lib/yard.test.ts",
+    "test": "tsx --test src/lib/wave-c.test.ts src/lib/wave-d.test.ts src/lib/yard.test.ts src/lib/ritual.test.ts",
     "test:e2e": "playwright test --grep-invert \"@visual|@prod\"",
     "test:e2e:visual": "playwright test --grep @visual",
     "test:e2e:prod": "playwright test --grep @prod"

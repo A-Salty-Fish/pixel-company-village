@@ -15,6 +15,7 @@ import {
 import type { KindnessMenuId } from "@/lib/copy";
 import { ComfortSettings } from "@/components/comfort-settings";
 import { PlayShelf } from "@/components/play-shelf";
+import { RitualGuide } from "@/components/ritual-guide";
 import { WaveDPanel } from "@/components/wave-d-panel";
 import { installVillageTestHook, testHooksEnabled, type VillageTestState } from "@/lib/test-hooks";
 import { SignalCard } from "@/components/signal-card";
@@ -63,6 +64,7 @@ import {
   addStrollStep,
   strollStepLine,
   weekTally,
+  weatherFor,
   noteWeekChore,
   emptyViewerChores,
   rememberViewerChores,
@@ -74,6 +76,17 @@ import {
   type WaveSystemId,
 } from "@/lib/wave-d";
 import { playYard, type YardActId } from "@/lib/yard";
+import {
+  CHORE_JUICE_MS,
+  RITUAL_KEY,
+  bumpFamiliar,
+  glanceLine,
+  lightLabel,
+  loadRitual,
+  ritualDone,
+  socialReply,
+  type RitualFlags,
+} from "@/lib/ritual";
 import {
   addFeather,
   anonLine,
@@ -177,6 +190,9 @@ export function VillagePage({ initial }: Props) {
   const [rosterMode, setRosterMode] = useState<"live" | "empty">("live");
   const [badNote, setBadNote] = useState(0);
   const kindnessAt = useRef(0);
+  const [ritual, setRitual] = useState<RitualFlags | null>(null);
+  const [choreJuice, setChoreJuice] = useState(false);
+  const juiceTimer = useRef<number | null>(null);
   const [dismissedBroadcast, setDismissedBroadcast] = useState<string | null>(null);
   const [vignette, setVignette] = useState<{ title: string; lines: [string, string] } | null>(null);
   const [shelfLine, setShelfLine] = useState<string | null>(null);
@@ -326,6 +342,27 @@ export function VillagePage({ initial }: Props) {
   }, [selfName, clock]);
 
   useEffect(() => {
+    setRitual(loadRitual(window.localStorage.getItem(RITUAL_KEY)));
+  }, []);
+
+  useEffect(() => {
+    if (!ritual) return;
+    window.localStorage.setItem(RITUAL_KEY, JSON.stringify(ritual));
+  }, [ritual]);
+
+  useEffect(() => {
+    if (!selfName) return;
+    setRitual((current) => (current && !current.self ? { ...current, self: true } : current));
+  }, [selfName]);
+
+  useEffect(
+    () => () => {
+      if (juiceTimer.current) window.clearTimeout(juiceTimer.current);
+    },
+    [],
+  );
+
+  useEffect(() => {
     const reduced = motionGovernor({ systemReduced, comfort }).reduced;
     if (!selfName || comfort.quiet || !comfort.ambient || reduced) return;
     if (!morningBellDue(clock, getPlaySnapshot().play.bellDay, true)) return;
@@ -339,8 +376,13 @@ export function VillagePage({ initial }: Props) {
   const insights = useMemo(() => (prefs.rev > 0 ? scoreInsights(clock.weekKey) : {}), [prefs.rev, clock.weekKey]);
   const familiarity = useMemo(() => {
     const counts = prefs.rev > 0 ? kindnessDayCounts() : {};
-    return Object.fromEntries(people.map((person) => [person.name, familiarityLevel(counts[person.name] ?? 0)]));
-  }, [people, prefs.rev]);
+    return Object.fromEntries(
+      people.map((person) => [
+        person.name,
+        familiarityLevel((counts[person.name] ?? 0) + (play.familiar[person.name] ?? 0)),
+      ]),
+    );
+  }, [people, prefs.rev, play.familiar]);
   const clubs = useMemo(() => {
     const out: Record<string, "work" | "fish" | "task"> = {};
     for (const person of people) {
@@ -451,6 +493,7 @@ export function VillagePage({ initial }: Props) {
     bell: playSnap.bell,
     gardenCrops: play.garden2,
     decor,
+    choreJuice,
   };
 
   function resolveKindness(target: string) {
@@ -487,6 +530,25 @@ export function VillagePage({ initial }: Props) {
     setUndo({ id: undoSeq.current, name, secret, viewer: selfName });
   }
 
+  function markSocial() {
+    setRitual((current) => (current && !current.social ? { ...current, social: true } : current));
+  }
+
+  function touchWorld(mutate: (current: WaveDBlob) => WaveDBlob) {
+    updateWave((current) => {
+      const next = mutate(current);
+      if (!next.toggles.footprints || next.footprints.length !== current.footprints.length) return next;
+      return {
+        ...next,
+        footprints: [...next.footprints, { x: 496, y: 368, t: nowMs() }].slice(-8),
+      };
+    });
+    setChoreJuice(true);
+    setRitual((current) => (current && !current.yard ? { ...current, yard: true } : current));
+    if (juiceTimer.current) window.clearTimeout(juiceTimer.current);
+    juiceTimer.current = window.setTimeout(() => setChoreJuice(false), CHORE_JUICE_MS);
+  }
+
   function confirmKindness(action: KindnessMenuId) {
     if (!selected) return;
     const now = nowMs();
@@ -498,11 +560,21 @@ export function VillagePage({ initial }: Props) {
       return;
     }
     const event = kindnessFx(action, selected.name);
-    setFx(spent.sundayBonus ? { ...event, line: `${event.line} 周日的田边多亮了一下。` } : event);
+    const replied = `${event.line} ${socialReply(action)}`;
+    setFx({
+      ...event,
+      line: spent.sundayBonus ? `${replied} 周日的田边多亮了一下。` : replied,
+      duration: 1400,
+    });
     beginUndo(selected.name, false);
     const today = shanghaiClock().ymd;
-    commitPlay((current) => noteKindness(current, today));
+    const name = selected.name;
+    commitPlay((current) => {
+      const noted = noteKindness(current, today);
+      return { ...noted, familiar: bumpFamiliar(noted.familiar, name) };
+    });
     updateWave((current) => bumpChronicle(current, today, "kindness"));
+    markSocial();
   }
 
   function secretFeed() {
@@ -517,18 +589,23 @@ export function VillagePage({ initial }: Props) {
       setFx(blockedKindnessFx(selected.name, spent.line));
       return;
     }
-    updateAnon((current) => markAnonFeed(current, today.ymd, selected.name));
-    commitPlay((current) => noteKindness(markSecretDay(current, today.ymd), today.ymd));
+    const name = selected.name;
+    updateAnon((current) => markAnonFeed(current, today.ymd, name));
+    commitPlay((current) => {
+      const noted = noteKindness(markSecretDay(current, today.ymd), today.ymd);
+      return { ...noted, familiar: bumpFamiliar(noted.familiar, name) };
+    });
     const started = nowMs();
     setFx({
       id: started,
       kind: "coffee",
-      actor: selected.name,
-      line: "有人留下一杯咖啡。",
+      actor: name,
+      line: `有人留下一杯咖啡。 ${socialReply("coffee")}`,
       startedAt: started,
-      duration: 2400,
+      duration: 1400,
     });
-    beginUndo(selected.name, true);
+    markSocial();
+    beginUndo(name, true);
   }
 
   function undoLast() {
@@ -555,7 +632,11 @@ export function VillagePage({ initial }: Props) {
       setFx(blockedKindnessFx(selected.name, spent.line));
       return;
     }
-    setFx(emoteFx(selected.name, "wave"));
+    const event = emoteFx(selected.name, "wave");
+    setFx({ ...event, line: `${event.line} ${socialReply("wave")}`, duration: 1400 });
+    const name = selected.name;
+    commitPlay((current) => ({ ...current, familiar: bumpFamiliar(current.familiar, name) }));
+    markSocial();
   }
 
   function emote(kind: "stretch" | "sit" | "clap" | "wave") {
@@ -668,43 +749,47 @@ export function VillagePage({ initial }: Props) {
     if (action === "water") {
       const result = waterOnce(waveState, clock.ymd);
       setWaveLine(result.line);
-      if (result.ok) updateWave(() => result.blob);
+      if (result.ok) touchWorld(() => result.blob);
       return;
     }
     if (action === "card") {
       const name = people.find((person) => person.name !== selfName)?.name ?? people[0]?.name;
       if (name) selectOnly(name);
+      setWaveLine("看过一张信号卡。");
+      touchWorld((current) => current);
       return;
     }
     if (action === "gate") {
       visitOwnGate("在村口站了一会儿。");
+      touchWorld((current) => current);
       return;
     }
     if (action === "porch") {
-      updateWave((current) => (current.porch ? current : togglePorch(current)));
+      touchWorld((current) => (current.porch ? current : togglePorch(current)));
       setWaveLine("门灯点上了。");
       return;
     }
     if (action === "diary") {
       const result = setDiary(waveState, clock.ymd, 0);
       setWaveLine(result.line);
-      if (result.ok) updateWave(() => result.blob);
+      if (result.ok) touchWorld(() => result.blob);
       return;
     }
     if (action === "steps") {
       const before = waveState.footprints.length;
       const next = addStrollStep(waveState, nowMs());
-      if (next !== waveState) updateWave(() => next);
       setWaveLine(strollStepLine(before, next.footprints.length));
+      touchWorld(() => next);
       return;
     }
     if (action === "season") {
       rememberChore("season");
       setWaveLine("看过这一季的颜色了。");
+      touchWorld((current) => current);
       return;
     }
     if (action === "pin") {
-      updateWave((current) => {
+      touchWorld((current) => {
         const target = current.pins.includes(selfName)
           ? people.find((person) => !current.pins.includes(person.name))?.name
           : selfName;
@@ -714,7 +799,7 @@ export function VillagePage({ initial }: Props) {
       setWaveLine("钉了一枚名牌。");
       return;
     }
-    updateWave((current) => (current.sit ? current : sitDown(current, 640, 420)));
+    touchWorld((current) => (current.sit ? current : sitDown(current, 640, 420)));
     setWaveLine("把锄头放下，在长椅上坐下了。");
   }
 
@@ -729,15 +814,26 @@ export function VillagePage({ initial }: Props) {
         <div className="hud-title">像素公司村</div>
         <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
-            <p className="text-[11px] tracking-[0.22em] text-[#8a5528]">COZY COMPANY FARM</p>
-            <p className="text-sm text-[#4a3a28]" data-testid="score-date" data-honesty={dateCopy.fresh ? "fresh" : "stale"}>
-              {dateCopy.headline} · 有分 {scoredCount} 人
-              {placeholderCount > 0 ? ` · 未评分 ${placeholderCount} 人` : ""}
+            <p className="text-sm text-[#2a1a10]" data-testid="village-glance">
+              {glanceLine({
+                season: season.label,
+                weather: weatherFor(clock.ymd).label,
+                light: lightLabel(clock.hour),
+                selfName,
+              })}
             </p>
-            <p className="text-xs text-[#6a3d18]">{dateCopy.detail}</p>
-            <p className="text-xs text-[#6a3d18]" data-testid="last-score-sync">
-              {loading ? "正在刷新…" : playSnap.syncedAt ? `上次成功 ${playSnap.syncedAt}` : "还没有成功读到分数"}
-            </p>
+            <details data-testid="score-meta">
+              <summary className="cursor-pointer text-xs text-[#6a3d18]">分数从哪来</summary>
+              <p className="mt-1 text-sm text-[#4a3a28]" data-testid="score-date" data-honesty={dateCopy.fresh ? "fresh" : "stale"}>
+                {dateCopy.headline}
+                {` · 有分 ${scoredCount} 人`}
+                {placeholderCount > 0 ? ` · 未评分 ${placeholderCount} 人` : ""}
+              </p>
+              <p className="text-xs text-[#6a3d18]">{dateCopy.detail}</p>
+              <p className="text-xs text-[#6a3d18]" data-testid="last-score-sync">
+                {loading ? "正在刷新…" : playSnap.syncedAt ? `上次成功 ${playSnap.syncedAt}` : "还没有成功读到分数"}
+              </p>
+            </details>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="hud-btn" onClick={refresh} disabled={loading} data-testid="refresh-scores" data-loading={loading ? "1" : "0"}>
@@ -749,6 +845,13 @@ export function VillagePage({ initial }: Props) {
           </div>
         </div>
       </header>
+
+      {ritual && !ritualDone(ritual) ? (
+        <RitualGuide
+          flags={ritual}
+          onSkip={() => setRitual((current) => (current ? { ...current, skip: true } : current))}
+        />
+      ) : null}
 
       {broadcast && dismissedBroadcast !== broadcastKey ? (
         <div className="hud-panel flex items-center justify-between gap-3 px-3 py-2" data-testid="village-broadcast">
@@ -934,6 +1037,8 @@ export function VillagePage({ initial }: Props) {
               person={selected}
               dataDateLabel={dateCopy.headline}
               dataDateDetail={dateCopy.detail}
+              scoreFresh={dateCopy.fresh}
+              familiarLevel={familiarity[selected.name] ?? 0}
               disclaimer={payload.disclaimer}
               line={fx && fx.actor === selected.name ? fx.line : null}
               waveHint={waveHint({
@@ -1008,16 +1113,19 @@ export function VillagePage({ initial }: Props) {
           setWaveLine(result.line);
           if (result.ok) updateWave(() => result.blob);
         }}
-        onPorch={() => updateWave((current) => togglePorch(current))}
+        onPorch={() => {
+          touchWorld((current) => togglePorch(current));
+          setWaveLine(waveState.porch ? "门灯灭了。" : "门灯点上了。");
+        }}
         onWater={() => {
           if (!selfName) return;
           const result = waterOnce(waveState, clock.ymd);
           setWaveLine(result.line);
-          if (result.ok) updateWave(() => result.blob);
+          if (result.ok) touchWorld(() => result.blob);
         }}
         onBench={() => {
           if (!selfName) return;
-          updateWave((current) => sitDown(current, 640, 420));
+          touchWorld((current) => sitDown(current, 640, 420));
           setWaveLine(waveState.sit ? "从长椅上站起来了。" : "在空地上坐下了。");
         }}
         pinHint={pinHint}
@@ -1035,7 +1143,7 @@ export function VillagePage({ initial }: Props) {
           }
           const result = playYard(waveState.yard, id, clock.ymd, systemOn(waveState, "yard"));
           setWaveLine(result.line);
-          if (result.ok) updateWave((current) => ({ ...current, yard: result.yard }));
+          if (result.ok) touchWorld((current) => ({ ...current, yard: result.yard }));
         }}
         onHome={() => {
           if (!selfName) {
@@ -1044,6 +1152,8 @@ export function VillagePage({ initial }: Props) {
           }
           visitOwnGate();
         }}
+        reduced={motion.reduced}
+        onReduceMotion={(on) => saveComfort({ ...comfort, reduceMotion: on, motionOverride: true })}
         onPostcard={() => {
           const meta = postcardMeta(selfName, clock.ymd);
           const canvas = document.querySelector("canvas[data-testid='village-map']") as HTMLCanvasElement | null;
@@ -1124,7 +1234,7 @@ export function VillagePage({ initial }: Props) {
                   type="button"
                   data-roster-item
                   data-roster-name={person.name}
-                  aria-label={`${person.name}，${person.scored ? "有分" : "未评分"}`}
+                  aria-label={`${person.name}，${person.scored ? "琥珀名牌" : "灰名牌"}`}
                   aria-expanded={active}
                   aria-controls="signal-card-dialog"
                   aria-current={active ? "true" : undefined}
@@ -1139,7 +1249,10 @@ export function VillagePage({ initial }: Props) {
                     </div>
                     <div className="text-xs text-[#6a3d18]">{rosterLine(person, comfort.hideScores, person.name === selfName)}</div>
                   </div>
-                  <span className="hud-chip">{person.scored ? STATE_LABELS[person.state] : "未评分"}</span>
+                  <span className="hud-chip">
+                    <i className={person.scored ? "swatch swatch-scored" : "swatch swatch-muted"} aria-hidden />
+                    {person.scored ? STATE_LABELS[person.state] : "灰着"}
+                  </span>
                 </button>
               );
             })}
@@ -1157,7 +1270,7 @@ export function VillagePage({ initial }: Props) {
           ))}
         </div>
         <p className="text-xs leading-5 text-[#4a3a28]/80">
-          小人动作只看评分日的 work / fish / on_task，消息只计条数。未评分的人是灰猫。这是玩乐雷达，不是评价同事。
+          小人动作只看评分日的 work / fish / on_task，消息只计条数。灰着的人是灰猫。这是玩乐雷达，不是评价同事。
         </p>
         <p className="disclaimer-banner text-xs">{payload.disclaimer}</p>
         <p className="text-xs leading-5 text-[#6a3d18]/80">
@@ -1188,7 +1301,7 @@ function VillageHelp() {
     <details className="hud-panel" data-testid="village-help">
       <summary className="hud-title cursor-pointer">村里图例</summary>
       <div className="space-y-2 px-3 py-3 text-sm text-[#2a1a10]">
-        <p>琥珀名牌是有分的彩猫，灰名牌是未评分的灰猫。远景默认收起名牌，点「全显」可以都打开。</p>
+        <p>琥珀是彩猫，灰是灰猫。远景最多八块名牌，拉近或点「全显」会多出来。</p>
         <p>安静村子默认开着，花瓣和广播会少很多。关掉之后，蝴蝶和萤火才会出现。</p>
         <p>干活是方块，摸鱼是波浪，在任务上是等号。颜色只是辅助，形状也分得开。</p>
         <p>这里不收录说过的话。善意、挥手和田里的小玩具都记在这台电脑的「我是谁」上。</p>
@@ -1207,7 +1320,7 @@ function moveRosterFocus(event: KeyboardEvent<HTMLButtonElement>, index: number)
 }
 
 function rosterLine(person: PersonWithState, hideScores: boolean, isSelf: boolean): string {
-  if (!person.scored) return "未评分";
+  if (!person.scored) return "灰着";
   if (hideScores && !isSelf) return "分数已收起";
   return `工 ${person.work.toFixed(2)} · 鱼 ${person.fish.toFixed(2)} · 专注 ${person.on_task.toFixed(2)} · ${person.msgs} 条`;
 }

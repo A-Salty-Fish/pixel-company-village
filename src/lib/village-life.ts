@@ -82,6 +82,8 @@ export type SceneLife = {
   bell: boolean;
   gardenCrops: Record<string, string>;
   decor?: WaveDecor | null;
+  /** Short world spark after a local chore. Cleared within 1.5s. */
+  choreJuice?: boolean;
 };
 
 export const DEFAULT_COMFORT: Comfort = {

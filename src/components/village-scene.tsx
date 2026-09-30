@@ -432,6 +432,8 @@ export function VillageScene({
       data-sitting={life.decor?.sit ? "1" : "0"}
       data-season={life.decor?.seasonId ?? ""}
       data-week-ribbon={life.decor?.weekRibbon ? "1" : "0"}
+      data-plate-cap={zoom < 2 && !life.showAllPlates ? "8" : "all"}
+      data-chore-juice={life.choreJuice ? "1" : "0"}
     >
       {shownStage === "timeout" || shownStage === "failed" ? (
         <div className="load-recovery" data-testid="load-recovery">
@@ -475,12 +477,12 @@ export function VillageScene({
       ) : null}
       <div className="name-legend" data-testid="name-legend">
         <span>
-          <i className="swatch swatch-scored" /> 彩猫 · 琥珀名牌 · 有分
+          <i className="swatch swatch-scored" /> 琥珀
         </span>
         <span>
-          <i className="swatch swatch-muted" /> 灰猫 · 灰名牌 · 未评分
+          <i className="swatch swatch-muted" /> 灰
         </span>
-        <span>远景先收起名牌</span>
+        <span>远景最多八块名牌</span>
       </div>
       {life.selfName && onEmote ? (
         <div className="emote-bar" data-testid="emote-bar">

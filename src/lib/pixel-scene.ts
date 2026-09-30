@@ -4,6 +4,7 @@ import { VILLAGE_CAPACITY } from "@/lib/capacity";
 import { FLOWER_MARK_CAP, GATHER_SPOTS, GLYPH_BUDGET, PARTICLE_BUDGET, VIEWPOINTS } from "@/lib/play-systems";
 import { artReady, drawSprite, spriteFrame, type SpriteFrame } from "@/lib/sprites";
 import type { PersonWithState } from "@/lib/types";
+import { farPlates } from "@/lib/ritual";
 import { availabilityFor, glyphFor, ringClosure, shanghaiClock, type SceneLife } from "@/lib/village-life";
 
 export const WORLD_W = 1216;
@@ -1242,6 +1243,15 @@ export function paintVillage(
       drawSeasonSpeck(ctx, life.decor.seasonId, sx, sy);
     }
   }
+  if (life?.choreJuice) {
+    const bob = life.reduceMotion ? 0 : Math.round(Math.sin(t / 90) * 2);
+    ctx.fillStyle = "#f2d15c";
+    for (let i = 0; i < 5; i += 1) {
+      ctx.fillRect(Math.round(viewW / 2 - 16 + i * 7), Math.round(viewH / 2 - 28 + bob), 3, 3);
+    }
+    ctx.fillStyle = "#fff6d8";
+    ctx.fillRect(Math.round(viewW / 2 - 2), Math.round(viewH / 2 - 36 + bob), 3, 3);
+  }
   drawNameLabels(ctx, villagers, zoom, camX, camY, emphasize, viewW, viewH, dpr, life);
 }
 
@@ -1272,6 +1282,17 @@ export function drawNameLabels(
   const placed: { x: number; y: number; w: number; h: number }[] = [];
   const showAll = Boolean(life?.showAllPlates);
   const pins = new Set(life?.decor?.pins ?? []);
+  const far = zoom < 2 && !showAll;
+  const allowed = far
+    ? new Set(
+        farPlates({
+          selfName: life?.selfName ?? null,
+          selected: [...emphasize],
+          pins: [...pins],
+          neighbors: spatialNeighbors(villagers, life?.selfName ?? null),
+        }),
+      )
+    : null;
 
   const ordered = [...villagers].sort((a, b) => {
     const ah = emphasize.has(a.name) || pins.has(a.name) ? 0 : 1;
@@ -1283,7 +1304,7 @@ export function drawNameLabels(
   for (const person of ordered) {
     const pinned = pins.has(person.name);
     const hot = emphasize.has(person.name) || pinned;
-    if (zoom < 2 && !hot && !showAll) continue;
+    if (allowed && !allowed.has(person.name)) continue;
     const mode: LabelMode = hot ? "hot" : person.scored ? "scored" : "muted";
     const sprite = getLabelSprite(person.name, mode);
     if (!sprite) continue;
@@ -1306,6 +1327,16 @@ export function drawNameLabels(
     const alpha = hot ? 1 : mode === "muted" ? 0.7 : 0.92;
     blitLabel(ctx, sprite, x, y, scale, alpha);
   }
+}
+
+function spatialNeighbors(villagers: PlacedVillager[], selfName: string | null) {
+  const self = villagers.find((person) => person.name === selfName);
+  const ox = self?.x ?? WORLD_W / 2;
+  const oy = self?.y ?? WORLD_H / 2;
+  return [...villagers]
+    .filter((person) => person.name !== selfName)
+    .sort((a, b) => (a.x - ox) ** 2 + (a.y - oy) ** 2 - ((b.x - ox) ** 2 + (b.y - oy) ** 2))
+    .map((person) => person.name);
 }
 
 function overlaps(

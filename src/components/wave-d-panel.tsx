@@ -41,6 +41,8 @@ type Props = {
   onHome: () => void;
   onPostcard: () => void;
   onYard: (id: YardActId) => void;
+  reduced: boolean;
+  onReduceMotion: (on: boolean) => void;
 };
 
 export function WaveDPanel(props: Props) {
@@ -56,6 +58,18 @@ export function WaveDPanel(props: Props) {
         <p className="text-xs leading-5 text-[#6a3d18]">这些都留在这台浏览器，可以关掉。不收录说过的话，也不跟别人比。</p>
         <section data-testid="wave-toggles">
           <h3 className="pixel-label">开关</h3>
+          <label className="motion-switch mt-2 flex items-start gap-2" data-testid="reduce-motion-row">
+            <input
+              type="checkbox"
+              checked={props.reduced}
+              onChange={(event) => props.onReduceMotion(event.target.checked)}
+              data-testid="reduce-motion-toggle"
+            />
+            <span>
+              <span className="block text-sm">减动开关</span>
+              <span className="block text-xs text-[#6a3d18]">跟着系统的减少动态。打开后，装饰停住。</span>
+            </span>
+          </label>
           <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
             {WAVE_SYSTEMS.map((id) => (
               <label key={id} className="flex items-center gap-2 text-xs">

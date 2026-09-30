@@ -157,6 +157,10 @@ No dimension is under 6. Quiet default is calmer (`data-particle-budget=0`). Sho
 | H23 | SKIPPED | script ready in `e2e/prod-readonly.spec.ts`; production password not available here |
 | H24 | PASS | `CHANGELOG.md` |
 
+## PV-PM ritual
+
+Branch `cursor/wave-d-pm-ritual-9062` from `4f1df69`. First glance is season, weather, light, and self. Score counts sit behind 「分数从哪来」. Stale days use 「分数来自某日 · 村里仍是此刻」. Far plates cap at 8. Chores leave a footprint and a short spark. Waves and kindness get a canned reply and a local familiarity bump. The first-visit guide is three steps and never opens a card by itself. 减动开关 is under 村里新事 → 开关.
+
 ## Wave C regression
 
 Existing `npm test` and `e2e/wave-c.spec.ts`, `festival.spec.ts`, `quotas.spec.ts`, `relogin.spec.ts` stayed green. No Redis, chat text, shame board, or secret edits.

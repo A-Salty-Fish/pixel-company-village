@@ -101,8 +101,8 @@ test("human tags do not imply chat", () => {
 test("data date copy refuses to call a stale day today", () => {
   const stale = scoreDateCopy("2026-09-24", "2026-09-29");
   assert.equal(stale.fresh, false);
-  assert.match(stale.headline, /最近一次评分日 2026-09-24/);
-  assert.match(stale.detail, /2026-09-29/);
+  assert.equal(stale.headline, "分数来自2026-09-24 · 村里仍是此刻");
+  assert.match(stale.detail, /此刻/);
   const fresh = scoreDateCopy("2026-09-29", "2026-09-29");
   assert.equal(fresh.fresh, true);
   assert.match(fresh.detail, /同一天/);

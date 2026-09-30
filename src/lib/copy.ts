@@ -1,18 +1,9 @@
 /** Honest date lines and other canned UI copy. No chat text. */
 
+import { momentCopy } from "./ritual";
+
 export function scoreDateCopy(dataDate: string, today: string) {
-  if (dataDate === today) {
-    return {
-      fresh: true as const,
-      headline: `数据日 ${dataDate}`,
-      detail: "和今天是同一天。",
-    };
-  }
-  return {
-    fresh: false as const,
-    headline: `最近一次评分日 ${dataDate}`,
-    detail: `不是日历上的今天（${today}）。`,
-  };
+  return momentCopy(dataDate, today);
 }
 
 /** Local kindness is not the score day. Use a different label when the score day is stale. */

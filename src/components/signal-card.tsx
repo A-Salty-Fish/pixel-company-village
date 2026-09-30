@@ -13,6 +13,8 @@ type Props = {
   person: PersonWithState;
   dataDateLabel: string;
   dataDateDetail: string;
+  scoreFresh: boolean;
+  familiarLevel: number;
   disclaimer: string;
   line: string | null;
   waveHint: string;
@@ -61,7 +63,7 @@ export function SignalCard(props: Props) {
   const showScores = person.scored && (!props.hideScores || props.isSelf);
   const rings = ringClosure(person);
   const pending = KINDNESS_MENU.find((item) => item.id === menu);
-  const actionLabel = interactionLabel(!props.dataDateDetail.includes("不是日历上的今天"));
+  const actionLabel = interactionLabel(props.scoreFresh);
   const closeRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(props.onClose);
   useEffect(() => {
@@ -99,8 +101,14 @@ export function SignalCard(props: Props) {
       <div className="signal-sheet-body space-y-3 px-3 py-3">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <h2 className="pixel-title text-[#2a1a10]">{props.person.name}</h2>
-          <span className="hud-chip">{props.person.scored ? STATE_LABELS[props.person.state] : "未评分"}</span>
+          <span className="hud-chip">
+            <i className={props.person.scored ? "swatch swatch-scored" : "swatch swatch-muted"} aria-hidden />
+            {props.person.scored ? STATE_LABELS[props.person.state] : "未评分"}
+          </span>
         </div>
+        <p className="text-xs text-[#6a3d18]" data-testid="familiar-note">
+          {props.familiarLevel > 0 ? `熟识 ${props.familiarLevel}/3。` : "还没熟。挥一次手就会近一点。"}
+        </p>
         <p className="pixel-label text-[#6a3d18]" data-testid="data-date">
           {props.dataDateLabel}。{props.dataDateDetail}
         </p>
