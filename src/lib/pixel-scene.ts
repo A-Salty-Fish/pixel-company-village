@@ -19,6 +19,10 @@ import {
 } from "@/lib/worldcraft";
 import { ritualSeal } from "@/lib/header-ritual";
 import { paintNightWash } from "@/features/night-wash/night-wash";
+import { ambientPixels, ambientSpecks } from "@/features/ambient-life/ambient-life";
+import { kindnessGlowPixels } from "@/features/kindness-footprint-glow/kindness-footprint-glow";
+import { seasonGroundProps } from "@/features/season-ground-props/season-ground-props";
+import { selfYardPixels } from "@/features/self-yard-marker/self-yard-marker";
 
 export const WORLD_W = 1216;
 export const WORLD_H = 1120;
@@ -638,6 +642,8 @@ function drawVillager(
     y -= Math.abs(Math.sin(t * 3)) * 3;
   }
   if (life?.bondMarks?.includes(person.name)) {
+    // kindness-footprint-glow checkpoint
+    paintPixels(ctx, kindnessGlowPixels(x, y));
     ctx.fillStyle = "#f2d15c";
     ctx.fillRect(Math.round(x + 12), Math.round(y - 10), 3, 3);
     ctx.fillStyle = "#6a3d18";
@@ -1294,6 +1300,25 @@ function drawActors(
   for (const name of proximityNods(self ?? null, villagers)) nearNames.add(name);
   const home = self ? { x: self.homeX + 48, y: self.homeY + 24 } : null;
   paintPixels(ctx, landmarkPixels(home));
+  // self-yard-marker checkpoint: still roof pin, separate from the find-me ring
+  paintPixels(ctx, selfYardPixels(home));
+  // ambient-life + season-ground-props checkpoints (paint only; hitTest is unchanged)
+  if (life) {
+    const specks = ambientSpecks(Boolean(life.quiet), Boolean(life.reduceMotion));
+    for (const speck of specks) {
+      queue.push({
+        sort: speck.y,
+        draw: () => paintPixels(ctx, ambientPixels([speck], t)),
+      });
+    }
+    const clutter = seasonGroundProps(life.decor?.seasonId ?? "", Boolean(life.quiet));
+    if (clutter.length > 0) {
+      queue.push({
+        sort: 2,
+        draw: () => paintPixels(ctx, clutter),
+      });
+    }
+  }
   if (life?.craft) paintPixels(ctx, chorePixels(life.craft));
   if (life?.ritual?.done) paintPixels(ctx, ritualSeal(life.ritual.beat));
   if (self) {
