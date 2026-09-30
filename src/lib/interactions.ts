@@ -88,12 +88,32 @@ export function emoteFx(actor: string, kind: "stretch" | "sit" | "clap" | "wave"
 export const SOCIAL_WAVE_REPLY = "对方也挥了回来。";
 export const SOCIAL_KIND_REPLY = "对方点了点头，回了一颗小种子。";
 
+const KIND_REPLIES: Partial<Record<FxKind, string>> = {
+  seed: SOCIAL_KIND_REPLY,
+  coffee: "对方捧着杯子，也点了点头。",
+  rod: "对方晃了晃钓竿，算是回礼。",
+  pair: "对方也浇了两下，水光还在。",
+};
+
+export type SocialReply = "wave" | "kind";
+
+/** Canned return for a wave or a kindness. No names, no stored text. */
+export function socialReplyFor(kind: FxKind): { reply: SocialReply; line: string } | null {
+  if (kind === "wave") return { reply: "wave", line: SOCIAL_WAVE_REPLY };
+  if (!isKindnessKind(kind)) return null;
+  return { reply: "kind", line: KIND_REPLIES[kind] ?? SOCIAL_KIND_REPLY };
+}
+
 /** A wave or kindness toward someone else gets one canned reply. Nothing is stored. */
 export function withSocialReply(fx: VillageFx, selfName: string | null): VillageFx {
-  if (!selfName || fx.actor === selfName) return fx;
-  if (fx.kind === "wave") return { ...fx, partner: selfName, line: `${fx.line} ${SOCIAL_WAVE_REPLY}` };
-  if (isKindnessKind(fx.kind)) return { ...fx, partner: selfName, line: `${fx.line} ${SOCIAL_KIND_REPLY}` };
-  return fx;
+  const reply = socialReplyFor(fx.kind);
+  if (!selfName || fx.actor === selfName || !reply) return fx;
+  return { ...fx, partner: selfName, line: `${fx.line} ${reply.line}` };
+}
+
+export function socialReplyMark(fx: VillageFx | null, selfName: string | null): SocialReply | null {
+  if (!fx || !selfName || fx.partner !== selfName) return null;
+  return socialReplyFor(fx.kind)?.reply ?? null;
 }
 
 export function rollOpeningEvent(name: string, people: PersonWithState[], random = Math.random) {

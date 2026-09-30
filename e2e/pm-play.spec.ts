@@ -20,6 +20,10 @@ test("first-run guide names 减动开关 and stays dismissed", async ({ page }) 
   await expect(guide).toContainText("减动开关");
   await expect(guide).toContainText("村里新事");
   await expect(page.locator("[data-village-host='ready']")).toHaveAttribute("data-quiet", "1");
+  await page.getByTestId("first-run-motion").click();
+  await expect(page.getByTestId("wave-d-panel")).toHaveAttribute("open", "");
+  await expect(page.getByTestId("wave-toggles").getByText("减动开关", { exact: true })).toBeVisible();
+  await expect(page.locator("[data-village-host='ready']")).toHaveAttribute("data-quiet", "1");
   await page.getByTestId("first-run-dismiss").click();
   await expect(guide).toHaveCount(0);
   await page.reload();
@@ -64,5 +68,14 @@ test("a wave gets a canned reply from the other person", async ({ page }) => {
   const card = page.getByTestId("signal-card");
   await card.getByRole("button", { name: "挥手" }).click();
   await expect(card).toContainText("对方也挥了回来。");
+  await expect(card.locator("[data-event-line]")).toHaveAttribute("data-social-reply", "wave");
+  await expect(page.locator("[data-village-host='ready']")).toHaveAttribute("data-quiet", "1");
+});
+
+test("closed yard panels show how many loops were touched", async ({ page }) => {
+  await login(page);
+  await expect(page.getByTestId("loop-summary-tally")).toHaveText("0/10");
+  await expect(page.getByTestId("nook-summary-tally")).toHaveText("0/10");
+  await expect(page.getByTestId("village-loops")).not.toHaveAttribute("open", "");
   await expect(page.locator("[data-village-host='ready']")).toHaveAttribute("data-quiet", "1");
 });

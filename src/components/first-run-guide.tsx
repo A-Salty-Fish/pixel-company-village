@@ -32,7 +32,7 @@ function dismiss() {
   emit();
 }
 
-export function FirstRunGuide() {
+export function FirstRunGuide({ onShowMotion }: { onShowMotion?: () => void }) {
   const seen = useSyncExternalStore(subscribe, readSeen, () => true);
   if (seen) return null;
   return (
@@ -43,9 +43,19 @@ export function FirstRunGuide() {
           <li key={line}>{line}</li>
         ))}
       </ol>
-      <button type="button" className="hud-btn mt-3" data-testid="first-run-dismiss" onClick={dismiss}>
-        知道了
-      </button>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="button" className="hud-btn" data-testid="first-run-dismiss" onClick={dismiss}>
+          知道了
+        </button>
+        <button
+          type="button"
+          className="hud-btn hud-btn-ghost"
+          data-testid="first-run-motion"
+          onClick={() => onShowMotion?.()}
+        >
+          去看减动开关
+        </button>
+      </div>
     </section>
   );
 }

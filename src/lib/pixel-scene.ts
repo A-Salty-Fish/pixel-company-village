@@ -558,9 +558,13 @@ function drawVillager(
   if (onActor && fx?.kind === "scare" && elapsed < 0.45) drawBang(ctx, x + 8, y - 40);
   if (onActor && fx?.kind === "stretch") y -= life?.reduceMotion ? 2 : Math.sin(elapsed * 8) * 5;
   if (onActor && fx?.kind === "wave") drawWave(ctx, x + 12, y - 46 - (life?.reduceMotion ? 0 : Math.sin(elapsed * 8) * 3));
-  if (fx && fx.partner === person.name && (fx.kind === "wave" || isKindnessKind(fx.kind))) {
+  if (fx && fx.partner === person.name && fx.kind === "wave") {
     const bob = life?.reduceMotion ? 0 : Math.sin(elapsed * 8) * 3;
     drawWave(ctx, x - 16, y - 46 - bob);
+  }
+  if (fx && fx.partner === person.name && isKindnessKind(fx.kind)) {
+    ctx.fillStyle = "#6aaa3a";
+    ctx.fillRect(Math.round(x - 18), Math.round(y - 42), 4, 4);
   }
   if (onActor && fx?.kind === "clap") drawClap(ctx, x + 8, y - 30);
   if (!person.scored) {
