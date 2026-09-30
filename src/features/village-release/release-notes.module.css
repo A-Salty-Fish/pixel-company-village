@@ -1,0 +1,56 @@
+/* village-release. Set RELEASE_NOTES_ENABLED to false and drop the imports to hide. */
+
+.chip {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0.55rem;
+  color: #2a1a10;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  background: #fff6d8;
+  border: 3px solid #6a3d18;
+  box-shadow: 2px 2px 0 #3d2a1c;
+}
+
+.chip:hover,
+.chip:focus-visible {
+  background: #f2d15c;
+}
+
+.board {
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.release + .release {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 2px dashed #c4a060;
+}
+
+.date {
+  margin: 0.15rem 0 0;
+  color: #6a3d18;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.notes {
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note {
+  margin: 0.28rem 0 0;
+  padding-left: 0.9rem;
+  color: #2a1a10;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  background: linear-gradient(#8a5528, #8a5528) 0 0.55em / 6px 6px no-repeat;
+}

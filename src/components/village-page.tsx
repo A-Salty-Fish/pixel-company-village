@@ -41,6 +41,7 @@ import { SCORE_DAY_LINE, scoreDayMark } from "@/features/score-day-immersion/sco
 import scoreDayStyles from "@/features/score-day-immersion/score-day-immersion.module.css";
 import { sfxMark } from "@/features/light-sfx/light-sfx";
 import { LightSfxBridge } from "@/features/light-sfx/sfx-bridge";
+import { ReleaseChip, ReleaseNotes } from "@/features/village-release/release-notes";
 import { POST_WEEK_PRESENCE_ENABLED, loadGlance, presencePhase, storeGlance, type GlanceSave } from "@/features/post-week-presence/presence";
 import { PostWeekPresence } from "@/features/post-week-presence/presence-view";
 import {
@@ -934,7 +935,10 @@ export function VillagePage({ initial }: Props) {
       <header ref={headerRef} className="hud-panel village-header" data-testid="village-header">
         <div className="village-header-row">
           <div className="min-w-0 flex-1">
-            <p className="pixel-label text-[#2a1a10]">像素公司村</p>
+            <div className="flex items-center gap-2">
+              <p className="pixel-label text-[#2a1a10]">像素公司村</p>
+              <ReleaseChip />
+            </div>
             <p className="glance-line text-xs text-[#2a1a10]" data-testid="village-glance">
               {glanceLine({
                 season: season.label,
@@ -1300,6 +1304,7 @@ export function VillagePage({ initial }: Props) {
         onSelf={(name, nextPreset) => saveSelf(name, name ? nextPreset : null)}
         motionReduced={motion.reduced}
       />
+      <ReleaseNotes />
       <VillageHelp />
 
       <WaveDPanel
