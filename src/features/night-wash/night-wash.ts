@@ -94,6 +94,9 @@ export function paintNightWash(ctx: CanvasRenderingContext2D, input: PaintInput)
     ctx.fillRect(0, 0, input.viewW, input.viewH);
     return { mode: "flat" as const, windows: 0 };
   }
+  ctx.save();
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = "source-over";
   ctx.fillStyle = look.tint;
   ctx.fillRect(0, 0, input.viewW, input.viewH);
   const cx = input.viewW / 2;
@@ -120,5 +123,6 @@ export function paintNightWash(ctx: CanvasRenderingContext2D, input: PaintInput)
     ctx.fillRect(sx + 1, sy + 1, Math.max(2, w * 0.45), Math.max(1, h * 0.4));
     windows += 1;
   }
+  ctx.restore();
   return { mode: "cool" as const, windows };
 }

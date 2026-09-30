@@ -1,15 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { login, openWeekBoard, roster } from "./login";
 
-async function waitFrames(page: Page) {
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      }),
-  );
-}
-
 async function mapAverage(page: Page) {
   return page.evaluate(() => {
     const canvas = document.querySelector("canvas[data-testid='village-map']") as HTMLCanvasElement | null;
@@ -67,29 +58,32 @@ test("PV-PM-014 night wash stays readable when motion is reduced", async ({ page
   await page.getByTestId("quiet-toggle").uncheck();
   const host = page.locator("[data-village-host='ready']");
 
+  const canvas = page.locator("canvas[data-testid='village-map']");
   await page.evaluate(() => window.__VILLAGE_TEST__?.setClock("2026-09-30T04:00:00.000Z"));
   await expect(host).toHaveAttribute("data-night", "0");
   await expect(host).toHaveAttribute("data-night-wash", "off");
-  await waitFrames(page);
+  await expect(canvas).toHaveAttribute("data-night-paint", "off");
   const day = await mapAverage(page);
 
   await page.evaluate(() => window.__VILLAGE_TEST__?.setClock("2026-09-30T13:00:00.000Z"));
   await expect(host).toHaveAttribute("data-night", "1");
   await expect(host).toHaveAttribute("data-night-wash", "cool");
   await expect(host).toHaveAttribute("data-night-static", "0");
-  await waitFrames(page);
+  await expect(canvas).toHaveAttribute("data-night-paint", "cool");
   const night = await mapAverage(page);
-  expect(night.b).toBeGreaterThan(day.b + 4);
-  expect(night.g).toBeLessThan(day.g - 4);
+  expect(day.g - day.b).toBeGreaterThan(night.g - night.b + 24);
+  expect(night.g).toBeLessThan(day.g - 20);
+  expect(night.r).toBeLessThan(day.r - 20);
 
   await page.getByTestId("comfort-decor").locator("> summary").click();
   await page.getByRole("checkbox", { name: /减少动作/ }).check();
   await expect(host).toHaveAttribute("data-night-wash", "cool");
   await expect(host).toHaveAttribute("data-night-static", "1");
-  await waitFrames(page);
+  await expect(canvas).toHaveAttribute("data-night-paint", "cool");
   const still = await mapAverage(page);
-  expect(still.b).toBeGreaterThan(day.b + 4);
-  expect(Math.abs(still.b - night.b)).toBeLessThan(18);
+  expect(day.g - day.b).toBeGreaterThan(still.g - still.b + 24);
+  expect(Math.abs(still.g - night.g)).toBeLessThan(12);
+  expect(Math.abs(still.b - night.b)).toBeLessThan(12);
 });
 
 test("PV-PM-015 replaces finished chores with a world summary", async ({ page }) => {

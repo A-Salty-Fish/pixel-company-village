@@ -277,6 +277,9 @@ export function VillageScene({
       );
       host.dataset.plateCount = String(plateCount);
       canvas.dataset.villageReady = "1";
+      // PV-PM-014 checkpoint
+      canvas.dataset.nightPaint =
+        lifeRef.current?.decor?.night && NIGHT_WASH_ENABLED ? "cool" : "off";
     };
 
     const toWorld = (clientX: number, clientY: number) => {
