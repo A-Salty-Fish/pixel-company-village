@@ -6,12 +6,14 @@ export function scoreDateCopy(dataDate: string, today: string) {
       fresh: true as const,
       headline: `数据日 ${dataDate}`,
       detail: "和今天是同一天。",
+      refresh: "刷新今日分数",
     };
   }
   return {
     fresh: false as const,
     headline: `最近一次评分日 ${dataDate}`,
-    detail: `不是日历上的今天（${today}）。`,
+    detail: `不是日历上的今天（${today}）。分数仍停在评分日。`,
+    refresh: "刷新评分日",
   };
 }
 

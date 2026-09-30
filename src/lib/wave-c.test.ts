@@ -106,6 +106,11 @@ test("data date copy refuses to call a stale day today", () => {
   const fresh = scoreDateCopy("2026-09-29", "2026-09-29");
   assert.equal(fresh.fresh, true);
   assert.match(fresh.detail, /同一天/);
+  assert.equal(fresh.refresh, "刷新今日分数");
+  assert.equal(stale.refresh, "刷新评分日");
+  assert.equal(stale.refresh.includes("今日"), false);
+  assert.equal(stale.detail.includes("今日"), false);
+  assert.match(stale.detail, /分数仍停在评分日/);
 });
 
 test("familiarity stays a private step function", () => {

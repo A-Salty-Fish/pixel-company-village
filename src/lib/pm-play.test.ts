@@ -50,7 +50,16 @@ test("wave and kindness toward someone else get one canned reply", () => {
   assert.equal(coffee?.reply, "kind");
   assert.notEqual(coffee?.line, SOCIAL_KIND_REPLY);
   assert.notEqual(rod?.line, coffee?.line);
-  assert.equal(copyIsClean([wave.line, kind.line, coffee?.line ?? "", rod?.line ?? "", ...GUIDE_LINES]), true);
+  const closeWave = socialReplyFor("wave", 3);
+  assert.equal(closeWave?.reply, "wave");
+  assert.notEqual(closeWave?.line, SOCIAL_WAVE_REPLY);
+  const closeKind = withSocialReply(kindnessFx("seed", "林小满"), "周野", 3);
+  assert.match(closeKind.line, /熟土/);
+  assert.equal(closeKind.line.includes(SOCIAL_KIND_REPLY), false);
+  assert.equal(
+    copyIsClean([wave.line, kind.line, coffee?.line ?? "", rod?.line ?? "", closeWave?.line ?? "", closeKind.line, ...GUIDE_LINES]),
+    true,
+  );
   assert.match(GUIDE_LINES.join(""), /村里小玩/);
 });
 
