@@ -19,6 +19,7 @@ import type { VillageFx } from "@/lib/interactions";
 import { deriveLoadStage, loadStageLabel, type LoadStage } from "@/lib/load-machine";
 import { hitSpot } from "@/lib/play-systems";
 import type { PersonWithState } from "@/lib/types";
+import { WEATHER_NOTES } from "@/lib/map-craft";
 import { EASING, particleAllowance } from "@/lib/wave-d";
 import { availabilityFor, shanghaiClock, type SceneLife } from "@/lib/village-life";
 
@@ -462,8 +463,9 @@ export function VillageScene({
         </p>
       )}
       {life.decor?.showWeather ? (
-        <div className="weather-chip" data-testid="weather-chip">
-          村口 · {life.decor.weatherLabel}
+        <div className="weather-chip" data-testid="weather-chip" data-weather={life.decor.weatherId}>
+          <span>村口 · {life.decor.weatherLabel}</span>
+          <span className="weather-note">{WEATHER_NOTES[life.decor.weatherId]}</span>
         </div>
       ) : null}
       <div className="name-legend" data-testid="name-legend">
@@ -473,7 +475,7 @@ export function VillageScene({
         <span>
           <i className="swatch swatch-muted" /> 灰猫 · 灰名牌 · 未评分
         </span>
-        <span>远景先收起名牌</span>
+        <span>远景先收起名牌，小人仍描深边</span>
       </div>
       {life.selfName && onEmote ? (
         <div className="emote-bar" data-testid="emote-bar">

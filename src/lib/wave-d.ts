@@ -3,6 +3,8 @@
  * No chat text, no rankings, no server quota.
  */
 
+import { WEATHER_NOTES } from "@/lib/map-craft";
+
 export const SEASON_FADE_MS = 400;
 export const NOD_THRESHOLD = 2;
 export const PIN_CAP = 3;
@@ -629,6 +631,7 @@ export function publicCopyLines() {
     ...CANNED_DIARY,
     ...WEEK_SETS.flat(),
     ...WEATHERS.map((item) => item.label),
+    ...Object.values(WEATHER_NOTES),
     ...INSTRUMENTS.map((item) => item.label),
     visitorCopy(null, true) ?? "",
     weekBoard("2026-W39").note,
@@ -769,6 +772,7 @@ export function sanitizeWave(value: unknown): WaveDBlob {
 }
 
 export type WaveDecor = {
+  weatherId: WeatherId;
   weatherLabel: string;
   showWeather: boolean;
   footprints: { x: number; y: number; alpha: number }[];
@@ -809,6 +813,7 @@ export function buildDecor(input: {
   const { blob } = input;
   const weather = weatherFor(input.ymd);
   return {
+    weatherId: weather.id,
     weatherLabel: weather.label,
     showWeather: systemOn(blob, "weather"),
     footprints: systemOn(blob, "footprints") ? footprintMarks(blob.footprints, input.now) : [],
