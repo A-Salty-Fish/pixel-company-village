@@ -137,7 +137,7 @@ test("a bad record stays isolated and an empty roster shows the yard", async ({ 
   await expect(page.locator("[data-bad-isolated='1']")).toBeVisible();
   await expect(page.locator("[data-roster-item]").first()).toBeVisible();
   await page.evaluate(() => window.__VILLAGE_TEST__?.clearRoster());
-  await expect(page.getByTestId("empty-yard")).toContainText("名册还是空的");
+  await expect(page.getByTestId("empty-yard")).toContainText("名册空着");
 });
 
 test("narrow split can open the map or the card", async ({ page }) => {
