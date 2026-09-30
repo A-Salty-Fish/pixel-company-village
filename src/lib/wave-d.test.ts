@@ -43,6 +43,10 @@ import {
   touchWaveDay,
   footprintMarks,
   visibleFootprints,
+  SPLIT_CARD,
+  SPLIT_MAP,
+  clampSplit,
+  stepSplit,
   undoSecondsLeft,
   undoStillOpen,
   visitorCopy,
@@ -167,6 +171,12 @@ test("footprints, stroll, bench, wreath, atlas, and layout stay bounded", () => 
   assert.equal(undoSecondsLeft(until, until - 4_000), 3);
   assert.equal(undoSecondsLeft(until, until), 0);
   assert.equal(undoStillOpen(until, until - 2_500), true);
+  assert.equal(clampSplit(0.1), 0.28);
+  assert.equal(clampSplit(0.9), SPLIT_MAP);
+  assert.equal(clampSplit(Number.NaN), 0.46);
+  assert.equal(stepSplit(0.46, 0.04), 0.5);
+  assert.equal(stepSplit(SPLIT_CARD, -0.04), 0.28);
+  assert.equal(stepSplit(SPLIT_MAP, 0.04), SPLIT_MAP);
 });
 
 test("sanitize drops chat-shaped storage and keeps toggles", () => {

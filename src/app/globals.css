@@ -364,6 +364,8 @@ details.hud-panel {
 button:focus-visible,
 select:focus-visible,
 summary:focus-visible,
+input:focus-visible,
+a:focus-visible,
 [role="separator"]:focus-visible {
   outline: 3px solid #102010;
   outline-offset: 3px;
@@ -435,9 +437,15 @@ summary:focus-visible,
   }
 
   .split-bar {
-    display: block;
-    flex: 0 0 14px;
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 4px 0;
     cursor: row-resize;
+    touch-action: none;
     background:
       repeating-linear-gradient(90deg, #8a5528 0 8px, #c4a060 8px 10px);
     border: 3px solid #6a3d18;
@@ -602,6 +610,16 @@ summary:focus-visible,
   transition: background-color var(--season-fade) var(--ease-village), color var(--season-fade) var(--ease-village);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .season-banner {
+    transition: none;
+  }
+}
+
+.farm-page[data-reduce-motion="1"] .season-banner {
+  transition: none;
+}
+
 .empty-yard {
   display: grid;
   min-height: 280px;
@@ -649,12 +667,26 @@ summary:focus-visible,
 }
 
 @media (max-width: 899px) {
+  .farm-page {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+
+  .hud-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .hud-select,
+  summary {
+    min-height: 44px;
+  }
+
   .thumb-bar {
     display: flex;
     position: fixed;
     left: 0.5rem;
     right: 0.5rem;
-    bottom: 0.4rem;
+    bottom: calc(0.4rem + env(safe-area-inset-bottom));
     z-index: 40;
     justify-content: space-between;
     gap: 0.5rem;
@@ -663,12 +695,6 @@ summary:focus-visible,
 
   .thumb-bar .hud-btn {
     pointer-events: auto;
-  }
-
-  .split-bar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 }
 
