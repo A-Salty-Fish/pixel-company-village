@@ -100,6 +100,12 @@ export type SceneLife = {
   ritualPhase?: "fade" | "still" | "off";
   /** True when the score payload date is the clock's today. */
   scoreFresh?: boolean;
+  /** PV-PM-027. Counts only. */
+  toyLook?: { lantern: boolean; scare: number; pebbles: number } | null;
+  /** PV-PM-024 / 027 camera target. Kind is a canned id, not a sentence. */
+  mapAim?: { kind: string; x: number; y: number; at: number } | null;
+  /** Existing mute flag, so the map toggle can read it. */
+  sfxMuted?: boolean;
 };
 
 export const DEFAULT_COMFORT: Comfort = {

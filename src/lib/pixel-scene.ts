@@ -29,6 +29,10 @@ import { glanceSpot, resonancePixels } from "@/features/post-week-presence/prese
 import { autumnPaletteMark, paintAutumnPalette } from "@/features/autumn-palette/autumn-palette";
 import { afterglowAlpha, paintRitualAfterglow, type AfterglowBeat } from "@/features/ritual-afterglow/ritual-afterglow";
 import { paintScoreDayFrame, scoreDayMark } from "@/features/score-day-immersion/score-day-immersion";
+import { paintNightReadability } from "@/features/night-readability/night-readability";
+import { beatRingPixels } from "@/features/week-next-beat/next-beat";
+import { isToyId, toyFocusPixels, toyWorldPixels } from "@/features/yard-toy-focus/yard-toy-focus";
+import { plateViewport } from "@/features/nameplate-viewport/nameplate-viewport";
 
 export const WORLD_W = 1216;
 export const WORLD_H = 1120;
@@ -1335,6 +1339,13 @@ function drawActors(
       });
     }
   }
+  if (life?.toyLook) paintPixels(ctx, toyWorldPixels(life.toyLook));
+  if (life?.mapAim) {
+    const ring = isToyId(life.mapAim.kind)
+      ? toyFocusPixels(life.mapAim.x, life.mapAim.y)
+      : beatRingPixels(life.mapAim.x, life.mapAim.y);
+    paintPixels(ctx, ring);
+  }
   if (life?.craft) paintPixels(ctx, chorePixels(life.craft));
   if (life?.ritual?.done) paintPixels(ctx, ritualSeal(life.ritual.beat));
   if (self) {
@@ -1479,6 +1490,35 @@ export function paintVillage(
       reduced: Boolean(life.reduceMotion),
     });
   }
+  // PV-PM-023 checkpoint: thin structure after the dark wash
+  const nightRead = paintNightReadability(ctx, {
+    viewW,
+    viewH,
+    camX,
+    camY,
+    worldW: span.w,
+    worldH: span.h,
+    night: Boolean(NIGHT_WASH_V2_ENABLED && life?.sessionNight),
+    seasonId: life?.decor?.seasonId ?? "",
+    houses: HOUSE_FACES,
+    walkers: villagers.map((person) => ({ x: person.x, y: person.y })),
+    reduced: Boolean(life?.reduceMotion),
+  });
+  if (life?.mapAim) {
+    const ring = isToyId(life.mapAim.kind)
+      ? toyFocusPixels(life.mapAim.x, life.mapAim.y)
+      : beatRingPixels(life.mapAim.x, life.mapAim.y);
+    const scale = viewW / Math.max(1, span.w);
+    ctx.save();
+    for (const pixel of ring) {
+      const sx = ((pixel.x - camX) / span.w) * viewW;
+      const sy = ((pixel.y - camY) / span.h) * viewH;
+      ctx.fillStyle = pixel.color;
+      ctx.fillRect(sx, sy, Math.max(2, pixel.w * scale), Math.max(2, pixel.h * scale));
+    }
+    ctx.restore();
+  }
+  void nightRead;
   if (life?.decor && life.decor.stars > 0) {
     for (let i = 0; i < life.decor.stars; i += 1) {
       const sx = ((i * 97) % Math.max(1, viewW - 8)) + 4;
@@ -1567,6 +1607,17 @@ export function drawNameLabels(
     if (!sprite) continue;
     const sx = ((person.x - camX) / viewWorldW) * viewW;
     const sy = ((person.y - 28 - camY) / viewWorldH) * viewH;
+    const neighbor = Boolean(life?.neighbors?.includes(person.name));
+    const plate = plateViewport({
+      showAll,
+      zoom,
+      sx,
+      sy,
+      viewW,
+      viewH,
+      hot: hot || neighbor,
+    });
+    if (!plate.draw) continue;
     const dw = sprite.w * scale;
     const dh = sprite.h * scale;
     const x = sx - dw / 2;
@@ -1581,7 +1632,7 @@ export function drawNameLabels(
       ctx.fillStyle = FAMILIAR_RIM[level] ?? FAMILIAR_RIM[1];
       ctx.fillRect(Math.round(x - 1), Math.round(y - 1), dw + 2, dh + 2);
     }
-    const alpha = hot ? 1 : mode === "muted" ? 0.7 : 0.92;
+    const alpha = (hot ? 1 : mode === "muted" ? 0.7 : 0.92) * plate.alpha;
     blitLabel(ctx, sprite, x, y, scale, alpha);
     drawn += 1;
   }

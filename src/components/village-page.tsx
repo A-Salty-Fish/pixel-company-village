@@ -42,6 +42,27 @@ import scoreDayStyles from "@/features/score-day-immersion/score-day-immersion.m
 import { sfxMark } from "@/features/light-sfx/light-sfx";
 import { LightSfxBridge } from "@/features/light-sfx/sfx-bridge";
 import { ReleaseChip, ReleaseNotes } from "@/features/village-release/release-notes";
+import { nightReadMark } from "@/features/night-readability/night-readability";
+import {
+  nextBeatLabel,
+  nextBeatOffer,
+  pickNextBeat,
+  NEXT_BEAT_DONE,
+} from "@/features/week-next-beat/next-beat";
+import { YARD_TOY_FOCUS_ENABLED, isToyId, toyAnchor } from "@/features/yard-toy-focus/yard-toy-focus";
+import {
+  GESTURE_SFX_ENABLED,
+  ambientBedOn,
+  playGesture,
+  syncAmbientBed,
+  type GestureId,
+} from "@/features/gesture-sfx/gesture-sfx";
+import {
+  HEADER_WAVE_MS,
+  HEADER_WAVE_RECEIPT_ENABLED,
+  headerWaveLine,
+  headerWaveTarget,
+} from "@/features/header-wave-receipt/header-wave-receipt";
 import { POST_WEEK_PRESENCE_ENABLED, loadGlance, presencePhase, storeGlance, type GlanceSave } from "@/features/post-week-presence/presence";
 import { PostWeekPresence } from "@/features/post-week-presence/presence-view";
 import {
@@ -222,6 +243,10 @@ export function VillagePage({ initial }: Props) {
   const kindnessAt = useRef(0);
   const [dismissedBroadcast, setDismissedBroadcast] = useState<string | null>(null);
   const [parchment, setParchment] = useState<null | "ritual" | "week" | "season">(null);
+  const [mapAim, setMapAim] = useState<{ token: number; kind: string; x: number; y: number; at: number } | null>(null);
+  const [ambientOn, setAmbientOn] = useState(false);
+  const [gestureMark, setGestureMark] = useState<{ id: GestureId; audio: "played" | "silent" } | null>(null);
+  const [headerWave, setHeaderWave] = useState<{ line: string; until: number } | null>(null);
   const headerRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     const node = headerRef.current;
@@ -583,6 +608,11 @@ export function VillagePage({ initial }: Props) {
     scoreFresh: dateCopy.fresh,
     bondMarks: bondNames(play.bonds),
     sessionNight: sessionIsNight(clock.hour),
+    toyLook: YARD_TOY_FOCUS_ENABLED
+      ? { lantern: loopBlob.lanternGlow, scare: loopBlob.scareTips, pebbles: loopPebbles }
+      : null,
+    mapAim: mapAim ? { kind: mapAim.kind, x: mapAim.x, y: mapAim.y, at: mapAim.at } : null,
+    sfxMuted: comfort.sfxMuted,
     presenceOn:
       presencePhase({
         weekComplete: tally.complete,
@@ -597,6 +627,43 @@ export function VillagePage({ initial }: Props) {
     week: clock.weekKey,
     savedWeek: glanceMark?.week ?? null,
   });
+
+  useEffect(() => {
+    if (!GESTURE_SFX_ENABLED) return;
+    syncAmbientBed(ambientBedOn({ muted: comfort.sfxMuted, ambient: ambientOn, reduceMotion: motion.reduced }));
+    return () => {
+      syncAmbientBed(false);
+    };
+  }, [ambientOn, comfort.sfxMuted, motion.reduced]);
+
+  useEffect(() => {
+    if (!mapAim) return;
+    const id = window.setTimeout(() => setMapAim(null), 4000);
+    return () => window.clearTimeout(id);
+  }, [mapAim]);
+
+  useEffect(() => {
+    if (!gestureMark) return;
+    const id = window.setTimeout(() => setGestureMark(null), 1600);
+    return () => window.clearTimeout(id);
+  }, [gestureMark]);
+
+  useEffect(() => {
+    if (!headerWave) return;
+    const id = window.setTimeout(() => setHeaderWave(null), Math.max(0, headerWave.until - Date.now()));
+    return () => window.clearTimeout(id);
+  }, [headerWave]);
+
+  function markGesture(id: GestureId) {
+    if (!GESTURE_SFX_ENABLED) return;
+    const audio = playGesture(id, !comfort.sfxMuted && !motion.reduced);
+    setGestureMark({ id, audio });
+  }
+
+  function aimMap(kind: string, x: number, y: number) {
+    const at = Date.now();
+    setMapAim({ token: at, kind, x, y, at });
+  }
 
   function passGlance() {
     if (!selfName || glance !== "ready") return;
@@ -717,6 +784,7 @@ export function VillagePage({ initial }: Props) {
       return;
     }
     setFx(withSocialReply(emoteFx(selected.name, "wave"), selfName, familiarity[selected.name] ?? 0));
+    markGesture("wave");
     const name = selected.name;
     if (selfName && name !== selfName) {
       commitPlay((current) => ({ ...current, bonds: bumpBond(current.bonds, name) }));
@@ -732,6 +800,26 @@ export function VillagePage({ initial }: Props) {
       return;
     }
     commitPlay((current) => ({ ...current, emoteAt: now }));
+    if (kind === "wave" && HEADER_WAVE_RECEIPT_ENABLED) {
+      const placed = placeVillagers(people);
+      const self = placed.find((person) => person.name === selfName) ?? null;
+      const target = headerWaveTarget(
+        self ? { name: self.name, x: self.x, y: self.y } : null,
+        placed.map((person) => ({ name: person.name, x: person.x, y: person.y })),
+      );
+      const line = headerWaveLine(Boolean(target));
+      const started = nowMs();
+      setFx({
+        ...emoteFx(selfName, "wave"),
+        partner: target?.name,
+        line,
+        startedAt: started,
+        duration: HEADER_WAVE_MS,
+      });
+      setHeaderWave({ line, until: started + HEADER_WAVE_MS });
+      markGesture("wave");
+      return;
+    }
     setFx(emoteFx(selfName, kind));
   }
 
@@ -824,6 +912,10 @@ export function VillagePage({ initial }: Props) {
     if (result.view.blob !== loopSnap.loops) updateLoops(() => result.view.blob);
     if (result.view.pebbles !== loopSnap.pebbles) updatePebbles(result.view.pebbles);
     setLoopLine({ viewer: selfName, text: result.line });
+    if (YARD_TOY_FOCUS_ENABLED && isToyId(id)) {
+      const spot = toyAnchor(id);
+      aimMap(id, spot.x, spot.y);
+    }
   }
 
   function runNook(id: NookId) {
@@ -876,6 +968,7 @@ export function VillagePage({ initial }: Props) {
     if (action === "porch") {
       updateWave((current) => (current.porch ? current : togglePorch(current)));
       setWaveLine("门灯点上了。");
+      markGesture("lamp");
       return;
     }
     if (action === "diary") {
@@ -912,6 +1005,11 @@ export function VillagePage({ initial }: Props) {
   }
 
   const autumnMark = autumnPaletteMark(season.id);
+  const nextBeat = useMemo(() => {
+    if (!nextBeatOffer(tally.complete)) return null;
+    const self = selfName ? placeVillagers(people).find((person) => person.name === selfName) ?? null : null;
+    return pickNextBeat(self ? { x: self.x, y: self.y } : null);
+  }, [tally.complete, selfName, people]);
   const dayMark = scoreDayMark(dateCopy.fresh, comfort.quiet);
   const ritualShown = ritualMark ? RITUAL_BEATS[ritualMark.beat] : ritualBeat(clock.hour);
   const openParchment = (id: "ritual" | "week" | "season") => {
@@ -928,6 +1026,11 @@ export function VillagePage({ initial }: Props) {
       data-ritual-afterglow={ritualPhase}
       data-autumn-palette={autumnMark}
       data-score-day={dayMark}
+      data-night-read={nightReadMark(sessionIsNight(clock.hour))}
+      data-gesture={gestureMark?.id ?? "off"}
+      data-gesture-audio={gestureMark?.audio ?? "silent"}
+      data-gesture-bed={ambientBedOn({ muted: comfort.sfxMuted, ambient: ambientOn, reduceMotion: motion.reduced }) ? "live" : "off"}
+      data-header-wave={headerWave ? "receipt" : "off"}
     >
       <LightSfxBridge muted={comfort.sfxMuted} reduceMotion={motion.reduced} />
       <div className="village-hero" data-testid="village-hero">
@@ -1006,6 +1109,20 @@ export function VillagePage({ initial }: Props) {
             本周 {tally.done}/{tally.total}
           </button>
         ) : null}
+        {nextBeat ? (
+          <button
+            type="button"
+            className="parchment-badge"
+            data-testid="next-beat"
+            data-next-id={nextBeat.id}
+            onClick={() => {
+              aimMap(nextBeat.id, nextBeat.x, nextBeat.y);
+              setWaveLine(NEXT_BEAT_DONE);
+            }}
+          >
+            {nextBeatLabel(nextBeat)}
+          </button>
+        ) : null}
         <button
           type="button"
           className={`parchment-badge season-banner season-${season.id}${autumnMark === "warm" ? ` ${autumnPaletteStyles.warm}` : ""}`}
@@ -1025,6 +1142,11 @@ export function VillagePage({ initial }: Props) {
           {festival ? ` · 今日${festival.label}` : ""}
         </button>
       </div>
+      {headerWave ? (
+        <p className="px-1 text-xs text-[#6a3d18]" data-testid="header-wave-receipt" data-header-wave="receipt">
+          {headerWave.line}
+        </p>
+      ) : null}
       {ritualPhase !== "off" ? (
         <p className="px-1 text-xs text-[#6a3d18]" data-testid="ritual-afterglow" data-ritual-afterglow={ritualPhase}>
           {AFTERGLOW_LINE}
@@ -1132,7 +1254,14 @@ export function VillagePage({ initial }: Props) {
             onTogglePlates={() => saveComfort({ ...comfort, showAllPlates: !comfort.showAllPlates })}
             onEmote={selfName ? emote : undefined}
             homePulse={homePulse}
-            onFindMe={() => visitOwnGate()}
+            onFindMe={() => {
+              markGesture("find");
+              visitOwnGate();
+            }}
+            mapAim={mapAim}
+            ambientOn={ambientOn}
+            onSfxMute={(muted) => saveComfort({ ...comfort, sfxMuted: muted })}
+            onAmbient={setAmbientOn}
             onEmpty={(x, y) => {
               if (!selfName) return;
               updateWave((current) => {
@@ -1327,7 +1456,10 @@ export function VillagePage({ initial }: Props) {
           setWaveLine(result.line);
           if (result.ok) updateWave(() => result.blob);
         }}
-        onPorch={() => updateWave((current) => togglePorch(current))}
+        onPorch={() => {
+          updateWave((current) => togglePorch(current));
+          markGesture("lamp");
+        }}
         onWater={() => {
           if (!selfName) return;
           const result = waterOnce(waveState, clock.ymd);
