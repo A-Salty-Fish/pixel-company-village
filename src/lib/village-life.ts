@@ -8,6 +8,7 @@ import {
   waveView,
   type KindnessEntry,
 } from "@/lib/quota-rules";
+import type { WaveDecor } from "@/lib/wave-d";
 import type { PersonWithState, ScorePayload } from "@/lib/types";
 
 /**
@@ -80,6 +81,7 @@ export type SceneLife = {
   feathers: string[];
   bell: boolean;
   gardenCrops: Record<string, string>;
+  decor?: WaveDecor | null;
 };
 
 export const DEFAULT_COMFORT: Comfort = {

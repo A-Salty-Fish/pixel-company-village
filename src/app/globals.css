@@ -311,6 +311,15 @@ details.hud-panel {
   stroke-width: 5;
 }
 
+.pattern-mark {
+  display: inline-block;
+  margin-right: 0.2rem;
+  font-size: 12px;
+}
+.pattern-work { color: #3a7d4a; }
+.pattern-fish { color: #3a8fbc; letter-spacing: -0.05em; }
+.pattern-task { color: #d4a017; }
+
 .ring-work { stroke: #3a7d4a; }
 .ring-fish { stroke: #3a8fbc; }
 .ring-task { stroke: #d4a017; }
@@ -446,6 +455,18 @@ summary:focus-visible,
   background: #fff6d8;
   border: 3px solid #6a3d18;
   padding: 0.55rem;
+}
+
+.weather-chip {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  z-index: 12;
+  padding: 0.25rem 0.45rem;
+  background: rgb(90 50 20 / 82%);
+  color: #fff6d8;
+  font-size: 12px;
+  border: 2px solid #f2d15c;
 }
 
 .name-legend {

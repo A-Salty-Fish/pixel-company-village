@@ -297,7 +297,12 @@ function Ring({
           transform="rotate(-90 32 32)"
         />
       </svg>
-      <div className="pixel-label text-[#2a1a10]">{label}</div>
+      <div className="pixel-label text-[#2a1a10]">
+        <span className={`pattern-mark pattern-${tone}`} aria-hidden>
+          {tone === "work" ? "■" : tone === "fish" ? "～" : "＝"}
+        </span>
+        {label}
+      </div>
       <div className="text-[11px] text-[#6a3d18]">
         {pct}% · {hint}
         {closed ? " · 合上" : ""}

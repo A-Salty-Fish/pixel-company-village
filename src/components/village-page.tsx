@@ -15,6 +15,7 @@ import {
 import type { KindnessMenuId } from "@/lib/copy";
 import { ComfortSettings } from "@/components/comfort-settings";
 import { PlayShelf } from "@/components/play-shelf";
+import { WaveDPanel } from "@/components/wave-d-panel";
 import { installVillageTestHook, testHooksEnabled, type VillageTestState } from "@/lib/test-hooks";
 import { SignalCard } from "@/components/signal-card";
 import { VillageScene } from "@/components/village-scene";
@@ -28,6 +29,26 @@ import {
   updateAnon,
   updatePlay,
 } from "@/lib/play-store";
+import { bindWave, getServerWaveSnapshot, getWaveSnapshot, subscribeWave, sweepVillageStorage, updateWave } from "@/lib/wave-d-store";
+import {
+  acceptTap,
+  buildDecor,
+  bumpChronicle,
+  isolatePeople,
+  postcardMeta,
+  setDiary,
+  setInstrument,
+  setToggle,
+  sitDown,
+  toggleHat,
+  togglePin,
+  togglePorch,
+  undoStillOpen,
+  visitorCopy,
+  waterOnce,
+  type WaveDBlob,
+  type WaveSystemId,
+} from "@/lib/wave-d";
 import {
   addFeather,
   anonLine,
@@ -60,7 +81,7 @@ import {
   visitCalendar,
   type PlayBlob,
 } from "@/lib/play-systems";
-import type { PersonWithState, ScorePayload } from "@/lib/types";
+import type { PersonWithState, ScorePayload, VillagePerson } from "@/lib/types";
 import {
   availabilityFor,
   festivalOf,
@@ -118,6 +139,11 @@ export function VillagePage({ initial }: Props) {
   const [bootAttempt, setBootAttempt] = useState(0);
   const [split, setSplit] = useState(0.46);
   const playSnap = useSyncExternalStore(subscribePlay, getPlaySnapshot, getServerPlaySnapshot);
+  const waveSnap = useSyncExternalStore(subscribeWave, getWaveSnapshot, getServerWaveSnapshot);
+  const waveState = waveSnap.wave;
+  const [homePulse, setHomePulse] = useState(0);
+  const [waveLine, setWaveLine] = useState<string | null>(null);
+  const lastTap = useRef({ name: "", at: 0 });
   const play = playSnap.play;
   const anon = playSnap.anon;
   const [undo, setUndo] = useState<UndoState | null>(null);
@@ -126,7 +152,10 @@ export function VillagePage({ initial }: Props) {
   const [vignette, setVignette] = useState<{ title: string; lines: [string, string] } | null>(null);
   const [shelfLine, setShelfLine] = useState<string | null>(null);
   const systemReduced = useSyncExternalStore(subscribeSystemReduced, systemReducedSnapshot, () => false);
-  const people = useMemo(() => withStates(payload.people), [payload.people]);
+  const people = useMemo(
+    () => withStates(isolatePeople(payload.people).people as VillagePerson[]),
+    [payload.people],
+  );
   const selected = people.find((person) => person.name === selectedName) ?? null;
   const history =
     selected && prefs.rev > 0
@@ -206,6 +235,7 @@ export function VillagePage({ initial }: Props) {
 
   useEffect(() => {
     hydratePrefs();
+    sweepVillageStorage();
     markScoreSync(formatClock());
     const seeded = withStates(initial.people);
     recordGarden(initial.date, seeded);
@@ -221,6 +251,7 @@ export function VillagePage({ initial }: Props) {
 
   useEffect(() => {
     bindViewer(selfName, clock.ymd, festivalOf(clock)?.label ?? null);
+    bindWave(selfName, clock.ymd);
   }, [selfName, clock]);
 
   useEffect(() => {
@@ -270,6 +301,19 @@ export function VillagePage({ initial }: Props) {
     return out;
   }, [people, insights]);
   const spotlights = festival ? stageNames(people.map((person) => person.name), payload.date) : [];
+  const decor = buildDecor({
+    blob: waveState,
+    ymd: clock.ymd,
+    hour: clock.hour,
+    seasonId: season.id,
+    quiet: comfort.quiet,
+    reduced: motion.reduced,
+    festival: Boolean(festival),
+    familiarity,
+    selfName,
+    fedNames: anon[clock.ymd] ?? [],
+    now: nowTick,
+  });
   const life: SceneLife = {
     quiet: comfort.quiet,
     reduceMotion: motion.reduced,
@@ -295,6 +339,7 @@ export function VillagePage({ initial }: Props) {
     feathers: play.feathers,
     bell: playSnap.bell,
     gardenCrops: play.garden2,
+    decor,
   };
 
   function resolveKindness(target: string) {
@@ -312,6 +357,9 @@ export function VillagePage({ initial }: Props) {
       setSelectedName(null);
       return;
     }
+    const now = nowMs();
+    if (name === lastTap.current.name && !acceptTap(lastTap.current.at, now)) return;
+    lastTap.current = { name, at: now };
     if (name === selectedName) {
       const step = jokeStep[name] ?? 0;
       setJokeStep((current) => ({ ...current, [name]: step + 1 }));
@@ -337,7 +385,9 @@ export function VillagePage({ initial }: Props) {
     const event = kindnessFx(action, selected.name);
     setFx(spent.sundayBonus ? { ...event, line: `${event.line} 周日的田边多亮了一下。` } : event);
     beginUndo(selected.name, false);
-    commitPlay((current) => noteKindness(current, shanghaiClock().ymd));
+    const today = shanghaiClock().ymd;
+    commitPlay((current) => noteKindness(current, today));
+    updateWave((current) => bumpChronicle(current, today, "kindness"));
   }
 
   function secretFeed() {
@@ -368,6 +418,10 @@ export function VillagePage({ initial }: Props) {
 
   function undoLast() {
     if (!undo || !selfName) return;
+    if (!undoStillOpen(undo.until, nowMs())) {
+      setUndo(null);
+      return;
+    }
     const today = shanghaiClock();
     revertKindness(undo.name, today, selfName);
     if (undo.secret) updateAnon((current) => forgetAnonFeed(current, today.ymd, undo.name));
@@ -515,6 +569,11 @@ export function VillagePage({ initial }: Props) {
       {shelfLine ? <p className="px-1 text-xs text-[#6a3d18]">{shelfLine}</p> : null}
 
       <SeasonBanner seasonLabel={season.label} seasonId={season.id} festival={festival} people={people} />
+      {visitorCopy(selfName, waveState.toggles.visitor) ? (
+        <p className="hud-panel px-3 py-2 text-sm text-[#2a1a10]" data-testid="visitor-banner">
+          {visitorCopy(selfName, waveState.toggles.visitor)}
+        </p>
+      ) : null}
       <ComfortSettings
         comfort={comfort}
         selfName={selfName}
@@ -546,6 +605,19 @@ export function VillagePage({ initial }: Props) {
             onSpot={onSpot}
             onTogglePlates={() => saveComfort({ ...comfort, showAllPlates: !comfort.showAllPlates })}
             onEmote={selfName ? emote : undefined}
+            homePulse={homePulse}
+            onEmpty={(x, y) => {
+              if (!selfName) return;
+              updateWave((current) => {
+                const sat = sitDown(current, x, y);
+                return {
+                  ...sat,
+                  footprints: current.toggles.footprints
+                    ? [...current.footprints, { x: Math.round(x), y: Math.round(y), t: nowMs() }].slice(-8)
+                    : current.footprints,
+                };
+              });
+            }}
           />
         </div>
         <div
@@ -626,6 +698,54 @@ export function VillagePage({ initial }: Props) {
         </div>
       </div>
 
+      <WaveDPanel
+        selfName={selfName}
+        wave={waveState}
+        weekKey={clock.weekKey}
+        ymd={clock.ymd}
+        quoteUnlocked={play.quotes.length}
+        quoteTotal={quoteCount()}
+        names={people.map((person) => person.name)}
+        line={waveLine}
+        onToggle={(id: WaveSystemId, on: boolean) => updateWave((current: WaveDBlob) => setToggle(current, id, on))}
+        onDiary={(index) => {
+          if (!selfName) return;
+          const result = setDiary(waveState, clock.ymd, index);
+          setWaveLine(result.line);
+          if (result.ok) updateWave(() => result.blob);
+        }}
+        onPorch={() => updateWave((current) => togglePorch(current))}
+        onWater={() => {
+          if (!selfName) return;
+          const result = waterOnce(waveState, clock.ymd);
+          setWaveLine(result.line);
+          if (result.ok) updateWave(() => result.blob);
+        }}
+        onPin={(name) => updateWave((current) => ({ ...current, pins: togglePin(current.pins, name) }))}
+        onHat={(name) => updateWave((current) => ({ ...current, hats: toggleHat(current.hats, name) }))}
+        onInstrument={(id) => updateWave((current) => setInstrument(current, id as WaveDBlob["instrument"]))}
+        onHome={() => {
+          if (!selfName) {
+            setWaveLine("先选定「我是谁」，镜头才回得了自己的小屋。");
+            return;
+          }
+          setHomePulse((value) => value + 1);
+        }}
+        onPostcard={() => {
+          const meta = postcardMeta(selfName, clock.ymd);
+          const canvas = document.querySelector("canvas[data-testid='village-map']") as HTMLCanvasElement | null;
+          if (!canvas) {
+            setWaveLine(meta.caption);
+            return;
+          }
+          const link = document.createElement("a");
+          link.download = meta.filename;
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+          setWaveLine(`${meta.caption}。已存到这台电脑。`);
+        }}
+      />
+
       <PlayShelf
         selfName={selfName}
         play={play}
@@ -666,6 +786,7 @@ export function VillagePage({ initial }: Props) {
                   type="button"
                   data-roster-item
                   data-roster-name={person.name}
+                  aria-label={`${person.name}，${person.scored ? "有分" : "未评分"}`}
                   onClick={() => pick(person.name)}
                   onKeyDown={(event) => moveRosterFocus(event, index)}
                   className={`flex items-center justify-between gap-3 px-3 py-2 text-left ${active ? "hud-roster hud-roster-on" : "hud-roster"}`}

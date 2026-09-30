@@ -35,6 +35,8 @@ type Props = {
   onSpot?: (spot: SpotHit) => void;
   onTogglePlates?: () => void;
   onEmote?: (kind: "stretch" | "sit" | "clap" | "wave") => void;
+  homePulse?: number;
+  onEmpty?: (x: number, y: number) => void;
 };
 
 const MIN_ZOOM = 1;
@@ -52,6 +54,8 @@ export function VillageScene({
   onSpot,
   onTogglePlates,
   onEmote,
+  homePulse = 0,
+  onEmpty,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -69,6 +73,7 @@ export function VillageScene({
   const [hintOpen, setHintOpen] = useState(false);
   const stageRef = useRef<LoadStage>("terrain");
   const onSpotRef = useRef(onSpot);
+  const onEmptyRef = useRef(onEmpty);
   const forceRef = useRef(forceTimeout);
   const startCam = defaultCamera();
   const [zoom, setZoom] = useState(startCam.zoom);
@@ -89,6 +94,21 @@ export function VillageScene({
   useEffect(() => {
     onSpotRef.current = onSpot;
   }, [onSpot]);
+
+  useEffect(() => {
+    onEmptyRef.current = onEmpty;
+  }, [onEmpty]);
+
+  useEffect(() => {
+    if (!homePulse || !life.selfName) return;
+    const person = villagersRef.current.find((v) => v.name === life.selfName);
+    if (!person) return;
+    const nextZoom = 2;
+    zoomRef.current = nextZoom;
+    setZoom(nextZoom);
+    camRef.current = cameraFocus(person, nextZoom);
+    kickRef.current?.();
+  }, [homePulse, life.selfName]);
 
   useEffect(() => {
     forceRef.current = forceTimeout;
@@ -297,7 +317,10 @@ export function VillageScene({
       }
       const spot = hitSpot(world.x, world.y);
       if (spot) onSpotRef.current?.(spot);
-      else onSelectRef.current(null);
+      else {
+        onEmptyRef.current?.(world.x, world.y);
+        onSelectRef.current(null);
+      }
     };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -419,6 +442,11 @@ export function VillageScene({
           拖动画布 · 滚轮缩放 · 点小人看今日信号
         </p>
       )}
+      {life.decor?.showWeather ? (
+        <div className="weather-chip" data-testid="weather-chip">
+          村口 · {life.decor.weatherLabel}
+        </div>
+      ) : null}
       <div className="name-legend" data-testid="name-legend">
         <span>
           <i className="swatch swatch-scored" /> 彩猫 · 琥珀名牌 · 有分
