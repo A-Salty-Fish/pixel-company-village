@@ -54,6 +54,7 @@ import {
   waveStorageKey,
   weatherFor,
   weekBoard,
+  weekChores,
   wreathColor,
 } from "./wave-d";
 
@@ -61,6 +62,39 @@ test("weather is seeded by the date and ignores scores", () => {
   const first = weatherFor("2026-09-24");
   assert.equal(weatherFor("2026-09-24").id, first.id);
   assert.notEqual(weatherFor("2026-09-24").label.length, 0);
+});
+
+test("weekly chores check off from local actions and ignore unknown labels", () => {
+  const quiet = {
+    wateredToday: false,
+    cardOpen: false,
+    visitedGate: false,
+    porchOn: false,
+    diaryToday: false,
+    steps: 0,
+    pinned: false,
+    resting: false,
+    noticedSeason: false,
+  };
+  const board = weekBoard("2026-W39");
+  assert.equal(weekChores("2026-W39", quiet).every((item) => item.done === false), true);
+  assert.deepEqual(
+    weekChores("2026-W39", quiet).map((item) => item.label),
+    board.items,
+  );
+  const done = weekChores("2026-W39", {
+    wateredToday: true,
+    cardOpen: true,
+    visitedGate: true,
+    porchOn: true,
+    diaryToday: true,
+    steps: 3,
+    pinned: true,
+    resting: true,
+    noticedSeason: true,
+  });
+  assert.equal(done.every((item) => item.done), true);
+  assert.equal(weekChores("not-a-real-label", { ...quiet, wateredToday: true }).some((item) => item.label === "聊天原文"), false);
 });
 
 test("pins stay private and cap at three", () => {
