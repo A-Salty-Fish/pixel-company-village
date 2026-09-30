@@ -15,6 +15,7 @@ import {
 import type { KindnessMenuId } from "@/lib/copy";
 import { ComfortSettings } from "@/components/comfort-settings";
 import { PlayShelf } from "@/components/play-shelf";
+import { VillageLoopsPanel } from "@/components/village-loops-panel";
 import { WaveDPanel } from "@/components/wave-d-panel";
 import { installVillageTestHook, testHooksEnabled, type VillageTestState } from "@/lib/test-hooks";
 import { SignalCard } from "@/components/signal-card";
@@ -38,6 +39,8 @@ import {
   sweepVillageStorage,
   updateWave,
 } from "@/lib/wave-d-store";
+import { applyLoop, emptyLoops, loopSalt, type LoopId } from "@/lib/village-loops";
+import { bindLoops, getLoopSnapshot, getServerLoopSnapshot, subscribeLoops, updateLoops, updatePebbles } from "@/lib/village-loops-store";
 import {
   acceptTap,
   buildDecor,
@@ -166,6 +169,8 @@ export function VillagePage({ initial }: Props) {
   const [homePulse, setHomePulse] = useState(0);
   const [choreBook, setChoreBook] = useState<ReadonlyMap<string, ViewerChoreFlags>>(() => new Map());
   const [waveLine, setWaveLine] = useState<string | null>(null);
+  const [loopLine, setLoopLine] = useState<{ viewer: string; text: string } | null>(null);
+  const loopSnap = useSyncExternalStore(subscribeLoops, getLoopSnapshot, getServerLoopSnapshot);
   const lastTap = useRef({ name: "", at: 0 });
   const play = playSnap.play;
   const anon = playSnap.anon;
@@ -324,6 +329,10 @@ export function VillagePage({ initial }: Props) {
   }, [selfName, clock]);
 
   useEffect(() => {
+    bindLoops(selfName);
+  }, [selfName]);
+
+  useEffect(() => {
     const reduced = motionGovernor({ systemReduced, comfort }).reduced;
     if (!selfName || comfort.quiet || !comfort.ambient || reduced) return;
     if (!morningBellDue(clock, getPlaySnapshot().play.bellDay, true)) return;
@@ -361,6 +370,9 @@ export function VillagePage({ initial }: Props) {
   const waveMatches = waveSnap.viewer === selfName;
   const kept = (selfName ? choreBook.get(selfName) : undefined) ?? emptyViewerChores();
   const liveWave = waveMatches ? waveState : null;
+  const loopsReady = Boolean(selfName) && loopSnap.viewer === selfName;
+  const loopBlob = loopsReady ? loopSnap.loops : emptyLoops();
+  const loopPebbles = loopsReady ? loopSnap.pebbles : 0;
   const weekFacts = {
     wateredToday: liveWave?.waterDay === clock.ymd,
     cardOpen: kept.card,
@@ -643,6 +655,20 @@ export function VillagePage({ initial }: Props) {
   }, []);
 
   const waveStatusNow = selected ? waveStatus(selected.name) : null;
+
+  function runLoop(id: LoopId) {
+    if (!selfName || loopSnap.viewer !== selfName) {
+      return;
+    }
+    const result = applyLoop(
+      { blob: loopSnap.loops, pebbles: loopSnap.pebbles },
+      id,
+      { ymd: clock.ymd, salt: loopSalt(selfName, clock.ymd), cropTier: cropTiers[selfName] ?? 0 },
+    );
+    if (result.view.blob !== loopSnap.loops) updateLoops(() => result.view.blob);
+    if (result.view.pebbles !== loopSnap.pebbles) updatePebbles(result.view.pebbles);
+    setLoopLine({ viewer: selfName, text: result.line });
+  }
 
   function rememberChore(flag: keyof ViewerChoreFlags) {
     if (!selfName) return;
@@ -1048,6 +1074,16 @@ export function VillagePage({ initial }: Props) {
         }}
       />
 
+      <VillageLoopsPanel
+        selfName={selfName}
+        blob={loopBlob}
+        pebbles={loopPebbles}
+        ymd={clock.ymd}
+        reduced={motion.reduced}
+        line={loopLine && loopLine.viewer === selfName ? loopLine.text : null}
+        onAct={runLoop}
+      />
+
       <div className="thumb-bar" data-testid="thumb-bar">
         <button type="button" className="hud-btn" data-testid="thumb-home" disabled={!selfName} onClick={() => {
           visitOwnGate("镜头回到自己的小屋。");
@@ -1181,6 +1217,7 @@ function VillageHelp() {
         <p>安静村子默认开着，花瓣和广播会少很多。关掉之后，蝴蝶和萤火才会出现。</p>
         <p>干活是方块，摸鱼是波浪，在任务上是等号。颜色只是辅助，形状也分得开。</p>
         <p>这里不收录说过的话。善意、挥手和田里的小玩具都记在这台电脑的「我是谁」上。</p>
+        <p>村里小玩有十处：信箱、稻草人、水井、菜畦、石子、灯笼、告示、鸡舍、篱门、野餐垫。进度跟着「我是谁」。石子只留在这个标签页，灯笼在减少动作时不闪。</p>
       </div>
     </details>
   );
