@@ -296,6 +296,15 @@ details.hud-panel {
   background: #e7f3c8;
 }
 
+.week-ribbon-note {
+  margin: 0.45rem 0 0;
+  padding: 0.35rem 0.55rem;
+  background: #f4d7a1;
+  border: 2px solid #c44b3a;
+  color: #6a3d18;
+  font-size: 0.75rem;
+}
+
 .season-spring { background: #e7f3c8; }
 .season-summer { background: #ffe7a3; }
 .season-autumn { background: #f0c48a; }

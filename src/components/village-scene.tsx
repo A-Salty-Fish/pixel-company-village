@@ -424,6 +424,7 @@ export function VillageScene({
       data-dusk={life.decor?.dusk ? "1" : "0"}
       data-sitting={life.decor?.sit ? "1" : "0"}
       data-season={life.decor?.seasonId ?? ""}
+      data-week-ribbon={life.decor?.weekRibbon ? "1" : "0"}
     >
       {shownStage === "timeout" || shownStage === "failed" ? (
         <div className="load-recovery" data-testid="load-recovery">

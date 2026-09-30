@@ -308,6 +308,36 @@ const STROLL_STEPS = [
   { x: 600, y: 530 },
 ] as const;
 
+export const WEEK_DONE_LINE = "三件都做完了。布条只挂在这台电脑上。";
+
+export function weekTally(items: { done: boolean }[]) {
+  const done = items.filter((item) => item.done).length;
+  return { done, total: items.length, complete: items.length > 0 && done === items.length };
+}
+
+/** Idle step buttons stay short. A started stroll shows how many footprints are down. */
+export function choreButtonCopy(label: string, done: boolean, steps: number) {
+  if (done) return `已做 · ${label}`;
+  if (label === "沿着小路走三步" && steps > 0) {
+    return `去做 · ${label} · ${Math.min(STROLL_STEPS.length, steps)}/${STROLL_STEPS.length}`;
+  }
+  return `去做 · ${label}`;
+}
+
+export function choreStatusCopy(label: string, done: boolean, steps: number) {
+  if (done) return `已做 · ${label}`;
+  if (label === "沿着小路走三步" && steps > 0) {
+    return `还没 · ${label} · ${Math.min(STROLL_STEPS.length, steps)}/${STROLL_STEPS.length}`;
+  }
+  return `还没 · ${label}`;
+}
+
+export function strollStepLine(before: number, after: number) {
+  if (after === before) return before >= STROLL_STEPS.length ? "三步已经走完了。" : "脚印关着，这一步没记下。";
+  if (after >= STROLL_STEPS.length) return "沿小路走满三步了。";
+  return `沿小路走了一步。已走 ${after}/${STROLL_STEPS.length}。`;
+}
+
 /** One footprint on the path. Stops at three. Stores coordinates only. */
 export function addStrollStep(blob: WaveDBlob, now: number): WaveDBlob {
   if (!systemOn(blob, "footprints")) return blob;
@@ -520,6 +550,11 @@ export function publicCopyLines() {
     visitorCopy(null, true) ?? "",
     weekBoard("2026-W39").note,
     ATLAS_FALLBACK,
+    WEEK_DONE_LINE,
+    strollStepLine(0, 0),
+    strollStepLine(0, 1),
+    strollStepLine(2, 3),
+    strollStepLine(3, 3),
   ];
 }
 
@@ -669,6 +704,7 @@ export type WaveDecor = {
   nods: string[];
   seasonId: string;
   seasonParticles: number;
+  weekRibbon: boolean;
 };
 
 export function buildDecor(input: {
@@ -683,6 +719,7 @@ export function buildDecor(input: {
   selfName: string | null;
   fedNames: string[];
   now: number;
+  weekDone?: boolean;
 }): WaveDecor {
   const { blob } = input;
   const weather = weatherFor(input.ymd);
@@ -707,5 +744,6 @@ export function buildDecor(input: {
     nods: nodTargets(input.familiarity, systemOn(blob, "nod")),
     seasonId: input.seasonId,
     seasonParticles: systemOn(blob, "seasonFade") ? decorParticleCount(input.festival ? 6 : 4, input.quiet) : 0,
+    weekRibbon: Boolean(input.weekDone) && systemOn(blob, "weekBoard"),
   };
 }
