@@ -23,6 +23,9 @@ import { ambientPixels, ambientSpecks } from "@/features/ambient-life/ambient-li
 import { kindnessGlowPixels } from "@/features/kindness-footprint-glow/kindness-footprint-glow";
 import { seasonGroundProps } from "@/features/season-ground-props/season-ground-props";
 import { selfYardPixels } from "@/features/self-yard-marker/self-yard-marker";
+import { NIGHT_WASH_V2_ENABLED, paintNightWashV2 } from "@/features/night-wash-v2/night-wash-v2";
+import { plateGlyph, shortPlateNames } from "@/features/nameplate-mid/nameplate-mid";
+import { glanceSpot, resonancePixels } from "@/features/post-week-presence/presence";
 
 export const WORLD_W = 1216;
 export const WORLD_H = 1120;
@@ -1296,6 +1299,16 @@ function drawActors(
     });
   }
   const self = life?.selfName ? villagers.find((person) => person.name === life.selfName) : undefined;
+  if (life?.presenceOn) {
+    const spot = glanceSpot(
+      self ? { name: self.name, x: self.x, y: self.y, homeX: self.homeX, homeY: self.homeY } : null,
+      villagers,
+    );
+    queue.push({
+      sort: spot.y + 2,
+      draw: () => paintPixels(ctx, resonancePixels(spot.x, spot.y)),
+    });
+  }
   const nearNames = new Set(life?.decor?.nods ?? []);
   for (const name of proximityNods(self ?? null, villagers)) nearNames.add(name);
   const home = self ? { x: self.homeX + 48, y: self.homeY + 24 } : null;
@@ -1399,16 +1412,16 @@ export function paintVillage(
   fx: VillageFx | null = null,
   life: SceneLife | null = null,
 ) {
-  if (!artReady()) return 0;
+  if (!artReady()) return { plates: 0, shortPlates: 0 };
   ensureGround();
-  if (!groundCanvas) return 0;
+  if (!groundCanvas) return { plates: 0, shortPlates: 0 };
   if (!worldCanvas) {
     worldCanvas = document.createElement("canvas");
     worldCanvas.width = WORLD_W;
     worldCanvas.height = WORLD_H;
   }
   const world = worldCanvas.getContext("2d");
-  if (!world) return 0;
+  if (!world) return { plates: 0, shortPlates: 0 };
   world.imageSmoothingEnabled = false;
   world.clearRect(0, 0, WORLD_W, WORLD_H);
   world.drawImage(groundCanvas, 0, 0);
@@ -1436,8 +1449,19 @@ export function paintVillage(
     ctx.fillStyle = "rgba(88, 48, 24, 0.28)";
     ctx.fillRect(0, 0, viewW, viewH);
   }
-  if (life?.decor?.night) {
-    // PV-PM-014 checkpoint
+  if (NIGHT_WASH_V2_ENABLED && life?.sessionNight) {
+    paintNightWashV2(ctx, {
+      viewW,
+      viewH,
+      camX,
+      camY,
+      worldW: span.w,
+      worldH: span.h,
+      houses: HOUSE_FACES,
+      reduced: Boolean(life.reduceMotion),
+    });
+  } else if (life?.decor?.night) {
+    // PV-PM-014 checkpoint, used when night-wash v2 is off
     paintNightWash(ctx, {
       viewW,
       viewH,
@@ -1507,6 +1531,7 @@ export function drawNameLabels(
     }),
   );
   let drawn = 0;
+  let shortDrawn = 0;
 
   const ordered = [...villagers].sort((a, b) => {
     const ah = emphasize.has(a.name) || pins.has(a.name) ? 0 : 1;
@@ -1542,7 +1567,38 @@ export function drawNameLabels(
     blitLabel(ctx, sprite, x, y, scale, alpha);
     drawn += 1;
   }
-  return drawn;
+
+  const selfPerson = life?.selfName ? villagers.find((person) => person.name === life?.selfName) : undefined;
+  const shortNames = new Set(
+    shortPlateNames({
+      zoom,
+      showAll,
+      quiet,
+      full: [...picked],
+      people: villagers.map((person) => ({ name: person.name, x: person.x, y: person.y })),
+      self: selfPerson ? { x: selfPerson.x, y: selfPerson.y } : null,
+    }),
+  );
+  for (const person of ordered) {
+    if (!shortNames.has(person.name)) continue;
+    const glyph = plateGlyph(person.name);
+    const sprite = getLabelSprite(glyph, "muted");
+    if (!sprite) continue;
+    const shortScale = Math.max(1, Math.round(dpr));
+    const sx = ((person.x - camX) / viewWorldW) * viewW;
+    const sy = ((person.y - 22 - camY) / viewWorldH) * viewH;
+    const dw = sprite.w * shortScale;
+    const dh = sprite.h * shortScale;
+    const x = sx - dw / 2;
+    const y = sy - dh;
+    if (x > viewW || y > viewH || x + dw < 0 || y + dh < 0) continue;
+    const box = { x, y, w: dw, h: dh };
+    if (placed.some((other) => overlaps(box, other))) continue;
+    placed.push(box);
+    blitLabel(ctx, sprite, x, y, shortScale, 0.86);
+    shortDrawn += 1;
+  }
+  return { plates: drawn, shortPlates: shortDrawn };
 }
 
 function overlaps(

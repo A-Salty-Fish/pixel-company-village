@@ -28,6 +28,9 @@ import { SignalCard } from "@/components/signal-card";
 import { VillageScene } from "@/components/village-scene";
 import { WEEK_DONE_SUMMARY_ENABLED } from "@/features/week-done-summary/week-done-summary";
 import { WeekDoneSummary } from "@/features/week-done-summary/week-done-summary-view";
+import { sessionIsNight } from "@/features/night-wash-v2/night-wash-v2";
+import { POST_WEEK_PRESENCE_ENABLED, loadGlance, presencePhase, storeGlance, type GlanceSave } from "@/features/post-week-presence/presence";
+import { PostWeekPresence } from "@/features/post-week-presence/presence-view";
 import {
   bindViewer,
   getPlaySnapshot,
@@ -177,6 +180,7 @@ export function VillagePage({ initial }: Props) {
   const preset = prefs.preset;
   const [clock, setClock] = useState(() => shanghaiClock());
   const [ritualMark, setRitualMark] = useState<RitualSave | null>(null);
+  const [glanceMark, setGlanceMark] = useState<GlanceSave | null>(null);
   const [, setFreezeTick] = useState(0);
   const [forceTimeout, setForceTimeout] = useState(false);
   const [bootAttempt, setBootAttempt] = useState(0);
@@ -363,6 +367,10 @@ export function VillagePage({ initial }: Props) {
   }, [selfName, clock.ymd]);
 
   useEffect(() => {
+    setGlanceMark(loadGlance(selfName, clock.weekKey));
+  }, [selfName, clock.weekKey]);
+
+  useEffect(() => {
     setVisitFlags(readVisit(window.localStorage.getItem(VISIT_KEY)));
   }, []);
 
@@ -540,7 +548,26 @@ export function VillagePage({ initial }: Props) {
     },
     ritual: ritualMark ? { beat: ritualMark.beat, done: true } : null,
     bondMarks: bondNames(play.bonds),
+    sessionNight: sessionIsNight(clock.hour),
+    presenceOn:
+      presencePhase({
+        weekComplete: tally.complete,
+        viewer: selfName,
+        week: clock.weekKey,
+        savedWeek: glanceMark?.week ?? null,
+      }) === "done",
   };
+  const glance = presencePhase({
+    weekComplete: tally.complete,
+    viewer: selfName,
+    week: clock.weekKey,
+    savedWeek: glanceMark?.week ?? null,
+  });
+
+  function passGlance() {
+    if (!selfName || glance !== "ready") return;
+    setGlanceMark(storeGlance(selfName, clock.weekKey));
+  }
 
   function resolveKindness(target: string) {
     const spent = spendKindness(target);
@@ -998,6 +1025,9 @@ export function VillagePage({ initial }: Props) {
                 ))}
               </ul>
             )}
+            {POST_WEEK_PRESENCE_ENABLED && (glance === "ready" || glance === "done") ? (
+              <PostWeekPresence phase={glance} onGlance={passGlance} />
+            ) : null}
           </section>
         ) : null}
       </div>

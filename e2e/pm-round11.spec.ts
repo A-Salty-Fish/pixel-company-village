@@ -67,9 +67,9 @@ test("PV-PM-014 night wash stays readable when motion is reduced", async ({ page
 
   await page.evaluate(() => window.__VILLAGE_TEST__?.setClock("2026-09-30T13:00:00.000Z"));
   await expect(host).toHaveAttribute("data-night", "1");
-  await expect(host).toHaveAttribute("data-night-wash", "cool");
+  await expect(host).toHaveAttribute("data-night-wash", "active");
   await expect(host).toHaveAttribute("data-night-static", "0");
-  await expect(canvas).toHaveAttribute("data-night-paint", "cool");
+  await expect(canvas).toHaveAttribute("data-night-paint", "active");
   const night = await mapAverage(page);
   expect(day.g - day.b).toBeGreaterThan(night.g - night.b + 24);
   expect(night.g).toBeLessThan(day.g - 20);
@@ -77,9 +77,9 @@ test("PV-PM-014 night wash stays readable when motion is reduced", async ({ page
 
   await page.getByTestId("comfort-decor").locator("> summary").click();
   await page.getByRole("checkbox", { name: /减少动作/ }).check();
-  await expect(host).toHaveAttribute("data-night-wash", "cool");
+  await expect(host).toHaveAttribute("data-night-wash", "active");
   await expect(host).toHaveAttribute("data-night-static", "1");
-  await expect(canvas).toHaveAttribute("data-night-paint", "cool");
+  await expect(canvas).toHaveAttribute("data-night-paint", "active");
   const still = await mapAverage(page);
   expect(day.g - day.b).toBeGreaterThan(still.g - still.b + 24);
   expect(Math.abs(still.g - night.g)).toBeLessThan(12);

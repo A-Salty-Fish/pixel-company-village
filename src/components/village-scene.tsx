@@ -28,6 +28,9 @@ import { ambientLifeMark, ambientSpeckCount } from "@/features/ambient-life/ambi
 import { kindnessGlowMark } from "@/features/kindness-footprint-glow/kindness-footprint-glow";
 import { groundClusterCount, groundPropMark } from "@/features/season-ground-props/season-ground-props";
 import { selfYardMark } from "@/features/self-yard-marker/self-yard-marker";
+import { NIGHT_WASH_V2_ENABLED, nightWashV2Mark } from "@/features/night-wash-v2/night-wash-v2";
+import nightWashV2Styles from "@/features/night-wash-v2/night-wash-v2.module.css";
+import { MID_ZOOM, NAMEPLATE_MID_ENABLED, QUIET_SHORT_CAP, SHORT_CAP } from "@/features/nameplate-mid/nameplate-mid";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
 
@@ -264,7 +267,7 @@ export function VillageScene({
       host.dataset.waveReply =
         activeFx && activeFx.kind === "wave" && nowMs - activeFx.startedAt < activeFx.duration ? "1" : "0";
       if (lifeRef.current) lifeRef.current.selfHighlight = highlight;
-      const plateCount = paintVillage(
+      const painted = paintVillage(
         ctx,
         canvas.width,
         canvas.height,
@@ -279,11 +282,21 @@ export function VillageScene({
         activeFx && Date.now() - activeFx.startedAt < activeFx.duration ? activeFx : null,
         lifeRef.current,
       );
-      host.dataset.plateCount = String(plateCount);
+      host.dataset.plateCount = String(painted.plates);
+      host.dataset.plateShort = String(painted.shortPlates);
       canvas.dataset.villageReady = "1";
-      // PV-PM-014 checkpoint
-      canvas.dataset.nightPaint =
-        lifeRef.current?.decor?.night && NIGHT_WASH_ENABLED ? "cool" : "off";
+      const sessionNight = Boolean(lifeRef.current?.sessionNight);
+      const decorNight = Boolean(lifeRef.current?.decor?.night);
+      const nightMark = NIGHT_WASH_V2_ENABLED
+        ? nightWashV2Mark(sessionNight)
+        : decorNight
+          ? NIGHT_WASH_ENABLED
+            ? "cool"
+            : "flat"
+          : "off";
+      canvas.dataset.nightPaint = nightMark;
+      canvas.dataset.nightWash = nightMark;
+      canvas.classList.toggle("night-wash-active", nightMark === "active");
     };
 
     const toWorld = (clientX: number, clientY: number) => {
@@ -359,6 +372,7 @@ export function VillageScene({
       zoomRef.current = z;
       setZoom(z);
       camRef.current = clampCamera(camRef.current.x, camRef.current.y, z);
+      kickRef.current?.();
     };
 
     canvas.addEventListener("pointerdown", onPointerDown);
@@ -423,14 +437,23 @@ export function VillageScene({
     zoomRef.current = z;
     setZoom(z);
     camRef.current = clampCamera(camRef.current.x, camRef.current.y, z);
+    kickRef.current?.();
   };
+
+  const sessionNight = Boolean(life.sessionNight);
+  const nightV2 = nightWashV2Mark(sessionNight) === "active";
+  const nightV1 = !NIGHT_WASH_V2_ENABLED && NIGHT_WASH_ENABLED && Boolean(life.decor?.night);
+  const nightWashAttr = NIGHT_WASH_V2_ENABLED
+    ? nightWashV2Mark(sessionNight)
+    : nightWashMark(Boolean(life.decor?.night), life.reduceMotion);
+  const plateMid = NAMEPLATE_MID_ENABLED && zoom === MID_ZOOM && !life.showAllPlates;
 
   return (
     <div
       ref={hostRef}
       className={`pixel-frame relative h-full overflow-hidden bg-[#3c6e32]${
-        NIGHT_WASH_ENABLED && life.decor?.night ? ` ${nightWashStyles.frame}` : ""
-      }`}
+        nightV2 ? ` night-wash-active ${nightWashV2Styles.frame}` : ""
+      }${nightV1 ? ` ${nightWashStyles.frame}` : ""}`}
       data-village-host={ready ? "ready" : "boot"}
       data-load-stage={shownStage}
       data-bell={life.bell ? "1" : "0"}
@@ -444,8 +467,12 @@ export function VillageScene({
       data-critters={life.decor?.critters ?? "none"}
       data-dusk={life.decor?.dusk ? "1" : "0"}
       data-night={life.decor?.night ? "1" : "0"}
-      data-night-wash={nightWashMark(Boolean(life.decor?.night), life.reduceMotion)}
-      data-night-static={life.decor?.night && life.reduceMotion ? "1" : "0"}
+      data-session-night={sessionNight ? "1" : "0"}
+      data-night-wash={nightWashAttr}
+      data-night-static={(nightV2 || Boolean(life.decor?.night)) && life.reduceMotion ? "1" : "0"}
+      data-yard-resonance={life.presenceOn ? "1" : "0"}
+      data-passing-glance={life.presenceOn ? "1" : "0"}
+      data-map-feedback={life.presenceOn ? "glance" : "none"}
       data-path-wear={life.decor?.yard.wear ? "1" : "0"}
       data-yard-hen={life.decor?.yard.hen ? "1" : "0"}
       data-yard-laundry={life.decor?.yard.laundry ? "1" : "0"}
@@ -479,6 +506,9 @@ export function VillageScene({
       data-world-rest={life.decor?.world.rest ? "1" : "0"}
       data-plate-lod={life.quiet && !life.showAllPlates ? "quiet" : "open"}
       data-plate-cap={life.showAllPlates ? "all" : life.quiet ? "4" : "8"}
+      data-plate-mid={plateMid ? "1" : "0"}
+      data-plate-short="0"
+      data-plate-short-cap={life.quiet ? String(QUIET_SHORT_CAP) : String(SHORT_CAP)}
       data-plate-count="0"
       data-self-highlight="0"
       data-wave-reply="0"
