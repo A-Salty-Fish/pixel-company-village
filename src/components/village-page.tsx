@@ -823,19 +823,19 @@ export function VillagePage({ initial }: Props) {
             </button>
           </div>
         </div>
-        <div className="px-3 pb-3">
-          <HeaderRitual
-            viewer={selfName}
-            hour={clock.hour}
-            near={ritualNear}
-            saved={ritualMark}
-            onComplete={() => {
-              if (!selfName) return;
-              setRitualMark(storeRitual(selfName, clock.ymd, clock.hour));
-            }}
-          />
-        </div>
       </header>
+      <div className="hud-panel px-3 pb-3">
+        <HeaderRitual
+          viewer={selfName}
+          hour={clock.hour}
+          near={ritualNear}
+          saved={ritualMark}
+          onComplete={() => {
+            if (!selfName) return;
+            setRitualMark(storeRitual(selfName, clock.ymd, clock.hour));
+          }}
+        />
+      </div>
 
       {broadcast && dismissedBroadcast !== broadcastKey ? (
         <div className="hud-panel flex items-center justify-between gap-3 px-3 py-2" data-testid="village-broadcast">

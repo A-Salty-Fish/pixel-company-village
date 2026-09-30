@@ -19,7 +19,7 @@ export function HeaderRitual({
   const done = Boolean(saved);
   return (
     <section
-      className="mt-3 border-t border-[#e4d2b0] pt-3"
+      className="pt-3"
       data-testid="header-ritual"
       data-ritual-beat={shown.id}
       data-ritual-done={done ? "1" : "0"}
