@@ -164,6 +164,7 @@ test("footprints, stroll, bench, wreath, atlas, and layout stay bounded", () => 
   assert.equal(undoSecondsLeft(until, until - 2_000), 2);
   assert.equal(undoSecondsLeft(until, until - 1_000), 1);
   assert.equal(undoSecondsLeft(until, until - 1), 1);
+  assert.equal(undoSecondsLeft(until, until - 4_000), 3);
   assert.equal(undoSecondsLeft(until, until), 0);
   assert.equal(undoStillOpen(until, until - 2_500), true);
 });

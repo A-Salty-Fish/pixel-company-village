@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { STATE_LABELS, STATE_ORDER, withStates } from "@/lib/animation";
 import { scoreDateCopy, waveHint } from "@/lib/copy";
 import {
@@ -51,7 +51,6 @@ import {
   sitDown,
   toggleHat,
   togglePorch,
-  undoSecondsLeft,
   visitorCopy,
   waterOnce,
   type WaveDBlob,
@@ -83,7 +82,6 @@ import {
   STICKERS,
   unlockQuote,
   unlockSticker,
-  UNDO_MS,
   spendFreeze,
   vignetteFor,
   visitCalendar,
@@ -128,15 +126,7 @@ type Props = {
   initial: ScorePayload;
 };
 
-type UndoState = {
-  name: string;
-  token: number;
-  until: number;
-  seconds: number;
-  markedAt: number;
-  secret: boolean;
-  viewer: string;
-};
+type UndoSession = { id: number; name: string; secret: boolean; viewer: string };
 
 export function VillagePage({ initial }: Props) {
   const [payload, setPayload] = useState(initial);
@@ -162,9 +152,8 @@ export function VillagePage({ initial }: Props) {
   const lastTap = useRef({ name: "", at: 0 });
   const play = playSnap.play;
   const anon = playSnap.anon;
-  const [undo, setUndo] = useState<UndoState | null>(null);
-  const undoArm = useRef<{ name: string; secret: boolean; viewer: string } | null>(null);
-  const [undoArmId, setUndoArmId] = useState(0);
+  const [undo, setUndo] = useState<UndoSession | null>(null);
+  const undoSeq = useRef(0);
   const [pinHint, setPinHint] = useState("");
   const [rosterMode, setRosterMode] = useState<"live" | "empty">("live");
   const [badNote, setBadNote] = useState(0);
@@ -235,7 +224,6 @@ export function VillagePage({ initial }: Props) {
   }, [selfName]);
 
   useEffect(() => {
-    undoArm.current = null;
     setUndo(null);
   }, [selfName]);
 
@@ -317,50 +305,6 @@ export function VillagePage({ initial }: Props) {
     bindViewer(selfName, clock.ymd, festivalOf(clock)?.label ?? null);
     bindWave(selfName, clock.ymd);
   }, [selfName, clock]);
-
-  // Stamp the deadline when the undo row commits, not when the click handler
-  // started, so a slow confirm render cannot shrink the clickable window.
-  useLayoutEffect(() => {
-    const arm = undoArm.current;
-    if (!arm) return;
-    undoArm.current = null;
-    const markedAt = nowMs();
-    const until = markedAt + UNDO_MS;
-    setUndo({
-      ...arm,
-      token: until,
-      until,
-      seconds: undoSecondsLeft(until, markedAt),
-      markedAt,
-    });
-  }, [undoArmId]);
-
-  useEffect(() => {
-    if (!undo) return;
-    const token = undo.token;
-    let deadline = undo.until;
-    let last = nowMs();
-    const id = window.setInterval(() => {
-      const now = nowMs();
-      const elapsed = Math.max(0, now - last);
-      last = now;
-      // A stalled main thread used to skip straight to 「1秒」. Give that gap back
-      // unless the tab was gone long enough that the undo should just close.
-      if (elapsed > 5_000) {
-        setUndo((current) => (current && current.token === token ? null : current));
-        return;
-      }
-      if (elapsed > 500) deadline += elapsed - 200;
-      const seconds = undoSecondsLeft(deadline, now);
-      setUndo((current) => {
-        if (!current || current.token !== token) return current;
-        if (seconds <= 0) return null;
-        if (current.seconds === seconds && current.until === deadline) return current;
-        return { ...current, until: deadline, seconds, markedAt: now };
-      });
-    }, 200);
-    return () => window.clearInterval(id);
-  }, [undo?.token]);
 
   useEffect(() => {
     const reduced = motionGovernor({ systemReduced, comfort }).reduced;
@@ -468,8 +412,8 @@ export function VillagePage({ initial }: Props) {
 
   function beginUndo(name: string, secret: boolean) {
     if (!selfName) return;
-    undoArm.current = { name, secret, viewer: selfName };
-    setUndoArmId((id) => id + 1);
+    undoSeq.current += 1;
+    setUndo({ id: undoSeq.current, name, secret, viewer: selfName });
   }
 
   function confirmKindness(action: KindnessMenuId) {
@@ -518,10 +462,6 @@ export function VillagePage({ initial }: Props) {
 
   function undoLast() {
     if (!undo || !selfName || undo.viewer !== selfName) {
-      setUndo(null);
-      return;
-    }
-    if (undo.seconds <= 0) {
       setUndo(null);
       return;
     }
@@ -811,10 +751,8 @@ export function VillagePage({ initial }: Props) {
               canKindness={Boolean(selfName) && kindnessStatus(selected.name, clock).canSend}
               canWave={Boolean(selfName) && Boolean(waveStatusNow?.allowed)}
               hasIdentity={Boolean(selfName)}
-              undoSeconds={undo && undo.name === selected.name && undo.viewer === selfName ? undo.seconds : 0}
-              undoUntil={undo && undo.name === selected.name ? undo.until : 0}
-              undoAt={undo && undo.name === selected.name ? undo.markedAt : 0}
-              undoMs={UNDO_MS}
+              undoSessionId={undo && undo.name === selected.name && undo.viewer === selfName ? undo.id : null}
+              onUndoExpire={() => setUndo(null)}
               stickerLabels={selected.name === selfName ? stickerLabels : []}
               canSticker={Boolean(selfName) && play.stickerDay !== clock.ymd && play.stickers.length < STICKERS.length}
               anonNote={anonLine(anon, clock.ymd, selected.name)}
