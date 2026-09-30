@@ -11,6 +11,7 @@ import {
   type LoopBlob,
   type LoopId,
 } from "@/lib/village-loops";
+import { toyDockLocksScroll } from "@/features/toy-dock/toy-dock";
 
 type Props = {
   selfName: string | null;
@@ -73,6 +74,9 @@ export function VillageLoopsPanel(props: Props) {
                 disabled={!props.selfName}
                 aria-pressed={spot.pressed}
                 aria-label={`${spot.label}，${spot.status}`}
+                onPointerDown={(event) => {
+                  if (toyDockLocksScroll(id)) event.preventDefault();
+                }}
                 onClick={() => props.onAct(id)}
               >
                 <span className="loop-spot-art" aria-hidden data-kind={id} />

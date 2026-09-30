@@ -38,6 +38,7 @@ import { scoreDayMark } from "@/features/score-day-immersion/score-day-immersion
 import scoreDayStyles from "@/features/score-day-immersion/score-day-immersion.module.css";
 import { autumnDotsOn, nightReadMark } from "@/features/night-readability/night-readability";
 import { viewportMode } from "@/features/nameplate-viewport/nameplate-viewport";
+import { NAMEPLATE_CLEAR_ENABLED, NEAR_PLATE_CAP } from "@/features/nameplate-clear/nameplate-clear";
 import { toyPulseMark } from "@/features/yard-toy-focus/yard-toy-focus";
 import { GestureChrome } from "@/features/gesture-sfx/gesture-chrome";
 
@@ -571,6 +572,8 @@ export function VillageScene({
       data-night-read={readMark}
       data-night-autumn={autumnDotsOn(life.decor?.seasonId ?? "", Boolean(life.sessionNight)) ? "1" : "0"}
       data-plate-viewport={plateView}
+      data-plate-clear={NAMEPLATE_CLEAR_ENABLED ? "1" : "0"}
+      data-plate-near-cap={String(NEAR_PLATE_CAP)}
       data-next-beat={life.mapAim && (life.mapAim.kind === "gate" || life.mapAim.kind === "pond" || life.mapAim.kind === "bench") ? "aimed" : "off"}
       data-next-id={life.mapAim?.kind ?? ""}
       data-toy-lantern={life.toyLook?.lantern ? "1" : "0"}

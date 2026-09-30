@@ -33,6 +33,8 @@ import { paintNightReadability } from "@/features/night-readability/night-readab
 import { beatRingPixels } from "@/features/week-next-beat/next-beat";
 import { isToyId, toyFocusPixels, toyWorldPixels } from "@/features/yard-toy-focus/yard-toy-focus";
 import { plateViewport } from "@/features/nameplate-viewport/nameplate-viewport";
+import { NAMEPLATE_CLEAR_ENABLED, NEAR_PLATE_CAP, layoutClearPlates } from "@/features/nameplate-clear/nameplate-clear";
+import { feedbackPulsePixels } from "@/features/village-feedback/village-feedback";
 
 export const WORLD_W = 1216;
 export const WORLD_H = 1120;
@@ -1504,10 +1506,14 @@ export function paintVillage(
     walkers: villagers.map((person) => ({ x: person.x, y: person.y })),
     reduced: Boolean(life?.reduceMotion),
   });
-  if (life?.mapAim) {
-    const ring = isToyId(life.mapAim.kind)
+  const aimRing = life?.mapAim
+    ? isToyId(life.mapAim.kind)
       ? toyFocusPixels(life.mapAim.x, life.mapAim.y)
-      : beatRingPixels(life.mapAim.x, life.mapAim.y);
+      : beatRingPixels(life.mapAim.x, life.mapAim.y)
+    : [];
+  const pulse = life?.feedbackPulse ? feedbackPulsePixels(life.feedbackPulse.x, life.feedbackPulse.y) : [];
+  const ring = aimRing.concat(pulse);
+  if (ring.length > 0) {
     const scale = viewW / Math.max(1, span.w);
     ctx.save();
     for (const pixel of ring) {
@@ -1590,6 +1596,8 @@ export function drawNameLabels(
   );
   let drawn = 0;
   let shortDrawn = 0;
+  const clearOn = NAMEPLATE_CLEAR_ENABLED && !showAll;
+  const selfPerson = life?.selfName ? villagers.find((person) => person.name === life?.selfName) : undefined;
 
   const ordered = [...villagers].sort((a, b) => {
     const ah = emphasize.has(a.name) || pins.has(a.name) ? 0 : 1;
@@ -1597,6 +1605,20 @@ export function drawNameLabels(
     if (ah !== bh) return ah - bh;
     return b.y - a.y;
   });
+
+  type PendingPlate = {
+    name: string;
+    sprite: NonNullable<ReturnType<typeof getLabelSprite>>;
+    scale: number;
+    mode: LabelMode;
+    hot: boolean;
+    plateAlpha: number;
+    level: number;
+    role: "self" | "pinned" | "neighbor" | "scored" | "other";
+    box: { x: number; y: number; w: number; h: number };
+    dist: number;
+  };
+  const pending: PendingPlate[] = [];
 
   for (const person of ordered) {
     if (!picked.has(person.name)) continue;
@@ -1608,6 +1630,12 @@ export function drawNameLabels(
     const sx = ((person.x - camX) / viewWorldW) * viewW;
     const sy = ((person.y - 28 - camY) / viewWorldH) * viewH;
     const neighbor = Boolean(life?.neighbors?.includes(person.name));
+    const near =
+      neighbor ||
+      (selfPerson
+        ? (person.x - selfPerson.x) * (person.x - selfPerson.x) + (person.y - selfPerson.y) * (person.y - selfPerson.y) <=
+          96 * 96
+        : false);
     const plate = plateViewport({
       showAll,
       zoom,
@@ -1623,21 +1651,48 @@ export function drawNameLabels(
     const x = sx - dw / 2;
     const y = sy - dh;
     if (x > viewW || y > viewH || x + dw < 0 || y + dh < 0) continue;
-    const box = { x, y, w: dw, h: dh };
-    const hit = placed.some((other) => overlaps(box, other));
-    if (hit && !showAll && !hot) continue;
-    placed.push(box);
-    const level = life?.familiarity[person.name] ?? 0;
-    if (level > 0) {
-      ctx.fillStyle = FAMILIAR_RIM[level] ?? FAMILIAR_RIM[1];
-      ctx.fillRect(Math.round(x - 1), Math.round(y - 1), dw + 2, dh + 2);
+    const role =
+      person.name === life?.selfName ? "self" : pinned ? "pinned" : near ? "neighbor" : person.scored ? "scored" : "other";
+    const dist = selfPerson ? Math.hypot(person.x - selfPerson.x, person.y - selfPerson.y) : 0;
+    pending.push({
+      name: person.name,
+      sprite,
+      scale,
+      mode,
+      hot,
+      plateAlpha: plate.alpha,
+      level: life?.familiarity[person.name] ?? 0,
+      role,
+      box: { x, y, w: dw, h: dh },
+      dist,
+    });
+  }
+
+  const laid = clearOn
+    ? layoutClearPlates(
+        pending.map((item) => ({ id: item.name, role: item.role, ...item.box, dist: item.dist })),
+        { cap: NEAR_PLATE_CAP, viewW, viewH },
+      )
+    : null;
+
+  for (const item of pending) {
+    const place = laid?.get(item.name);
+    if (place && !place.draw) continue;
+    const box = place ? { x: place.x, y: place.y, w: place.w, h: place.h } : item.box;
+    if (!place) {
+      const hit = placed.some((other) => overlaps(box, other));
+      if (hit && !showAll && !item.hot) continue;
     }
-    const alpha = (hot ? 1 : mode === "muted" ? 0.7 : 0.92) * plate.alpha;
-    blitLabel(ctx, sprite, x, y, scale, alpha);
+    placed.push(box);
+    if (item.level > 0) {
+      ctx.fillStyle = FAMILIAR_RIM[item.level] ?? FAMILIAR_RIM[1];
+      ctx.fillRect(Math.round(box.x - 1), Math.round(box.y - 1), box.w + 2, box.h + 2);
+    }
+    const alpha = (item.hot ? 1 : item.mode === "muted" ? 0.7 : 0.92) * item.plateAlpha * (place?.alpha ?? 1);
+    blitLabel(ctx, item.sprite, box.x, box.y, item.scale, alpha);
     drawn += 1;
   }
 
-  const selfPerson = life?.selfName ? villagers.find((person) => person.name === life?.selfName) : undefined;
   const shortNames = new Set(
     shortPlateNames({
       zoom,
@@ -1648,8 +1703,9 @@ export function drawNameLabels(
       self: selfPerson ? { x: selfPerson.x, y: selfPerson.y } : null,
     }),
   );
+  const shortRoom = clearOn ? Math.max(0, NEAR_PLATE_CAP - drawn) : Number.POSITIVE_INFINITY;
   for (const person of ordered) {
-    if (!shortNames.has(person.name)) continue;
+    if (!shortNames.has(person.name) || shortDrawn >= shortRoom) continue;
     const glyph = plateGlyph(person.name);
     const sprite = getLabelSprite(glyph, "muted");
     if (!sprite) continue;
@@ -1663,8 +1719,10 @@ export function drawNameLabels(
     if (x > viewW || y > viewH || x + dw < 0 || y + dh < 0) continue;
     const box = { x, y, w: dw, h: dh };
     if (placed.some((other) => overlaps(box, other))) continue;
+    const dist = selfPerson ? Math.hypot(person.x - selfPerson.x, person.y - selfPerson.y) : 0;
+    const fade = clearOn ? Math.max(0.4, 1 - Math.min(1, dist / 280) * 0.5) : 1;
     placed.push(box);
-    blitLabel(ctx, sprite, x, y, shortScale, 0.86);
+    blitLabel(ctx, sprite, x, y, shortScale, 0.86 * fade);
     shortDrawn += 1;
   }
   return { plates: drawn, shortPlates: shortDrawn };

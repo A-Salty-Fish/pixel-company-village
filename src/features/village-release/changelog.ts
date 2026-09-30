@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.1.0";
+export const APP_VERSION = "1.2.0";
 
 export const RELEASE_BOARD_TITLE = "更新日志";
 
@@ -31,6 +31,23 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.2.0",
+    date: "2026-09-30",
+    title: "再待一会儿",
+    notes: [
+      "本周做完、看过村口之后，地图角上留着两三件小事。",
+      "点一下，镜头过去。做完会换一件，不赶时间。",
+      "灯笼、稻草人和路石点下去，地图还留在眼前。",
+      "名字和亮灭跟面板是同一套。",
+      "安静时，靠近的名牌不再贴边叠在一起。",
+      "远处的会淡。近处连自己最多八张。",
+      "待着的时候，旁边的人会走过、坐下，或一起望向灯和湖。",
+      "只是一下，可以关掉。不写说过的话。",
+      "挥手、点灯、找我、再走一处，都有一句短回执。",
+      "地图上留一圈，状态也跟着变。",
+    ],
+  },
   {
     version: "1.1.0",
     date: "2026-09-30",
