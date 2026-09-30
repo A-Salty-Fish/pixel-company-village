@@ -5,8 +5,8 @@ test("version chip opens the player changelog", async ({ page }) => {
   await login(page);
   const chip = page.getByTestId("village-version");
   await expect(chip).toBeVisible();
-  await expect(chip).toHaveAttribute("data-version", "1.1.0");
-  await expect(chip).toContainText("v1.1.0");
+  await expect(chip).toHaveAttribute("data-version", "1.2.0");
+  await expect(chip).toContainText("v1.2.0");
   const onMap = await chip.evaluate((el) => Boolean(el.closest("[data-village-host], canvas")));
   expect(onMap).toBe(false);
 
@@ -14,9 +14,10 @@ test("version chip opens the player changelog", async ({ page }) => {
   const notes = page.getByTestId("release-notes");
   await expect(notes).toHaveJSProperty("open", true);
   await expect(notes).toContainText("更新日志");
+  await expect(notes).toContainText("再待一会儿");
   await expect(notes).toContainText("夜里还能认路");
   await expect(notes).toContainText("小路、水面");
-  await expect(notes).toContainText("村里开张");
+  await expect(notes).toContainText("村子开张");
   await expect(notes).toContainText("分数环");
   await expect(notes).toContainText("不出现说过的话");
   await expect(notes).toContainText("玩乐雷达");
@@ -24,3 +25,4 @@ test("version chip opens the player changelog", async ({ page }) => {
   await expect(notes).not.toContainText("SITE_PASSWORD");
   await expect(notes).not.toContainText("INGEST_SECRET");
 });
+
