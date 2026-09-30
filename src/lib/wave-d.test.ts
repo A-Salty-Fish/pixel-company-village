@@ -16,6 +16,7 @@ import {
   decorParticleCount,
   diaryLine,
   duskActive,
+  nightWash,
   giftNames,
   historyTicks,
   homeReady,
@@ -179,6 +180,13 @@ test("watering is once per day and quiet critters stay off", () => {
   assert.equal(waterOnce(once.blob, "2026-09-30").ok, false);
   assert.equal(critterKind("summer", 12, true, true), "none");
   assert.equal(critterKind("summer", 21, false, true), "firefly");
+  assert.equal(critterKind("summer", 12, false, true), "butterfly");
+  assert.equal(critterKind("summer", 7, false, true), "sparrow");
+  assert.equal(critterKind("summer", 23, false, true), "moth");
+  assert.equal(critterKind("winter", 7, false, true), "none");
+  assert.equal(nightWash(21, true), true);
+  assert.equal(nightWash(12, true), false);
+  assert.equal(nightWash(21, false), false);
   assert.equal(decorParticleCount(20, true), 0);
   assert.equal(decorParticleCount(20, false), 8);
 });
@@ -271,6 +279,14 @@ test("sanitize drops chat-shaped storage and keeps toggles", () => {
   assert.deepEqual(dirty.pins, ["林小满"]);
   assert.equal(dirty.chronicle.length, 1);
   assert.equal(dirty.instrument, "flute");
+  assert.equal(dirty.yard.henDay, null);
+  const yardKept = sanitizeWave({
+    yard: { henDay: "2026-09-30", bell: 2, laundry: true, text: "聊天原文", message: "他说" },
+  });
+  assert.equal(yardKept.yard.henDay, "2026-09-30");
+  assert.equal(yardKept.yard.bell, 2);
+  assert.equal(yardKept.yard.laundry, true);
+  assert.equal(JSON.stringify(yardKept.yard).includes("原文"), false);
   assert.deepEqual(storageSweepPlan(["village:score-history-v1", "chat-transcript", "village:viewer:林:wave-d"]), [
     "chat-transcript",
   ]);
@@ -361,6 +377,10 @@ test("acceptance helpers: fade, water day, migration, seasons, particles, shapes
   assert.equal(spinning.mill, true);
   assert.equal(spinning.millSpin, true);
   assert.equal(spinning.critters, "butterfly");
+  assert.equal(spinning.night, false);
+  assert.equal(spinning.yard.on, true);
+  assert.equal(spinning.yard.wear, true);
+  assert.equal(spinning.yard.hen, false);
   assert.equal(spinning.weekRibbon, false);
   assert.equal(
     buildDecor({

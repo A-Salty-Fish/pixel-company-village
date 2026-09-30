@@ -1,5 +1,6 @@
 "use client";
 
+import { YARD_ACTS, type YardActId } from "@/lib/yard";
 import {
   CANNED_DIARY,
   INSTRUMENTS,
@@ -39,6 +40,7 @@ type Props = {
   onInstrument: (id: string | null) => void;
   onHome: () => void;
   onPostcard: () => void;
+  onYard: (id: YardActId) => void;
 };
 
 export function WaveDPanel(props: Props) {
@@ -131,6 +133,28 @@ export function WaveDPanel(props: Props) {
             {props.names.slice(0, 6).map((name) => (
               <button key={name} type="button" className="hud-btn hud-btn-ghost" disabled={!props.selfName} onClick={() => props.onHat(name)}>
                 {props.wave.hats.includes(name) ? `帽 ${name}` : name}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section data-testid="yard-acts">
+          <h3 className="pixel-label">院里小事</h3>
+          <p className="mt-1 text-xs text-[#6a3d18]">只做罐头动作，记在这个人身上。铃和穗最多三次。</p>
+          <div className="yard-acts mt-2">
+            {YARD_ACTS.map((act) => (
+              <button
+                key={act.id}
+                type="button"
+                className="hud-btn hud-btn-ghost yard-chip"
+                disabled={!props.selfName || !props.wave.toggles.yard}
+                data-testid={`yard-${act.id}`}
+                data-yard-act={act.id}
+                onClick={() => props.onYard(act.id)}
+              >
+                {act.label}
+                {act.id === "bell" ? ` ${props.wave.yard.bell}/3` : ""}
+                {act.id === "grain" ? ` ${props.wave.yard.grain}/3` : ""}
               </button>
             ))}
           </div>
