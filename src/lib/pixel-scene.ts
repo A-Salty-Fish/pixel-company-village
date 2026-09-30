@@ -892,14 +892,6 @@ function drawStatusBadge(ctx: CanvasRenderingContext2D, preset: NonNullable<Scen
   ctx.fillRect(left + 2, top + 2, 4, 4);
 }
 
-const HOUSE_FACES = [
-  { x: 500, y: 168, face: 0 },
-  { x: 790, y: 156, face: 1 },
-  { x: 1070, y: 940, face: 2 },
-  { x: 220, y: 150, face: 3 },
-  { x: 640, y: 980, face: 4 },
-];
-
 function drawHouseFace(ctx: CanvasRenderingContext2D, face: number, x: number, y: number) {
   const left = Math.round(x);
   const top = Math.round(y);
