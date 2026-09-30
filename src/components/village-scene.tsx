@@ -36,6 +36,10 @@ import afterglowStyles from "@/features/ritual-afterglow/ritual-afterglow.module
 import { autumnPaletteMark } from "@/features/autumn-palette/autumn-palette";
 import { scoreDayMark } from "@/features/score-day-immersion/score-day-immersion";
 import scoreDayStyles from "@/features/score-day-immersion/score-day-immersion.module.css";
+import { autumnDotsOn, nightReadMark } from "@/features/night-readability/night-readability";
+import { viewportMode } from "@/features/nameplate-viewport/nameplate-viewport";
+import { toyPulseMark } from "@/features/yard-toy-focus/yard-toy-focus";
+import { GestureChrome } from "@/features/gesture-sfx/gesture-chrome";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
 
@@ -54,6 +58,10 @@ type Props = {
   homePulse?: number;
   onEmpty?: (x: number, y: number) => void;
   onFindMe?: () => void;
+  mapAim?: { token: number; x: number; y: number } | null;
+  ambientOn?: boolean;
+  onSfxMute?: (muted: boolean) => void;
+  onAmbient?: (on: boolean) => void;
 };
 
 const MIN_ZOOM = 1;
@@ -74,6 +82,10 @@ export function VillageScene({
   homePulse = 0,
   onEmpty,
   onFindMe,
+  mapAim = null,
+  ambientOn = false,
+  onSfxMute,
+  onAmbient,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -106,6 +118,7 @@ export function VillageScene({
   const kickRef = useRef<(() => void) | null>(null);
   const wheelAt = useRef(0);
   const glowUntilRef = useRef(0);
+  const aimHoldRef = useRef(0);
 
   useEffect(() => {
     villagersRef.current = villagers;
@@ -122,6 +135,18 @@ export function VillageScene({
   useEffect(() => {
     onEmptyRef.current = onEmpty;
   }, [onEmpty]);
+
+  useEffect(() => {
+    if (!mapAim?.token) return;
+    const nextZoom = 3;
+    zoomRef.current = nextZoom;
+    setZoom(nextZoom);
+    const focus = clampCamera(mapAim.x - WORLD_W / nextZoom / 2, mapAim.y - WORLD_H / nextZoom / 2, nextZoom);
+    camRef.current = focus;
+    setCamMark({ x: Math.round(focus.x), y: Math.round(focus.y), zoom: nextZoom });
+    aimHoldRef.current = Date.now() + 1800;
+    kickRef.current?.();
+  }, [mapAim]);
 
   useEffect(() => {
     if (!homePulse || !life.selfName) return;
@@ -253,7 +278,7 @@ export function VillageScene({
       const list = villagersRef.current;
       for (const v of list) updateVillager(v, t);
       const selected = list.find((v) => v.name === selectedRef.current);
-      if (selected && !drag.current) {
+      if (selected && !drag.current && Date.now() > aimHoldRef.current) {
         const target = cameraFocus(selected, zoomRef.current);
         camRef.current.x += (target.x - camRef.current.x) * EASING.camera;
         camRef.current.y += (target.y - camRef.current.y) * EASING.camera;
@@ -308,6 +333,9 @@ export function VillageScene({
       canvas.dataset.ritualAfterglow = glowPhase;
       canvas.dataset.autumnPalette = autumnPaletteMark(lifeNow?.decor?.seasonId ?? "");
       canvas.dataset.scoreDay = scoreDayMark(Boolean(lifeNow?.scoreFresh), Boolean(lifeNow?.quiet));
+      const readMark = nightReadMark(Boolean(NIGHT_WASH_V2_ENABLED && lifeNow?.sessionNight));
+      canvas.dataset.nightRead = readMark;
+      canvas.dataset.nightAutumn = autumnDotsOn(lifeNow?.decor?.seasonId ?? "", Boolean(lifeNow?.sessionNight)) ? "1" : "0";
     };
 
     const toWorld = (clientX: number, clientY: number) => {
@@ -383,6 +411,7 @@ export function VillageScene({
       zoomRef.current = z;
       setZoom(z);
       camRef.current = clampCamera(camRef.current.x, camRef.current.y, z);
+      setCamMark({ x: camRef.current.x, y: camRef.current.y, zoom: z });
       kickRef.current?.();
     };
 
@@ -448,6 +477,7 @@ export function VillageScene({
     zoomRef.current = z;
     setZoom(z);
     camRef.current = clampCamera(camRef.current.x, camRef.current.y, z);
+    setCamMark({ x: camRef.current.x, y: camRef.current.y, zoom: z });
     kickRef.current?.();
   };
 
@@ -461,6 +491,9 @@ export function VillageScene({
   const glowPhase = life.ritualPhase ?? "off";
   const autumnMark = autumnPaletteMark(life.decor?.seasonId ?? "");
   const scoreMark = scoreDayMark(Boolean(life.scoreFresh), life.quiet);
+  const readMark = nightReadMark(Boolean(NIGHT_WASH_V2_ENABLED && life.sessionNight));
+  const plateView = viewportMode(life.showAllPlates, zoom);
+  const toyPulse = toyPulseMark(life.mapAim && (life.mapAim.kind === "lantern" || life.mapAim.kind === "scarecrow" || life.mapAim.kind === "pebble") ? life.mapAim.kind : null);
 
   return (
     <div
@@ -535,6 +568,15 @@ export function VillageScene({
       data-ritual-afterglow={glowPhase}
       data-autumn-palette={autumnMark}
       data-score-day={scoreMark}
+      data-night-read={readMark}
+      data-night-autumn={autumnDotsOn(life.decor?.seasonId ?? "", Boolean(life.sessionNight)) ? "1" : "0"}
+      data-plate-viewport={plateView}
+      data-next-beat={life.mapAim && (life.mapAim.kind === "gate" || life.mapAim.kind === "pond" || life.mapAim.kind === "bench") ? "aimed" : "off"}
+      data-next-id={life.mapAim?.kind ?? ""}
+      data-toy-lantern={life.toyLook?.lantern ? "1" : "0"}
+      data-toy-scare={String(life.toyLook?.scare ?? 0)}
+      data-toy-pebbles={String(life.toyLook?.pebbles ?? 0)}
+      data-toy-pulse={toyPulse}
     >
       {shownStage === "timeout" || shownStage === "failed" ? (
         <div className="load-recovery" data-testid="load-recovery">
@@ -596,7 +638,7 @@ export function VillageScene({
           <button type="button" className="hud-btn hud-btn-ghost" onClick={() => onEmote("clap")}>
             鼓掌
           </button>
-          <button type="button" className="hud-btn hud-btn-ghost" onClick={() => onEmote("wave")}>
+          <button type="button" className="hud-btn hud-btn-ghost" data-testid="header-wave" onClick={() => onEmote("wave")}>
             挥手
           </button>
         </div>
@@ -621,6 +663,14 @@ export function VillageScene({
         >
           {life.showAllPlates ? "收起名牌" : "全显名牌"}
         </button>
+        {onSfxMute && onAmbient ? (
+          <GestureChrome
+            muted={life.sfxMuted !== false}
+            ambient={ambientOn}
+            onMute={onSfxMute}
+            onAmbient={onAmbient}
+          />
+        ) : null}
         <button
           type="button"
           className="hud-icon hud-icon-find"

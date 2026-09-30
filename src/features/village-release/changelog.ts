@@ -14,8 +14,8 @@
 
 export const RELEASE_NOTES_ENABLED = true;
 
-/** Current production baseline. Everything already on main counts as this release. */
-export const APP_VERSION = "1.0.0";
+/** Displayed ship. Must match package.json and the first RELEASES entry. */
+export const APP_VERSION = "1.1.0";
 
 export const RELEASE_BOARD_TITLE = "更新日志";
 
@@ -31,6 +31,23 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.1.0",
+    date: "2026-09-30",
+    title: "夜里还能认路",
+    notes: [
+      "夜里仍然是冷色。小路、水面、屋影和人影能认出来。",
+      "秋日在地图上留几个暖点，不靠页头那一句。灯还是最亮的。",
+      "本周三件做完，木牌外面多一颗「去看村口 / 湖边 / 长椅」。",
+      "点一下，镜头过去，地上留一圈。不用先打开本周小事。",
+      "灯笼、稻草人和路石点下去，镜头对准那一件。亮灭、歪头和石子跟面板一致。",
+      "点门灯、挥手、找我各有一声短音。地图角上有「静音」和「氛围」。",
+      "静音默认开着。开着就完全没声音。",
+      "全显名牌不再整张地图一样浓。远看边上变淡，拉近后远处的名字收起。",
+      "靠近的人仍清楚。关掉全显就回到安静村子的名牌。",
+      "地图上的挥手也会应一声。安静村子里三秒内有回执，不记说过的话。",
+    ],
+  },
   {
     version: "1.0.0",
     date: "2026-09-30",
