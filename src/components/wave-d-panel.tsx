@@ -12,6 +12,7 @@ import {
   type WeekFacts,
   weekChores,
   choreStatusCopy,
+  type WeekMark,
   type WaveDBlob,
   type WaveSystemId,
 } from "@/lib/wave-d";
@@ -26,6 +27,7 @@ type Props = {
   names: string[];
   line: string | null;
   facts: WeekFacts;
+  marks?: WeekMark | null;
   onToggle: (id: WaveSystemId, on: boolean) => void;
   onDiary: (index: number) => void;
   onPorch: () => void;
@@ -41,7 +43,7 @@ type Props = {
 
 export function WaveDPanel(props: Props) {
   const board = weekBoard(props.weekKey);
-  const chores = weekChores(props.weekKey, props.facts);
+  const chores = weekChores(props.weekKey, props.facts, props.marks);
   const diary = diaryLine(props.wave);
   const progress = atlasRatio(props.quoteUnlocked, props.quoteTotal);
   const card = postcardMeta(props.selfName, props.ymd);

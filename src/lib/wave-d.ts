@@ -126,7 +126,10 @@ export type WaveDBlob = {
   footprints: Footprint[];
   chronicle: ChronicleEvent[];
   seenDay: string | null;
+  weekMarks: WeekMark | null;
 };
+
+export type WeekMark = { week: string; labels: string[] };
 
 export function defaultToggles(): WaveToggles {
   return Object.fromEntries(WAVE_SYSTEMS.map((id) => [id, true])) as WaveToggles;
@@ -145,6 +148,7 @@ export const EMPTY_WAVE: WaveDBlob = {
   footprints: [],
   chronicle: [],
   seenDay: null,
+  weekMarks: null,
 };
 
 function hash(text: string) {
@@ -244,9 +248,44 @@ export type WeekFacts = {
   noticedSeason: boolean;
 };
 
-/** Derived from local actions. Unknown labels stay undone and are never stored. */
-export function weekChores(weekKey: string, facts: WeekFacts) {
-  return weekBoard(weekKey).items.map((label) => ({ label, done: choreDone(label, facts) }));
+const WEEK_KEY = /^\d{4}-W\d{2}$/;
+
+export const WEEK_KEPT_LINE = "做过的会留在这台电脑，只记到本周。";
+
+/** Derived from local actions, plus canned labels already kept for this week. */
+export function weekChores(weekKey: string, facts: WeekFacts, marks?: WeekMark | null) {
+  const saved = keptChoreLabels(weekKey, marks);
+  return weekBoard(weekKey).items.map((label) => ({
+    label,
+    done: choreDone(label, facts) || saved.has(label),
+  }));
+}
+
+export function keptChoreLabels(weekKey: string, marks?: WeekMark | null) {
+  if (!marks || marks.week !== weekKey) return new Set<string>();
+  const board = new Set<string>(weekBoard(weekKey).items);
+  return new Set(marks.labels.filter((label) => board.has(label) && choreAction(label) !== null));
+}
+
+/** Remember one canned chore for this week. A new week replaces the old list. Unknown text is ignored. */
+export function noteWeekChore(blob: WaveDBlob, weekKey: string, label: string): WaveDBlob {
+  if (!WEEK_KEY.test(weekKey) || choreAction(label) === null) return blob;
+  if (!weekBoard(weekKey).items.some((item) => item === label)) return blob;
+  const current = blob.weekMarks?.week === weekKey ? blob.weekMarks.labels : [];
+  if (current.includes(label)) return blob;
+  return { ...blob, weekMarks: { week: weekKey, labels: [...current, label].slice(0, 3) } };
+}
+
+export function readWeekMarks(value: unknown): WeekMark | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as { week?: unknown; labels?: unknown };
+  if (typeof raw.week !== "string" || !WEEK_KEY.test(raw.week) || !Array.isArray(raw.labels)) return null;
+  const board = new Set<string>(weekBoard(raw.week).items);
+  const labels = [
+    ...new Set(raw.labels.filter((item): item is string => typeof item === "string" && board.has(item) && choreAction(item) !== null)),
+  ].slice(0, 3);
+  if (labels.length === 0) return null;
+  return { week: raw.week, labels };
 }
 
 function choreDone(label: string, facts: WeekFacts) {
@@ -595,6 +634,7 @@ export function publicCopyLines() {
     weekBoard("2026-W39").note,
     ATLAS_FALLBACK,
     WEEK_DONE_LINE,
+    WEEK_KEPT_LINE,
     strollStepLine(0, 0),
     strollStepLine(0, 1),
     strollStepLine(2, 3),
@@ -724,6 +764,7 @@ export function sanitizeWave(value: unknown): WaveDBlob {
     footprints,
     chronicle,
     seenDay: typeof raw.seenDay === "string" ? raw.seenDay : null,
+    weekMarks: readWeekMarks(raw.weekMarks),
   };
 }
 

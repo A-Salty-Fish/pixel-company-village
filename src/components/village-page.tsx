@@ -63,9 +63,11 @@ import {
   addStrollStep,
   strollStepLine,
   weekTally,
+  noteWeekChore,
   emptyViewerChores,
   rememberViewerChores,
   WEEK_DONE_LINE,
+  WEEK_KEPT_LINE,
   type ViewerChoreFlags,
   type WaveDBlob,
   type WaveSystemId,
@@ -387,7 +389,25 @@ export function VillagePage({ initial }: Props) {
       }),
     );
   }, [selfName, waveSnap.viewer, waveState.porch, waveState.pins.length, waveState.sit]);
-  const chores = weekChores(clock.weekKey, weekFacts);
+  const choreMarks = liveWave?.weekMarks ?? null;
+  const chores = weekChores(clock.weekKey, weekFacts, choreMarks);
+  const freshKey = weekChores(clock.weekKey, weekFacts)
+    .filter((item) => item.done)
+    .map((item) => item.label)
+    .join("\n");
+  const savedKey = choreMarks?.week === clock.weekKey ? choreMarks.labels.join("\n") : "";
+  const persistViewer = useRef<string | null>(null);
+  useEffect(() => {
+    if (!selfName || waveSnap.viewer !== selfName) return;
+    if (persistViewer.current !== selfName) {
+      persistViewer.current = selfName;
+      return;
+    }
+    const saved = new Set(savedKey ? savedKey.split("\n") : []);
+    const fresh = freshKey.split("\n").filter((label) => label && !saved.has(label));
+    if (fresh.length === 0) return;
+    updateWave((current) => fresh.reduce((blob, label) => noteWeekChore(blob, clock.weekKey, label), current));
+  }, [selfName, waveSnap.viewer, clock.weekKey, freshKey, savedKey]);
   const tally = weekTally(chores);
   const decor = buildDecor({
     blob: waveState,
@@ -642,7 +662,7 @@ export function VillagePage({ initial }: Props) {
       if (!selfName) setWaveLine("先选定「我是谁」，小事才记在这台电脑上。");
       return;
     }
-    if (weekChores(clock.weekKey, weekFacts).find((item) => item.label === label)?.done) return;
+    if (chores.find((item) => item.label === label)?.done) return;
     if (action === "water") {
       const result = waterOnce(waveState, clock.ymd);
       setWaveLine(result.line);
@@ -751,12 +771,13 @@ export function VillagePage({ initial }: Props) {
           className="hud-panel px-3 py-3"
           data-testid="today-chores"
           data-week-done={tally.complete ? "1" : "0"}
+          data-week-kept={choreMarks?.week === clock.weekKey ? String(choreMarks.labels.length) : "0"}
         >
           <p className="pixel-label text-[#2a1a10]">本周小事</p>
           <p className="mt-1 text-xs text-[#6a3d18]" data-testid="week-tally">
             本周 {tally.done}/{tally.total}。点一下就做。做完会停住。只记在这台电脑，不公示，也不跟别人比。
           </p>
-          <p className="mt-1 text-xs text-[#6a3d18]">可在村里新事里关掉。</p>
+          <p className="mt-1 text-xs text-[#6a3d18]">可在村里新事里关掉。{WEEK_KEPT_LINE}</p>
           {tally.complete ? (
             <p className="week-ribbon-note" data-testid="week-done">
               {WEEK_DONE_LINE}
@@ -977,6 +998,7 @@ export function VillagePage({ initial }: Props) {
         names={people.map((person) => person.name)}
         line={waveLine}
         facts={weekFacts}
+        marks={choreMarks}
         onToggle={(id: WaveSystemId, on: boolean) => updateWave((current: WaveDBlob) => setToggle(current, id, on))}
         onDiary={(index) => {
           if (!selfName) return;

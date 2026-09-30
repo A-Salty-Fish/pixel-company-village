@@ -3,9 +3,9 @@
 Date: 2026-09-30. Gate: `pixel-village-wave-d-acceptance-2026-09-30`.
 
 ```text
-SHA: PV-D-005 branch cursor/wave-d-round-7-9062 (from main 383e3c9)
-npm test: PASS (31, includes weekly chore checks)
-Playwright smoke: PASS (54, includes PV-D-005 viewer chore scope). Visual job stays continue-on-error with a 2% pixel tolerance.
+SHA: Round 7 branch cursor/wave-d-round-7-keep-9062 (from main 74e9cd3)
+npm test: PASS (32, includes kept weekly chore labels)
+Playwright smoke: PASS (55, includes the reload that keeps this viewer's ribbon). Visual job stays continue-on-error with a 2% pixel tolerance.
 Privacy: PASS (e2e/privacy.spec.ts)
 Visual quiet/busy: PASS locally; CI job stays continue-on-error
 Steam rubric final: 8.3 / 10
@@ -23,6 +23,7 @@ Playtest 2026-09-30 follow-ups:
 - Round 5: each chore on that board is a button. One to three clicks finishes it through the existing local action, then the button stays disabled so porch, pins, and the bench are not toggled back off. Footsteps store coordinates only. The strip says 「可在村里新事里关掉」 and does not add a second switch. Local smoke: 52 passed.
 - Round 6: the strip counts 本周 n/3. A started stroll shows n/3 on the button. When all three are done, the canned line 「三件都做完了。布条只挂在这台电脑上。」 appears and the map sets data-week-ribbon. Closing the card or turning the lamp and bench back off does not erase that session's finished chores. The ribbon uses the existing week-board switch. Nothing new is stored. Local smoke: 53 passed.
 - PV-D-005: season notice and the gate visit were one shared session flag, so the next identity inherited the first finished chore. Those flags now live in a per-viewer book. `e2e/pv-d-005.spec.ts` checks B is 本周 0/3 with no ribbon, then A still has 3/3.
+- Round 7: finished chores are stored as canned labels on that viewer's wave record for the current week key only. A reload keeps the ribbon. Another identity stays at 0/3. Free text and unknown labels are dropped. Local smoke: 55 passed.
 - Fresh storage: `comfortFromStorage` unit plus `a cleared profile keeps quiet village checked`.
 - Stale score days label the button 「本地互动」.
 - Comfort settings are grouped into 安静 / 装饰 / 名牌 / 我是谁.
