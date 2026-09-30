@@ -804,8 +804,6 @@ export function VillagePage({ initial }: Props) {
         </div>
       </header>
 
-      <FirstRunGuide />
-
       {broadcast && dismissedBroadcast !== broadcastKey ? (
         <div className="hud-panel flex items-center justify-between gap-3 px-3 py-2" data-testid="village-broadcast">
           <p className="pixel-label text-[#2a1a10]">{broadcast.line}</p>
@@ -871,6 +869,7 @@ export function VillagePage({ initial }: Props) {
         onSelf={(name, nextPreset) => saveSelf(name, name ? nextPreset : null)}
         motionReduced={motion.reduced}
       />
+      <FirstRunGuide />
       <VillageHelp />
 
       <div
