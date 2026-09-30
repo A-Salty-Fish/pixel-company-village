@@ -11,20 +11,65 @@ import {
   findMeRing,
   landmarkPixels,
   nearPorch,
+  FIND_ME_HOLD_MS,
+  PLATE_CAP,
+  PLATE_QUIET_CAP,
   plateLegend,
   porchPixels,
   proximityNods,
+  selectPanoramaPlates,
   showNameplate,
 } from "./worldcraft";
 
-test("quiet nameplate LOD hides cold plates until zoom 3", () => {
+test("panorama plates stay with self, neighbors, and pins until 全显", () => {
   assert.equal(showNameplate(1, false, false, true), false);
-  assert.equal(showNameplate(2, false, false, true), false);
-  assert.equal(showNameplate(3, false, false, true), true);
+  assert.equal(showNameplate(3, false, false, true), false);
+  assert.equal(showNameplate(2, false, false, false), false);
   assert.equal(showNameplate(1, true, false, true), true);
   assert.equal(showNameplate(1, false, true, true), true);
-  assert.equal(showNameplate(2, false, false, false), true);
-  assert.equal(showNameplate(1, false, false, false), false);
+  const people = [
+    { name: "自", x: 0, y: 0 },
+    { name: "近", x: 40, y: 0 },
+    { name: "次", x: 70, y: 10 },
+    { name: "远", x: 400, y: 400 },
+    ...Array.from({ length: 8 }, (_, index) => ({ name: `邻${index}`, x: 20, y: 10 + index })),
+  ];
+  const quiet = selectPanoramaPlates({
+    people,
+    selfName: "自",
+    pins: ["远"],
+    hot: [],
+    showAll: false,
+    quiet: true,
+  });
+  assert.equal(quiet.includes("自"), true);
+  assert.equal(quiet.includes("远"), true);
+  assert.equal(quiet.includes("近"), false);
+  assert.equal(quiet.length <= PLATE_QUIET_CAP, true);
+  const open = selectPanoramaPlates({
+    people,
+    selfName: "自",
+    pins: ["远"],
+    hot: ["次"],
+    showAll: false,
+    quiet: false,
+  });
+  assert.equal(open[0], "自");
+  assert.equal(open.includes("远"), true);
+  assert.equal(open.includes("次"), true);
+  assert.equal(open.includes("邻0"), true);
+  assert.equal(open.length, PLATE_CAP);
+  assert.equal(open.includes("近"), false);
+  const all = selectPanoramaPlates({
+    people,
+    selfName: "自",
+    pins: [],
+    hot: [],
+    showAll: true,
+    quiet: true,
+  });
+  assert.equal(all.length, people.length);
+  assert.equal(FIND_ME_HOLD_MS >= 1500, true);
   assert.equal(plateLegend(true), PLATE_QUIET_LINE);
   assert.equal(plateLegend(false), PLATE_LOUD_LINE);
   assert.equal(copyIsClean([PLATE_QUIET_LINE, PLATE_LOUD_LINE, FIND_ME_LABEL]), true);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { STATE_LABELS, STATE_ORDER, withStates } from "@/lib/animation";
 import { glanceLine, lightLabel, scoreDateCopy, waveHint } from "@/lib/copy";
 import {
@@ -45,7 +45,7 @@ import {
   sweepVillageStorage,
   updateWave,
 } from "@/lib/wave-d-store";
-import { loadRitual, ritualNearCount, storeRitual, type RitualSave } from "@/lib/header-ritual";
+import { RITUAL_BEATS, loadRitual, ritualBeat, ritualNearCount, storeRitual, type RitualSave } from "@/lib/header-ritual";
 import { placeVillagers } from "@/lib/pixel-scene";
 import { applyLoop, emptyLoops, loopSalt, type LoopId } from "@/lib/village-loops";
 import { bindLoops, getLoopSnapshot, getServerLoopSnapshot, subscribeLoops, updateLoops, updatePebbles } from "@/lib/village-loops-store";
@@ -200,6 +200,20 @@ export function VillagePage({ initial }: Props) {
   const [badNote, setBadNote] = useState(0);
   const kindnessAt = useRef(0);
   const [dismissedBroadcast, setDismissedBroadcast] = useState<string | null>(null);
+  const [parchment, setParchment] = useState<null | "ritual" | "week" | "season">(null);
+  const headerRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const node = headerRef.current;
+    if (!node) return;
+    const sync = () => {
+      const height = Math.ceil(node.getBoundingClientRect().height);
+      document.documentElement.style.setProperty("--village-header-h", `${height}px`);
+    };
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
   const [vignette, setVignette] = useState<{ title: string; lines: [string, string] } | null>(null);
   const [shelfLine, setShelfLine] = useState<string | null>(null);
   const systemReduced = useSyncExternalStore(subscribeSystemReduced, systemReducedSnapshot, () => false);
@@ -834,18 +848,25 @@ export function VillagePage({ initial }: Props) {
     setWaveLine("把锄头放下，在长椅上坐下了。");
   }
 
+  const ritualShown = ritualMark ? RITUAL_BEATS[ritualMark.beat] : ritualBeat(clock.hour);
+  const openParchment = (id: "ritual" | "week" | "season") => {
+    setParchment((current) => (current === id ? null : id));
+  };
+
   return (
     <div
-      className="farm-page mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-3 py-4 sm:px-5"
+      className="farm-page mx-auto flex w-full max-w-6xl flex-1 flex-col gap-3 px-3 pb-8 pt-0 sm:px-5"
       data-reduce-motion={motion.reduced ? "1" : "0"}
       data-bad-isolated={badNote ? "1" : "0"}
       data-roster-mode={rosterMode}
     >
-      <header className="hud-panel village-header" data-testid="village-header">
-        <div className="hud-title">像素公司村</div>
-        <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm text-[#2a1a10]" data-testid="village-glance">
+      <div className="village-hero" data-testid="village-hero">
+      <div className="parchment-stack" data-testid="parchment-stack">
+      <header ref={headerRef} className="hud-panel village-header" data-testid="village-header">
+        <div className="village-header-row">
+          <div className="min-w-0 flex-1">
+            <p className="pixel-label text-[#2a1a10]">像素公司村</p>
+            <p className="glance-line text-xs text-[#2a1a10]" data-testid="village-glance">
               {glanceLine({
                 season: season.label,
                 weather: weatherFor(clock.ymd).label,
@@ -853,20 +874,6 @@ export function VillagePage({ initial }: Props) {
                 selfName,
               })}
             </p>
-            <details data-testid="score-meta">
-              <summary className="cursor-pointer text-xs text-[#6a3d18]">分数从哪来</summary>
-              <p className="mt-1 text-sm text-[#4a3a28]" data-testid="score-date" data-honesty={dateCopy.fresh ? "fresh" : "stale"}>
-                {dateCopy.headline}
-                {` · 有分 ${scoredCount} 人`}
-                {placeholderCount > 0 ? ` · 未评分 ${placeholderCount} 人` : ""}
-              </p>
-              <p className="text-xs text-[#6a3d18]" data-testid="score-date-detail">
-                {dateCopy.detail}
-              </p>
-              <p className="text-xs text-[#6a3d18]" data-testid="last-score-sync">
-                {loading ? "正在刷新…" : playSnap.syncedAt ? `上次成功 ${playSnap.syncedAt}` : "还没有成功读到分数"}
-              </p>
-            </details>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="hud-btn" onClick={refresh} disabled={loading} data-testid="refresh-scores" data-loading={loading ? "1" : "0"}>
@@ -877,8 +884,69 @@ export function VillagePage({ initial }: Props) {
             </button>
           </div>
         </div>
+        <details className="px-3 pb-2" data-testid="score-meta">
+          <summary className="cursor-pointer text-xs text-[#6a3d18]">分数从哪来</summary>
+          <p className="mt-1 text-sm text-[#4a3a28]" data-testid="score-date" data-honesty={dateCopy.fresh ? "fresh" : "stale"}>
+            {dateCopy.headline}
+            {` · 有分 ${scoredCount} 人`}
+            {placeholderCount > 0 ? ` · 未评分 ${placeholderCount} 人` : ""}
+          </p>
+          <p className="text-xs text-[#6a3d18]" data-testid="score-date-detail">
+            {dateCopy.detail}
+          </p>
+          <p className="text-xs text-[#6a3d18]" data-testid="last-score-sync">
+            {loading ? "正在刷新…" : playSnap.syncedAt ? `上次成功 ${playSnap.syncedAt}` : "还没有成功读到分数"}
+          </p>
+        </details>
       </header>
-      <div className="hud-panel px-3 pb-3">
+      {visitorCopy(selfName, waveState.toggles.visitor) ? (
+        <p className="visitor-line" data-testid="visitor-banner">
+          {visitorCopy(selfName, waveState.toggles.visitor)}
+        </p>
+      ) : null}
+      {error ? <p className="px-1 text-xs text-[#8a2020]">{error}</p> : null}
+      <div className="parchment-bar" data-testid="parchment-bar">
+        <button
+          type="button"
+          className="parchment-badge"
+          data-testid="ritual-badge"
+          aria-expanded={parchment === "ritual"}
+          aria-controls="header-ritual"
+          onClick={() => openParchment("ritual")}
+        >
+          {ritualShown.title}
+        </button>
+        {waveState.toggles.weekBoard ? (
+          <button
+            type="button"
+            className="parchment-badge"
+            data-testid="week-badge"
+            aria-expanded={parchment === "week"}
+            aria-controls="today-chores"
+            onClick={() => openParchment("week")}
+          >
+            本周 {tally.done}/{tally.total}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className={`parchment-badge season-banner season-${season.id}`}
+          data-testid="season-banner"
+          data-season-banner
+          data-season={season.id}
+          data-festival={festival ? festival.label : ""}
+          data-season-fade="400"
+          aria-expanded={parchment === "season"}
+          onClick={() => {
+            openParchment("season");
+            rememberChore("season");
+          }}
+        >
+          {season.label}
+          {festival ? ` · 今日${festival.label}` : ""}
+        </button>
+      </div>
+      <div className="parchment-panel" hidden={parchment !== "ritual"}>
         <HeaderRitual
           viewer={selfName}
           hour={clock.hour}
@@ -890,84 +958,52 @@ export function VillagePage({ initial }: Props) {
           }}
         />
       </div>
-
-      {visitFlags ? (
-        <FirstRunGuide
-          flags={visitFlags}
-          onShowMotion={() => {
-            const panel = document.querySelector<HTMLDetailsElement>("[data-testid='wave-d-panel']");
-            if (panel) panel.open = true;
-            document.querySelector<HTMLInputElement>("[data-testid='reduce-motion-toggle']")?.focus();
-          }}
-        />
-      ) : null}
-
-      {broadcast && dismissedBroadcast !== broadcastKey ? (
-        <div className="hud-panel flex items-center justify-between gap-3 px-3 py-2" data-testid="village-broadcast">
-          <p className="pixel-label text-[#2a1a10]">{broadcast.line}</p>
-          <button type="button" className="hud-btn hud-btn-ghost" onClick={() => setDismissedBroadcast(broadcastKey)}>
-            收起
-          </button>
-        </div>
-      ) : null}
-      {error ? <p className="hud-panel px-3 py-2 text-sm text-[#8a2020]">{error}</p> : null}
-      {shelfLine ? <p className="px-1 text-xs text-[#6a3d18]">{shelfLine}</p> : null}
-
-      <SeasonBanner
-        seasonLabel={season.label}
-        seasonId={season.id}
-        festival={festival}
-        people={people}
-        onNotice={() => rememberChore("season")}
-      />
-      {waveState.toggles.weekBoard ? (
-        <section
-          className="hud-panel px-3 py-3"
-          data-testid="today-chores"
-          data-week-done={tally.complete ? "1" : "0"}
-          data-week-kept={choreMarks?.week === clock.weekKey ? String(choreMarks.labels.length) : "0"}
-        >
-          <p className="pixel-label text-[#2a1a10]">本周小事</p>
-          <p className="mt-1 text-xs text-[#6a3d18]" data-testid="week-tally">
-            本周 {tally.done}/{tally.total}。点一下就做。做完会停住。只记在这台电脑，不公示，也不跟别人比。
-          </p>
-          <p className="mt-1 text-xs text-[#6a3d18]">可在村里新事里关掉。{WEEK_KEPT_LINE}</p>
-          {tally.complete ? (
-            <p className="week-ribbon-note" data-testid="week-done">
-              {WEEK_DONE_LINE}
+      <div className="parchment-panel" hidden={parchment !== "week" || !waveState.toggles.weekBoard}>
+        {waveState.toggles.weekBoard ? (
+          <section
+            className="hud-panel px-3 py-3"
+            id="today-chores"
+            data-testid="today-chores"
+            data-week-done={tally.complete ? "1" : "0"}
+            data-week-kept={choreMarks?.week === clock.weekKey ? String(choreMarks.labels.length) : "0"}
+          >
+            <p className="pixel-label text-[#2a1a10]">本周小事</p>
+            <p className="mt-1 text-xs text-[#6a3d18]" data-testid="week-tally">
+              本周 {tally.done}/{tally.total}。点一下就做。做完会停住。只记在这台电脑，不公示，也不跟别人比。
             </p>
-          ) : null}
-          <ul className="today-chores">
-            {chores.map((item) => (
-              <li key={item.label} data-chore={item.label} data-done={item.done ? "1" : "0"}>
-                <button
-                  type="button"
-                  className="hud-btn hud-btn-ghost"
-                  disabled={item.done || !selfName}
-                  onClick={() => runChore(item.label)}
-                >
-                  {choreButtonCopy(item.label, item.done, weekFacts.steps)}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      {visitorCopy(selfName, waveState.toggles.visitor) ? (
-        <p className="hud-panel px-3 py-2 text-sm text-[#2a1a10]" data-testid="visitor-banner">
-          {visitorCopy(selfName, waveState.toggles.visitor)}
-        </p>
-      ) : null}
-      <ComfortSettings
-        comfort={comfort}
-        selfName={selfName}
-        preset={preset}
-        names={(rosterMode === "empty" ? payload.people : people).map((person) => person.name)}
-        onComfort={(next: Comfort) => saveComfort(next)}
-        onSelf={(name, nextPreset) => saveSelf(name, name ? nextPreset : null)}
-        motionReduced={motion.reduced}
-      />
-      <VillageHelp />
+            <p className="mt-1 text-xs text-[#6a3d18]">可在村里新事里关掉。{WEEK_KEPT_LINE}</p>
+            {tally.complete ? (
+              <p className="week-ribbon-note" data-testid="week-done">
+                {WEEK_DONE_LINE}
+              </p>
+            ) : null}
+            <ul className="today-chores">
+              {chores.map((item) => (
+                <li key={item.label} data-chore={item.label} data-done={item.done ? "1" : "0"}>
+                  <button
+                    type="button"
+                    className="hud-btn hud-btn-ghost"
+                    disabled={item.done || !selfName}
+                    onClick={() => runChore(item.label)}
+                  >
+                    {choreButtonCopy(item.label, item.done, weekFacts.steps)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+      </div>
+      <div className="parchment-panel" hidden={parchment !== "season"}>
+        <SeasonBanner
+          seasonLabel={season.label}
+          seasonId={season.id}
+          festival={festival}
+          people={people}
+          onNotice={() => rememberChore("season")}
+        />
+      </div>
+      </div>
 
       <div
         className="village-stage"
@@ -975,7 +1011,7 @@ export function VillagePage({ initial }: Props) {
         data-split={split.toFixed(2)}
         style={{ ["--map-fr" as string]: String(split), ["--dock-fr" as string]: String(1 - split) }}
       >
-        <div className="village-map-slot">
+        <div className="village-map-slot" data-testid="village-map-slot">
           {people.length === 0 ? (
             <div className="empty-yard" data-testid="empty-yard">
               <div className="empty-yard-art" aria-hidden>
@@ -1144,6 +1180,37 @@ export function VillagePage({ initial }: Props) {
           )}
         </div>
       </div>
+      </div>
+
+      {broadcast && dismissedBroadcast !== broadcastKey ? (
+        <div className="hud-panel flex items-center justify-between gap-3 px-3 py-2" data-testid="village-broadcast">
+          <p className="pixel-label text-[#2a1a10]">{broadcast.line}</p>
+          <button type="button" className="hud-btn hud-btn-ghost" onClick={() => setDismissedBroadcast(broadcastKey)}>
+            收起
+          </button>
+        </div>
+      ) : null}
+      {shelfLine ? <p className="px-1 text-xs text-[#6a3d18]">{shelfLine}</p> : null}
+      {visitFlags ? (
+        <FirstRunGuide
+          flags={visitFlags}
+          onShowMotion={() => {
+            const panel = document.querySelector<HTMLDetailsElement>("[data-testid='wave-d-panel']");
+            if (panel) panel.open = true;
+            document.querySelector<HTMLInputElement>("[data-testid='reduce-motion-toggle']")?.focus();
+          }}
+        />
+      ) : null}
+      <ComfortSettings
+        comfort={comfort}
+        selfName={selfName}
+        preset={preset}
+        names={(rosterMode === "empty" ? payload.people : people).map((person) => person.name)}
+        onComfort={(next: Comfort) => saveComfort(next)}
+        onSelf={(name, nextPreset) => saveSelf(name, name ? nextPreset : null)}
+        motionReduced={motion.reduced}
+      />
+      <VillageHelp />
 
       <WaveDPanel
         selfName={selfName}
@@ -1385,7 +1452,7 @@ function VillageHelp() {
     <details className="hud-panel" data-testid="village-help">
       <summary className="hud-title cursor-pointer">村里图例</summary>
       <div className="space-y-2 px-3 py-3 text-sm text-[#2a1a10]">
-        <p>琥珀名牌是有分的彩猫，灰名牌是未评分的灰猫。远景默认收起名牌，点「全显」可以都打开。</p>
+        <p>琥珀名牌是有分的彩猫，灰名牌是未评分的灰猫。全景默认只留自己、靠近的人和钉住的名牌，最多八张。安静村子更少。点「全显名牌」才把其余的打开。</p>
         <p>安静村子默认开着，花瓣和广播会少很多。关掉之后，蝴蝶和萤火才会出现。</p>
         <p>干活是方块，摸鱼是波浪，在任务上是等号。颜色只是辅助，形状也分得开。</p>
         <p>这里不收录说过的话。善意、挥手和田里的小玩具都记在这台电脑的「我是谁」上。</p>
@@ -1437,15 +1504,7 @@ function SeasonBanner({
   const upcoming = nextFestival();
   const totals = teamTotals(people);
   return (
-    <section
-      className={`season-banner season-${seasonId}`}
-      data-season-banner
-      data-testid="season-banner"
-      data-season={seasonId}
-      data-festival={festival ? festival.label : ""}
-      data-season-fade="400"
-      onClick={onNotice}
-    >
+    <section className={`season-banner season-${seasonId}`} data-testid="season-detail" onClick={onNotice}>
       <p className="pixel-label text-[#2a1a10]">
         {seasonLabel}
         {festival ? ` · 今日${festival.label}` : ` · 下一个节日 ${upcoming.label} ${upcoming.monthDay}`}

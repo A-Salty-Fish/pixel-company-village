@@ -86,6 +86,8 @@ export function emoteFx(actor: string, kind: "stretch" | "sit" | "clap" | "wave"
 }
 
 export const SOCIAL_WAVE_REPLY = "对方也挥了回来。";
+/** Map reply stays up long enough to see, and not past a short beat. */
+export const WAVE_REPLY_MS = 3000;
 export const SOCIAL_KIND_REPLY = "对方点了点头，回了一颗小种子。";
 
 const WAVE_BY_LEVEL = [
@@ -207,7 +209,7 @@ function makeFx(kind: FxKind, actor: string, partner?: string, salt = 0): Villag
     partner,
     line,
     startedAt: Date.now(),
-    duration: kind === "pair" ? 3200 : kind === "scare" ? 900 : 2400,
+    duration: kind === "pair" ? 3200 : kind === "wave" ? WAVE_REPLY_MS : kind === "scare" ? 900 : 2400,
   };
 }
 

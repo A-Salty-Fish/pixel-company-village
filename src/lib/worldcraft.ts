@@ -7,6 +7,9 @@ export type Pixel = { x: number; y: number; w: number; h: number; color: string 
 
 export const PLATE_LOUD_ZOOM = 2;
 export const PLATE_QUIET_ZOOM = 3;
+export const PLATE_CAP = 8;
+export const PLATE_QUIET_CAP = 4;
+export const FIND_ME_HOLD_MS = 1600;
 export const NOD_REACH = 96;
 export const PORCH_REACH = 88;
 
@@ -24,11 +27,55 @@ export const GATE_POST = { x: 88, y: 128 };
 export const POND_POST = { x: 96, y: 64 };
 export const BENCH_POST = { x: 640, y: 420 };
 
-/** Cold plates stay hidden below zoom 2. Quiet (the default) keeps them hidden until zoom 3. */
-export function showNameplate(zoom: number, hot: boolean, showAll: boolean, quiet: boolean) {
-  if (hot || showAll) return true;
-  if (quiet) return zoom >= PLATE_QUIET_ZOOM;
-  return zoom >= PLATE_LOUD_ZOOM;
+/**
+ * A plate shows when it is in the picked set, or when 「全显名牌」 is on.
+ * Zoom alone does not uncover the rest of the village.
+ */
+export function showNameplate(_zoom: number, hot: boolean, showAll: boolean, _quiet: boolean) {
+  return hot || showAll;
+}
+
+export type PlateSpot = { name: string; x: number; y: number };
+
+/** Default panorama: self, then pins, then nearby people, never more than the cap. Quiet skips neighbors. */
+export function selectPanoramaPlates(input: {
+  people: PlateSpot[];
+  selfName: string | null;
+  pins: string[];
+  hot: string[];
+  showAll: boolean;
+  quiet: boolean;
+  reach?: number;
+}) {
+  if (input.showAll) return input.people.map((person) => person.name);
+  const cap = input.quiet ? PLATE_QUIET_CAP : PLATE_CAP;
+  const known = new Set(input.people.map((person) => person.name));
+  const chosen: string[] = [];
+  const add = (name: string | null | undefined) => {
+    if (!name || chosen.includes(name) || !known.has(name) || chosen.length >= cap) return;
+    chosen.push(name);
+  };
+  add(input.selfName);
+  for (const name of input.hot) add(name);
+  for (const name of input.pins) add(name);
+  if (!input.quiet && input.selfName && known.has(input.selfName)) {
+    const self = input.people.find((person) => person.name === input.selfName);
+    if (self) {
+      const reach = input.reach ?? NOD_REACH;
+      const reach2 = reach * reach;
+      const neighbors = input.people
+        .filter((person) => person.name !== self.name)
+        .map((person) => {
+          const dx = person.x - self.x;
+          const dy = person.y - self.y;
+          return { name: person.name, dist: dx * dx + dy * dy };
+        })
+        .filter((person) => person.dist <= reach2)
+        .sort((a, b) => a.dist - b.dist);
+      for (const neighbor of neighbors) add(neighbor.name);
+    }
+  }
+  return chosen;
 }
 
 export function plateLegend(quiet: boolean) {

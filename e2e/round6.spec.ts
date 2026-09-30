@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, roster } from "./login";
+import { login, openWeekBoard, roster } from "./login";
 
 test("finishing the three weekly chores hangs a ribbon that stays after the card closes", async ({ page }) => {
   await login(page);
@@ -8,6 +8,7 @@ test("finishing the three weekly chores hangs a ribbon that stays after the card
   expect(self).toBeTruthy();
   await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(self ?? "");
+  await openWeekBoard(page);
   const strip = page.getByTestId("today-chores");
   await expect(strip).toHaveAttribute("data-week-done", "0");
   await expect(page.locator("[data-village-host='ready']")).toHaveAttribute("data-week-ribbon", "0");

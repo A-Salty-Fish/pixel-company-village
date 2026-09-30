@@ -3,6 +3,7 @@ import { login, roster } from "./login";
 
 test("header ritual is once a day and names nearby people", async ({ page }) => {
   await login(page);
+  await page.getByTestId("ritual-badge").click();
   const ritual = page.getByTestId("header-ritual");
   await expect(ritual).toBeVisible();
   await expect(ritual).toContainText("先选定「我是谁」，再做今日仪式。");

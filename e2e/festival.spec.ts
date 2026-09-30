@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { login } from "./login";
 
 const FESTIVALS = [
@@ -8,6 +8,12 @@ const FESTIVALS = [
   { iso: "2026-11-07T02:00:00.000Z", label: "立冬", line: "围炉日", season: "autumn" },
 ] as const;
 
+async function openSeason(page: Page) {
+  const banner = page.getByTestId("season-banner");
+  if ((await banner.getAttribute("aria-expanded")) !== "true") await banner.click();
+  return page.getByTestId("season-detail");
+}
+
 test("each fixed festival shows a canned line and team totals", async ({ page }) => {
   await login(page);
   await page.evaluate(() => window.__VILLAGE_TEST__?.freezeAnimations(true));
@@ -15,9 +21,11 @@ test("each fixed festival shows a canned line and team totals", async ({ page })
     await page.evaluate((iso) => window.__VILLAGE_TEST__?.setClock(iso), festival.iso);
     const banner = page.getByTestId("season-banner");
     await expect(banner).toHaveAttribute("data-festival", festival.label);
-    await expect(banner).toContainText(festival.line);
-    await expect(banner).toContainText("全村合计，不排名");
-    await expect(banner).not.toContainText("垫底");
+    await expect(banner).toContainText(festival.label);
+    const detail = await openSeason(page);
+    await expect(detail).toContainText(festival.line);
+    await expect(detail).toContainText("全村合计，不排名");
+    await expect(detail).not.toContainText("垫底");
     const state = await page.evaluate(() => window.__VILLAGE_TEST__?.getState());
     expect(state?.festival).toBe(festival.label);
     expect(state?.season).toBe(festival.season);
@@ -30,11 +38,16 @@ test("an ordinary day is not a festival", async ({ page }) => {
   const banner = page.getByTestId("season-banner");
   await expect(banner).toHaveAttribute("data-festival", "");
   await expect(banner).toContainText("秋日田色");
-  await expect(banner).toContainText("一年四节");
   await expect(banner).not.toContainText("今日立春");
   await expect(banner).not.toContainText("今日立夏");
   await expect(banner).not.toContainText("今日立秋");
   await expect(banner).not.toContainText("今日立冬");
+  const detail = await openSeason(page);
+  await expect(detail).toContainText("一年四节");
+  await expect(detail).not.toContainText("今日立春");
+  await expect(detail).not.toContainText("今日立夏");
+  await expect(detail).not.toContainText("今日立秋");
+  await expect(detail).not.toContainText("今日立冬");
   const state = await page.evaluate(() => window.__VILLAGE_TEST__?.getState());
   expect(state?.festival).toBeNull();
   expect(state?.season).toBe("autumn");

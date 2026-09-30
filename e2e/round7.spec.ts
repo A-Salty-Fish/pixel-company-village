@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, roster } from "./login";
+import { login, openWeekBoard, roster } from "./login";
 
 test("finished weekly chores stay with that viewer after a reload", async ({ page }) => {
   await login(page);
@@ -8,6 +8,7 @@ test("finished weekly chores stay with that viewer after a reload", async ({ pag
   expect(first && second && first !== second).toBeTruthy();
   await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(first ?? "");
+  await openWeekBoard(page);
   const strip = page.getByTestId("today-chores");
   const rows = strip.locator("[data-chore]");
   await expect(rows).toHaveCount(3);
