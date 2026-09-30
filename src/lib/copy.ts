@@ -22,7 +22,7 @@ export function scoreDateCopy(dataDate: string, today: string) {
   }
   return {
     fresh: false as const,
-    headline: `最近一次评分日 ${dataDate}`,
+    headline: `分数来自${dataDate} · 村里仍是此刻`,
     detail: `不是日历上的今天（${today}）。分数仍停在评分日。`,
     refresh: "刷新评分日",
   };
