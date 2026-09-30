@@ -33,7 +33,7 @@ type Props = {
 
 export function PlayShelf({ selfName, play, visit, museum, quoteTotal, festival, spotlights, note, onProp, onFreeze, onQuote }: Props) {
   return (
-    <details className="hud-panel overflow-hidden" data-testid="play-shelf">
+    <details className="hud-panel" data-testid="play-shelf">
       <summary className="hud-title cursor-pointer">村里的事</summary>
       <div className="space-y-4 px-3 py-3 text-sm text-[#2a1a10]">
         <section data-testid="visit-calendar">

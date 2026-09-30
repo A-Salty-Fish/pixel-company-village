@@ -24,7 +24,13 @@ export async function proxy(request: NextRequest) {
     const login = request.nextUrl.clone();
     login.pathname = "/login";
     login.search = "";
-    return NextResponse.redirect(login);
+    // 303 is not cached. A cached 307 to /login was being reused after the
+    // next successful sign-in, so the village shell came back empty until a
+    // later client update (opening 「村里的事」).
+    const response = NextResponse.redirect(login, 303);
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    response.headers.set("x-middleware-cache", "no-cache");
+    return response;
   }
 
   return NextResponse.next();

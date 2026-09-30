@@ -137,6 +137,14 @@ canvas {
   box-shadow:
     inset 0 0 0 2px #d8b888,
     4px 4px 0 #3d2a1c;
+  content-visibility: visible;
+}
+
+/* Closed <details> use content-visibility:hidden. Combined with overflow
+   clipping, Chrome can drop paints for the rest of the farm until the
+   summary is toggled. Keep the panels themselves paintable. */
+details.hud-panel {
+  overflow: visible;
 }
 
 .hud-title {

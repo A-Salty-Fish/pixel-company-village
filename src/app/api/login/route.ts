@@ -45,9 +45,12 @@ export async function POST(request: Request) {
   }
 
   const token = await sessionTokenFromPassword(password);
+  // Unique query so a stale client-router / BFCache entry for "/" is not reused
+  // after 出村 cleared the cookie. The village page strips `booted` on mount.
   const response = form
-    ? formRedirect(request, "/")
+    ? formRedirect(request, `/?booted=${Date.now()}`)
     : NextResponse.json({ ok: true });
   response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
+  response.headers.set("Cache-Control", "private, no-store, max-age=0");
   return response;
 }

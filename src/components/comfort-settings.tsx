@@ -24,7 +24,7 @@ export function ComfortSettings({
 }: Props) {
   return (
     <details
-      className="hud-panel overflow-hidden"
+      className="hud-panel"
       data-comfort-settings
       data-testid="comfort-settings"
       data-quota-source="local"

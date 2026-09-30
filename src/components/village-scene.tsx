@@ -144,7 +144,9 @@ export function VillageScene({
       canvasRef.current = canvas;
     }
 
-    const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
+    // desynchronized canvases can present a blank frame for the whole tab
+    // until the next DOM change (for example opening 「村里的事」).
+    const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) {
       setFailed(true);
       return;
@@ -346,14 +348,17 @@ export function VillageScene({
     kickRef.current = kick;
     kick();
     const onFont = () => kick();
+    const onPageShow = () => kick();
     document.addEventListener("visibilitychange", kick);
     document.addEventListener("village-font", onFont);
+    window.addEventListener("pageshow", onPageShow);
 
     return () => {
       cancelAnimationFrame(frame);
       window.clearInterval(stageTimer);
       document.removeEventListener("visibilitychange", kick);
       document.removeEventListener("village-font", onFont);
+      window.removeEventListener("pageshow", onPageShow);
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);

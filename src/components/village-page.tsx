@@ -146,8 +146,7 @@ export function VillagePage({ initial }: Props) {
       const res = await fetch("/api/scores", { cache: "no-store" });
       if (res.status === 401) {
         // The proxy only sees the cleared cookie on a full navigation.
-        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- logout must leave the app router cache
-        window.location.assign("/login");
+        window.location.replace("/login");
         return;
       }
       if (!res.ok) throw new Error("load_failed");
@@ -161,10 +160,49 @@ export function VillagePage({ initial }: Props) {
   }
 
   async function logout() {
-    await fetch("/api/logout", { method: "POST" });
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- logout must leave the app router cache
-    window.location.assign("/login");
+    await fetch("/api/logout", { method: "POST", cache: "no-store" });
+    // Full document load. A client-router return to "/" was reusing the shell
+    // from before the cookie clear, so the header and roster stayed blank
+    // until the next local event.
+    window.location.replace("/login");
   }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("booted")) {
+      params.delete("booted");
+      const qs = params.toString();
+      window.history.replaceState(window.history.state, "", qs ? `/?${qs}` : "/");
+    }
+    if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
+    window.scrollTo(0, 0);
+
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) window.location.reload();
+    };
+    window.addEventListener("pageshow", onPageShow);
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/scores", { cache: "no-store" });
+        if (cancelled) return;
+        if (res.status === 401) {
+          window.location.replace("/login");
+          return;
+        }
+        if (!res.ok) return;
+        setPayload((await res.json()) as ScorePayload);
+      } catch {
+        /* keep the server-rendered roster */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, []);
 
   useEffect(() => {
     hydratePrefs();
@@ -440,7 +478,7 @@ export function VillagePage({ initial }: Props) {
 
   return (
     <div className="farm-page mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-3 py-4 sm:px-5">
-      <header className="hud-panel overflow-hidden">
+      <header className="hud-panel" data-testid="village-header">
         <div className="hud-title">像素公司村</div>
         <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
