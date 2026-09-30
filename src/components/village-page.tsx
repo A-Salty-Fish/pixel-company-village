@@ -546,7 +546,7 @@ export function VillagePage({ initial }: Props) {
       if (selfName) setFx(blockedKindnessFx(selected.name, spent.line));
       return;
     }
-    const event = withSocialReply(kindnessFx(action, selected.name), selfName);
+    const event = withSocialReply(kindnessFx(action, selected.name), selfName, familiarity[selected.name] ?? 0);
     setFx(spent.sundayBonus ? { ...event, line: `${event.line} 周日的田边多亮了一下。` } : event);
     beginUndo(selected.name, false);
     const today = shanghaiClock().ymd;
@@ -604,7 +604,7 @@ export function VillagePage({ initial }: Props) {
       setFx(blockedKindnessFx(selected.name, spent.line));
       return;
     }
-    setFx(withSocialReply(emoteFx(selected.name, "wave"), selfName));
+    setFx(withSocialReply(emoteFx(selected.name, "wave"), selfName, familiarity[selected.name] ?? 0));
   }
 
   function emote(kind: "stretch" | "sit" | "clap" | "wave") {
@@ -809,14 +809,16 @@ export function VillagePage({ initial }: Props) {
               {dateCopy.headline} · 有分 {scoredCount} 人
               {placeholderCount > 0 ? ` · 未评分 ${placeholderCount} 人` : ""}
             </p>
-            <p className="text-xs text-[#6a3d18]">{dateCopy.detail}</p>
+            <p className="text-xs text-[#6a3d18]" data-testid="score-date-detail">
+              {dateCopy.detail}
+            </p>
             <p className="text-xs text-[#6a3d18]" data-testid="last-score-sync">
               {loading ? "正在刷新…" : playSnap.syncedAt ? `上次成功 ${playSnap.syncedAt}` : "还没有成功读到分数"}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="hud-btn" onClick={refresh} disabled={loading} data-testid="refresh-scores" data-loading={loading ? "1" : "0"}>
-              {loading ? "正在刷新…" : "刷新今日分数"}
+              {loading ? "正在刷新…" : dateCopy.refresh}
             </button>
             <button type="button" className="hud-btn hud-btn-ghost" onClick={logout}>
               出村

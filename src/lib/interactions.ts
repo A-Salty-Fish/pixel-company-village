@@ -88,25 +88,39 @@ export function emoteFx(actor: string, kind: "stretch" | "sit" | "clap" | "wave"
 export const SOCIAL_WAVE_REPLY = "对方也挥了回来。";
 export const SOCIAL_KIND_REPLY = "对方点了点头，回了一颗小种子。";
 
-const KIND_REPLIES: Partial<Record<FxKind, string>> = {
-  seed: SOCIAL_KIND_REPLY,
-  coffee: "对方捧着杯子，也点了点头。",
-  rod: "对方晃了晃钓竿，算是回礼。",
-  pair: "对方也浇了两下，水光还在。",
+const WAVE_BY_LEVEL = [
+  SOCIAL_WAVE_REPLY,
+  "对方挥得更慢一点，像认出你了。",
+  "对方先点头，再挥回来。",
+  "对方把帽子抬了抬，挥得很熟。",
+] as const;
+
+const KIND_BY_LEVEL: Partial<Record<FxKind, readonly string[]>> = {
+  seed: [SOCIAL_KIND_REPLY, "对方把种子按好，多看了你一眼。", "对方记得这颗种子，点了点头。", "对方把种子按进熟土里。"],
+  coffee: ["对方捧着杯子，也点了点头。", "对方把杯子捂热，再点头。", "对方记得你的咖啡，点了点头。", "对方把杯子递回来一点。"],
+  rod: ["对方晃了晃钓竿，算是回礼。", "对方把钓竿靠好，点了点头。", "对方记得这根钓竿。", "对方把钓竿往你这边倾了倾。"],
+  pair: ["对方也浇了两下，水光还在。", "对方跟着又浇了一下。", "对方记得一起浇过。", "对方把水光留在熟田里。"],
 };
 
 export type SocialReply = "wave" | "kind";
 
-/** Canned return for a wave or a kindness. No names, no stored text. */
-export function socialReplyFor(kind: FxKind): { reply: SocialReply; line: string } | null {
-  if (kind === "wave") return { reply: "wave", line: SOCIAL_WAVE_REPLY };
-  if (!isKindnessKind(kind)) return null;
-  return { reply: "kind", line: KIND_REPLIES[kind] ?? SOCIAL_KIND_REPLY };
+function familiarityStep(familiarity: number) {
+  if (!Number.isFinite(familiarity)) return 0;
+  return Math.max(0, Math.min(3, Math.floor(familiarity)));
+}
+
+/** Canned return for a wave or a kindness. Familiarity only picks a canned line. */
+export function socialReplyFor(kind: FxKind, familiarity = 0): { reply: SocialReply; line: string } | null {
+  const step = familiarityStep(familiarity);
+  if (kind === "wave") return { reply: "wave", line: WAVE_BY_LEVEL[step] ?? SOCIAL_WAVE_REPLY };
+  const lines = KIND_BY_LEVEL[kind];
+  if (!lines) return isKindnessKind(kind) ? { reply: "kind", line: SOCIAL_KIND_REPLY } : null;
+  return { reply: "kind", line: lines[step] ?? SOCIAL_KIND_REPLY };
 }
 
 /** A wave or kindness toward someone else gets one canned reply. Nothing is stored. */
-export function withSocialReply(fx: VillageFx, selfName: string | null): VillageFx {
-  const reply = socialReplyFor(fx.kind);
+export function withSocialReply(fx: VillageFx, selfName: string | null, familiarity = 0): VillageFx {
+  const reply = socialReplyFor(fx.kind, familiarity);
   if (!selfName || fx.actor === selfName || !reply) return fx;
   return { ...fx, partner: selfName, line: `${fx.line} ${reply.line}` };
 }

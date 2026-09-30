@@ -456,7 +456,7 @@ export function VillageScene({
     >
       {shownStage === "timeout" || shownStage === "failed" ? (
         <div className="load-recovery" data-testid="load-recovery">
-          <p>田垄铺得太久了。可以再试一次，右上角也能刷新今日分数。</p>
+          <p>田垄铺得太久了。可以再试一次，右上角也能刷新评分日。</p>
           <button
             type="button"
             className="hud-btn"
