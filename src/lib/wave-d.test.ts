@@ -41,7 +41,9 @@ import {
   togglePin,
   togglePorch,
   touchWaveDay,
+  footprintMarks,
   visibleFootprints,
+  undoSecondsLeft,
   undoStillOpen,
   visitorCopy,
   waterOnce,
@@ -156,6 +158,14 @@ test("footprints, stroll, bench, wreath, atlas, and layout stay bounded", () => 
   assert.equal(acceptTap(0, 400), true);
   assert.equal(undoStillOpen(500, 400), true);
   assert.equal(undoStillOpen(500, 500), false);
+  const until = 10_000;
+  assert.equal(undoSecondsLeft(until, until - 3_000), 3);
+  assert.equal(undoSecondsLeft(until, until - 2_500), 3);
+  assert.equal(undoSecondsLeft(until, until - 2_000), 2);
+  assert.equal(undoSecondsLeft(until, until - 1_000), 1);
+  assert.equal(undoSecondsLeft(until, until - 1), 1);
+  assert.equal(undoSecondsLeft(until, until), 0);
+  assert.equal(undoStillOpen(until, until - 2_500), true);
 });
 
 test("sanitize drops chat-shaped storage and keeps toggles", () => {
@@ -210,6 +220,25 @@ test("acceptance helpers: fade, water day, migration, seasons, particles, shapes
   const steps = pushFootprint([], { x: 3, y: 4 }, 1_000);
   assert.equal(visibleFootprints(steps, 1_000 + 9_000).length, 0);
   assert.equal(visibleFootprints(steps, 1_500).length, 1);
+  const fresh = footprintMarks(steps, 1_000);
+  const faded = footprintMarks(steps, 1_000 + 6_000);
+  assert.equal(fresh[0].alpha > faded[0].alpha, true);
+  const spinning = buildDecor({
+    blob: EMPTY_WAVE,
+    ymd: "2026-09-30",
+    hour: 12,
+    seasonId: "summer",
+    quiet: false,
+    reduced: false,
+    festival: false,
+    familiarity: {},
+    selfName: null,
+    fedNames: [],
+    now: 0,
+  });
+  assert.equal(spinning.mill, true);
+  assert.equal(spinning.millSpin, true);
+  assert.equal(spinning.critters, "butterfly");
   const watered = waterOnce(EMPTY_WAVE, "2026-09-30");
   assert.equal(watered.ok, true);
   if (!watered.ok) return;

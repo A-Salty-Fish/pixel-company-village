@@ -312,6 +312,66 @@ function ensureGround() {
   }
 }
 
+function drawMill(ctx: CanvasRenderingContext2D, angle: number) {
+  ctx.fillStyle = "#8a5528";
+  ctx.fillRect(1088, 200, 4, 28);
+  ctx.save();
+  ctx.translate(1090, 198);
+  ctx.rotate(angle);
+  ctx.fillStyle = "#f2d15c";
+  ctx.fillRect(-10, -2, 20, 4);
+  ctx.fillRect(-2, -10, 4, 20);
+  ctx.restore();
+  ctx.fillStyle = "#6a3d18";
+  ctx.fillRect(70, 150, 6, 18);
+  ctx.fillStyle = "#3a8fbc";
+  ctx.fillRect(64, 146, 18, 4);
+}
+
+function drawCritter(
+  ctx: CanvasRenderingContext2D,
+  kind: "none" | "butterfly" | "firefly",
+  x: number,
+  y: number,
+  index: number,
+) {
+  const left = Math.round(x);
+  const top = Math.round(y);
+  if (kind === "firefly") {
+    ctx.fillStyle = index % 2 ? "#fff6d8" : "#f2d15c";
+    ctx.fillRect(left, top, 2, 2);
+    return;
+  }
+  ctx.fillStyle = index % 2 ? "#f4b4c4" : "#e7c86a";
+  ctx.fillRect(left, top, 2, 2);
+  ctx.fillRect(left - 3, top - 1, 2, 2);
+  ctx.fillRect(left + 3, top - 1, 2, 2);
+}
+
+function drawSeasonSpeck(ctx: CanvasRenderingContext2D, seasonId: string, x: number, y: number) {
+  const left = Math.round(x);
+  const top = Math.round(y);
+  if (seasonId === "spring") {
+    ctx.fillStyle = "#f4b4c4";
+    ctx.fillRect(left, top, 2, 2);
+    ctx.fillRect(left + 2, top + 1, 1, 1);
+    return;
+  }
+  if (seasonId === "summer") {
+    ctx.fillStyle = "#3a7d4a";
+    ctx.fillRect(left, top, 2, 3);
+    return;
+  }
+  if (seasonId === "autumn") {
+    ctx.fillStyle = "#d46a32";
+    ctx.fillRect(left, top, 3, 2);
+    return;
+  }
+  ctx.fillStyle = "#fff6d8";
+  ctx.fillRect(left, top, 2, 2);
+  ctx.fillRect(left + 1, top + 2, 1, 1);
+}
+
 function drawFence(ctx: CanvasRenderingContext2D, x: number, y: number, w: number) {
   const frame = spriteFrame("fence_0");
   if (!frame) return;
@@ -866,8 +926,12 @@ function drawActors(
       queue.push({
         sort: step.y,
         draw: () => {
-          ctx.fillStyle = "rgba(90, 58, 28, 0.4)";
-          ctx.fillRect(step.x, step.y, 3, 2);
+          ctx.save();
+          ctx.globalAlpha = step.alpha;
+          ctx.fillStyle = "#5a3a1c";
+          ctx.fillRect(step.x - 2, step.y, 3, 2);
+          ctx.fillRect(step.x + 2, step.y + 1, 3, 2);
+          ctx.restore();
         },
       });
     }
@@ -884,22 +948,18 @@ function drawActors(
     if (decor.mill) {
       queue.push({
         sort: 220,
-        draw: () => {
-          ctx.fillStyle = "#8a5528";
-          ctx.fillRect(1088, 200, 4, 28);
-          ctx.save();
-          ctx.translate(1090, 198);
-          ctx.rotate(t * 0.35);
-          ctx.fillStyle = "#f2d15c";
-          ctx.fillRect(-10, -2, 20, 4);
-          ctx.fillRect(-2, -10, 4, 20);
-          ctx.restore();
-          ctx.fillStyle = "#6a3d18";
-          ctx.fillRect(70, 150, 6, 18);
-          ctx.fillStyle = "#3a8fbc";
-          ctx.fillRect(64, 146, 18, 4);
-        },
+        draw: () => drawMill(ctx, decor.millSpin ? t * 0.35 : 0),
       });
+    }
+    if (decor.critters !== "none") {
+      for (let i = 0; i < 4; i += 1) {
+        const x = 220 + i * 150;
+        const y = 340 + (i % 2) * 70;
+        queue.push({
+          sort: y,
+          draw: () => drawCritter(ctx, decor.critters, x, y + Math.sin(t + i) * 3, i),
+        });
+      }
     }
     if (decor.stroll.length >= 2) {
       const stroll = decor.stroll;
@@ -919,12 +979,15 @@ function drawActors(
     }
   }
   for (const person of villagers) {
+    const bench = life?.decor?.sit;
+    const seated = Boolean(bench && life?.selfName === person.name);
+    const actor = seated && bench ? { ...person, x: bench.x, y: bench.y, state: "slacking" as const } : person;
     queue.push({
-      sort: person.y,
+      sort: actor.y,
       draw: () => {
         drawVillager(
           ctx,
-          person,
+          actor,
           t,
           person.name === selectedName,
           fx,
@@ -1006,15 +1069,7 @@ export function paintVillage(
     for (let i = 0; i < count; i += 1) {
       const sx = ((i * 131) % Math.max(1, viewW - 8)) + 4;
       const sy = ((i * 47) % Math.max(1, viewH - 8)) + 4;
-      ctx.fillStyle =
-        life.decor.seasonId === "spring"
-          ? "#f4b4c4"
-          : life.decor.seasonId === "summer"
-            ? "#3a7d4a"
-            : life.decor.seasonId === "autumn"
-              ? "#d46a32"
-              : "#fff6d8";
-      ctx.fillRect(sx, sy, 3, 3);
+      drawSeasonSpeck(ctx, life.decor.seasonId, sx, sy);
     }
   }
   drawNameLabels(ctx, villagers, zoom, camX, camY, emphasize, viewW, viewH, dpr, life);

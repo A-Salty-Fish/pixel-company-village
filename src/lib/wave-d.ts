@@ -182,6 +182,13 @@ export function visibleFootprints(list: Footprint[], now: number) {
   return list.filter((step) => now - step.t < FOOTPRINT_FADE_MS);
 }
 
+export function footprintMarks(list: Footprint[], now: number) {
+  return visibleFootprints(list, now).map((step) => {
+    const age = Math.max(0, now - step.t);
+    return { x: step.x, y: step.y, alpha: Math.max(0.15, 1 - age / FOOTPRINT_FADE_MS) };
+  });
+}
+
 export function nodTargets(familiarity: Record<string, number>, enabled: boolean) {
   if (!enabled) return [];
   return Object.entries(familiarity)
@@ -382,6 +389,13 @@ export function undoStillOpen(until: number, now: number) {
   return now < until;
 }
 
+/** Whole seconds still shown on the undo button. Matches undoStillOpen: 0 means closed. */
+export function undoSecondsLeft(until: number, now: number) {
+  const left = until - now;
+  if (left <= 0) return 0;
+  return Math.ceil(left / 1000);
+}
+
 export const ATLAS_FALLBACK = "图集没载上，田垄用色块先占着。名字仍可读。";
 
 export function touchWaveDay(blob: WaveDBlob, ymd: string): WaveDBlob {
@@ -535,7 +549,7 @@ export function sanitizeWave(value: unknown): WaveDBlob {
 export type WaveDecor = {
   weatherLabel: string;
   showWeather: boolean;
-  footprints: { x: number; y: number }[];
+  footprints: { x: number; y: number; alpha: number }[];
   porch: boolean;
   critters: "none" | "butterfly" | "firefly";
   dusk: boolean;
@@ -546,6 +560,7 @@ export type WaveDecor = {
   stroll: { x: number; y: number }[];
   stars: number;
   mill: boolean;
+  millSpin: boolean;
   instrument: string | null;
   gifts: string[];
   wreath: string | null;
@@ -572,7 +587,7 @@ export function buildDecor(input: {
   return {
     weatherLabel: weather.label,
     showWeather: systemOn(blob, "weather"),
-    footprints: systemOn(blob, "footprints") ? visibleFootprints(blob.footprints, input.now) : [],
+    footprints: systemOn(blob, "footprints") ? footprintMarks(blob.footprints, input.now) : [],
     porch: systemOn(blob, "porch") && blob.porch,
     critters: critterKind(input.seasonId, input.hour, input.quiet, systemOn(blob, "critters")),
     dusk: duskActive(input.hour, systemOn(blob, "dusk") && !input.quiet),
@@ -582,7 +597,8 @@ export function buildDecor(input: {
     sit: systemOn(blob, "bench") ? blob.sit : null,
     stroll: systemOn(blob, "stroll") ? strollPoints(input.ymd) : [],
     stars: starBudget(input.festival, input.quiet, systemOn(blob, "stars")),
-    mill: systemOn(blob, "mill") && !input.reduced,
+    mill: systemOn(blob, "mill"),
+    millSpin: systemOn(blob, "mill") && !input.reduced,
     instrument: systemOn(blob, "instrument") ? blob.instrument : null,
     gifts: giftNames(input.fedNames, input.selfName, systemOn(blob, "gift")),
     wreath: systemOn(blob, "wreath") ? wreathColor(input.seasonId) : null,

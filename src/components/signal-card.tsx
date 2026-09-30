@@ -28,6 +28,9 @@ type Props = {
   canWave: boolean;
   hasIdentity: boolean;
   undoSeconds: number;
+  undoUntil: number;
+  undoAt: number;
+  undoMs: number;
   stickerLabels: string[];
   canSticker: boolean;
   anonNote: string | null;
@@ -230,12 +233,19 @@ export function SignalCard(props: Props) {
           </div>
         ) : null}
         {props.undoSeconds > 0 ? (
-          <p className="hud-stat pixel-label text-[#2a1a10]" data-testid="kindness-undo">
-            刚才消耗了 1 次善意。
-            <button type="button" className="hud-btn hud-btn-ghost ml-2" onClick={props.onUndo}>
+          <div
+            className="hud-stat pixel-label flex flex-wrap items-center gap-2 text-[#2a1a10]"
+            data-testid="kindness-undo"
+            data-undo-until={props.undoUntil}
+            data-undo-at={props.undoAt}
+            data-undo-seconds={props.undoSeconds}
+            data-undo-ms={props.undoMs}
+          >
+            <span>刚才消耗了 1 次善意。</span>
+            <button type="button" className="hud-btn hud-btn-ghost" onClick={props.onUndo}>
               撤销（{props.undoSeconds}秒）
             </button>
-          </p>
+          </div>
         ) : null}
         <button
           type="button"

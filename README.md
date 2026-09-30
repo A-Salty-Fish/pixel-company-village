@@ -105,7 +105,7 @@ curl -X POST "$SITE_URL/api/ingest" \
 ![演示信号卡](docs/images/score-card.png)
 
 - **信号环。** 干活 `work / 3` 合上线是 75%；摸鱼 `fish / 3` 合上线是 67%；在任务上 `on_task` 合上线是 68%。消息条数只是火花，不是第四环。合上的环在田边开花，安静村子会关掉。
-- **关照配额（本机）。** 评分日不是今天时，按钮写「本地互动」；评分日就是今天时写「今日互动」。先打开菜单（种子、咖啡、钓竿、浇水），确认后才扣次数，3 秒内可以撤销。同一人每天 1 次、每周 2 次（上海日历）。周日若这周两次都用过，田边会多亮一下。键是 `village:viewer:<显示名>:kindness`。
+- **关照配额（本机）。** 评分日不是今天时，按钮写「本地互动」；评分日就是今天时写「今日互动」。先打开菜单（种子、咖啡、钓竿、浇水），确认后才扣次数。撤销按钮出现后大约 3 秒内可以点，倒计时文案和还能点的时间一致。同一人每天 1 次、每周 2 次（上海日历）。周日若这周两次都用过，田边会多亮一下。键是 `village:viewer:<显示名>:kindness`。
 - **数据日。** 页头写「数据日」或「最近一次评分日」。分数日期不是今天时，不会把它说成今天。
 - **挥手（本机）。** 每人每小时一次，只有写好的动作，没有铃声。
 - **季节。** 按月份铺田色。四节固定为立春 02-04、立夏 05-05、立秋 08-07、立冬 11-07。节日只显示全村数字合计，不排名。
@@ -141,7 +141,7 @@ npm run test:e2e
 npm run test:e2e:visual
 ```
 
-`npm test` 跑配额撤销、拜访周历、博物架、文案和加载阶段。`test:e2e` 覆盖登录、硬刷新恢复、关照菜单、挥手、出村、节日小场、移动端、本机配额、Wave D 验收，以及分数字段白名单。`test:e2e:visual` 只跑带 `@visual` 的静帧，包含安静村子和关掉安静后的忙村一对基线，失败不作为合并硬门槛（工作流 `continue-on-error`）。Wave C 的行为测试没有 `@visual`，留在必跑的 `test:e2e` 里。隐私测试也不隔离。带 `@prod` 的生产只读冒烟两边都不进，要另设 `PLAYWRIGHT_PROD=1` 和 `PLAYWRIGHT_BASE_URL`，步骤见 [docs/prod-smoke.md](docs/prod-smoke.md)。生产脚本会在 `tmp/prod-smoke/` 留下 6 张只读截图，该目录不进 git。
+`npm test` 跑配额撤销、拜访周历、博物架、文案和加载阶段。`test:e2e` 覆盖登录、硬刷新恢复、关照菜单、挥手、出村、节日小场、移动端、本机配额、Wave D 验收，以及分数字段白名单。`test:e2e:visual` 只跑带 `@visual` 的静帧，包含安静村子和关掉安静后的忙村一对基线，失败不作为合并硬门槛（工作流 `continue-on-error`）。截图允许 2% 像素差，用来放过中文光栅在不同 Linux 上的细小差别。Wave C 的行为测试没有 `@visual`，留在必跑的 `test:e2e` 里。隐私测试也不隔离。带 `@prod` 的生产只读冒烟两边都不进，要另设 `PLAYWRIGHT_PROD=1` 和 `PLAYWRIGHT_BASE_URL`，步骤见 [docs/prod-smoke.md](docs/prod-smoke.md)。生产脚本会在 `tmp/prod-smoke/` 留下 6 张只读截图，该目录不进 git。
 
 本机 Playwright 从环境变量或 `.env.local` 读取 `SITE_PASSWORD`，不要在日志里打印密码。GitHub Actions 不依赖仓库 Secret：工作流给 Next 开发服务器和 `login()` 同一条公开的 CI 演示口令 `ci-demo-pass`（若仓库里配置了 `secrets.SITE_PASSWORD` 则改用那一条）。这不是 Vercel 上的生产口令。生产站点仍然只用项目环境变量里的 `SITE_PASSWORD`。更新视觉基线前确认跑的是 `data/demo/`，而不是正式名册。
 

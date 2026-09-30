@@ -421,6 +421,9 @@ export function VillageScene({
       data-camera-y={camMark.y}
       data-camera-zoom={camMark.zoom}
       data-critters={life.decor?.critters ?? "none"}
+      data-dusk={life.decor?.dusk ? "1" : "0"}
+      data-sitting={life.decor?.sit ? "1" : "0"}
+      data-season={life.decor?.seasonId ?? ""}
     >
       {shownStage === "timeout" || shownStage === "failed" ? (
         <div className="load-recovery" data-testid="load-recovery">
