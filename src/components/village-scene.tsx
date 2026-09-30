@@ -19,6 +19,7 @@ import type { VillageFx } from "@/lib/interactions";
 import { deriveLoadStage, loadStageLabel, type LoadStage } from "@/lib/load-machine";
 import { hitSpot } from "@/lib/play-systems";
 import type { PersonWithState } from "@/lib/types";
+import { EASING, particleAllowance } from "@/lib/wave-d";
 import { availabilityFor, shanghaiClock, type SceneLife } from "@/lib/village-life";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
@@ -35,6 +36,8 @@ type Props = {
   onSpot?: (spot: SpotHit) => void;
   onTogglePlates?: () => void;
   onEmote?: (kind: "stretch" | "sit" | "clap" | "wave") => void;
+  homePulse?: number;
+  onEmpty?: (x: number, y: number) => void;
 };
 
 const MIN_ZOOM = 1;
@@ -52,6 +55,8 @@ export function VillageScene({
   onSpot,
   onTogglePlates,
   onEmote,
+  homePulse = 0,
+  onEmpty,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -69,9 +74,15 @@ export function VillageScene({
   const [hintOpen, setHintOpen] = useState(false);
   const stageRef = useRef<LoadStage>("terrain");
   const onSpotRef = useRef(onSpot);
+  const onEmptyRef = useRef(onEmpty);
   const forceRef = useRef(forceTimeout);
   const startCam = defaultCamera();
   const [zoom, setZoom] = useState(startCam.zoom);
+  const [camMark, setCamMark] = useState({
+    x: Math.round(startCam.x),
+    y: Math.round(startCam.y),
+    zoom: startCam.zoom,
+  });
   const zoomRef = useRef(startCam.zoom);
   const camRef = useRef({ x: startCam.x, y: startCam.y });
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
@@ -89,6 +100,23 @@ export function VillageScene({
   useEffect(() => {
     onSpotRef.current = onSpot;
   }, [onSpot]);
+
+  useEffect(() => {
+    onEmptyRef.current = onEmpty;
+  }, [onEmpty]);
+
+  useEffect(() => {
+    if (!homePulse || !life.selfName) return;
+    const person = villagersRef.current.find((v) => v.name === life.selfName);
+    if (!person) return;
+    const nextZoom = 2;
+    zoomRef.current = nextZoom;
+    setZoom(nextZoom);
+    const focus = cameraFocus(person, nextZoom);
+    camRef.current = focus;
+    setCamMark({ x: Math.round(focus.x), y: Math.round(focus.y), zoom: nextZoom });
+    kickRef.current?.();
+  }, [homePulse, life.selfName]);
 
   useEffect(() => {
     forceRef.current = forceTimeout;
@@ -144,7 +172,9 @@ export function VillageScene({
       canvasRef.current = canvas;
     }
 
-    const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
+    // desynchronized canvases can present a blank frame for the whole tab
+    // until the next DOM change (for example opening 「村里的事」).
+    const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) {
       setFailed(true);
       return;
@@ -207,8 +237,8 @@ export function VillageScene({
       const selected = list.find((v) => v.name === selectedRef.current);
       if (selected && !drag.current) {
         const target = cameraFocus(selected, zoomRef.current);
-        camRef.current.x += (target.x - camRef.current.x) * 0.08;
-        camRef.current.y += (target.y - camRef.current.y) * 0.08;
+        camRef.current.x += (target.x - camRef.current.x) * EASING.camera;
+        camRef.current.y += (target.y - camRef.current.y) * EASING.camera;
       }
       camRef.current = clampCamera(camRef.current.x, camRef.current.y, zoomRef.current);
       const emphasize = new Set<string>();
@@ -295,7 +325,10 @@ export function VillageScene({
       }
       const spot = hitSpot(world.x, world.y);
       if (spot) onSpotRef.current?.(spot);
-      else onSelectRef.current(null);
+      else {
+        onEmptyRef.current?.(world.x, world.y);
+        onSelectRef.current(null);
+      }
     };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -346,14 +379,17 @@ export function VillageScene({
     kickRef.current = kick;
     kick();
     const onFont = () => kick();
+    const onPageShow = () => kick();
     document.addEventListener("visibilitychange", kick);
     document.addEventListener("village-font", onFont);
+    window.addEventListener("pageshow", onPageShow);
 
     return () => {
       cancelAnimationFrame(frame);
       window.clearInterval(stageTimer);
       document.removeEventListener("visibilitychange", kick);
       document.removeEventListener("village-font", onFont);
+      window.removeEventListener("pageshow", onPageShow);
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);
@@ -378,6 +414,13 @@ export function VillageScene({
       data-load-stage={shownStage}
       data-bell={life.bell ? "1" : "0"}
       data-festival-skin={life.festivalId ?? ""}
+      data-show-all={life.showAllPlates ? "1" : "0"}
+      data-quiet={life.quiet ? "1" : "0"}
+      data-particle-budget={particleAllowance(Boolean(life.quiet), Boolean(life.festivalId))}
+      data-camera-x={camMark.x}
+      data-camera-y={camMark.y}
+      data-camera-zoom={camMark.zoom}
+      data-critters={life.decor?.critters ?? "none"}
     >
       {shownStage === "timeout" || shownStage === "failed" ? (
         <div className="load-recovery" data-testid="load-recovery">
@@ -414,6 +457,11 @@ export function VillageScene({
           拖动画布 · 滚轮缩放 · 点小人看今日信号
         </p>
       )}
+      {life.decor?.showWeather ? (
+        <div className="weather-chip" data-testid="weather-chip">
+          村口 · {life.decor.weatherLabel}
+        </div>
+      ) : null}
       <div className="name-legend" data-testid="name-legend">
         <span>
           <i className="swatch swatch-scored" /> 彩猫 · 琥珀名牌 · 有分

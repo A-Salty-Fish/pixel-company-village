@@ -36,15 +36,15 @@ test("kindness opens a menu and can be undone", async ({ page }) => {
   const self = body.people[0]?.name;
   const target = body.people.find((person) => person.scored && person.name !== self)?.name;
   expect(self && target).toBeTruthy();
-  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(self ?? "");
   await page.evaluate((name) => window.__VILLAGE_TEST__?.selectVillager(name ?? null), target);
   const card = page.getByTestId("signal-card");
-  await card.getByRole("button", { name: "今日互动" }).click();
+  await card.getByRole("button", { name: /今日互动|本地互动/ }).click();
   await expect(page.getByTestId("kindness-menu")).toBeVisible();
   await page.getByRole("button", { name: "先不用" }).click();
   await expect(card).toContainText("今日 0/1");
-  await card.getByRole("button", { name: "今日互动" }).click();
+  await card.getByRole("button", { name: /今日互动|本地互动/ }).click();
   await page.getByRole("button", { name: "种子" }).click();
   await page.getByRole("button", { name: "确认关照" }).click();
   await expect(page.getByTestId("kindness-undo")).toBeVisible();
@@ -59,7 +59,7 @@ test("wave copy asks for identity and then counts the hour", async ({ page }) =>
   await page.evaluate((name) => window.__VILLAGE_TEST__?.selectVillager(name ?? null), target);
   await expect(page.getByTestId("signal-card")).toContainText("我是谁");
   const self = body.people[1]?.name;
-  await page.getByTestId("comfort-settings").locator("summary").click();
+  await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(self ?? "");
   await expect(page.getByTestId("signal-card")).toContainText("还可挥 1 次");
 });
@@ -91,7 +91,7 @@ test("mobile keeps the signal actions on screen", async ({ page }) => {
   await page.evaluate((person) => window.__VILLAGE_TEST__?.selectVillager(person ?? null), name);
   await expect(page.getByTestId("split-bar")).toBeVisible();
   const actions = page.getByTestId("signal-actions");
-  await expect(actions.getByRole("button", { name: "今日互动" })).toBeVisible();
+  await expect(actions.getByRole("button", { name: /今日互动|本地互动/ })).toBeVisible();
   const box = await actions.boundingBox();
   expect(box).toBeTruthy();
   expect((box?.y ?? 9999) + (box?.height ?? 0)).toBeLessThanOrEqual(844);

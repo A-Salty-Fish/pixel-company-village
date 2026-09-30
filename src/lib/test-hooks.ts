@@ -23,6 +23,8 @@ export type VillageTestApi = {
   selectVillager: (name: string | null) => void;
   playKindness: (name: string, action: KindnessActionName) => Promise<{ ok: boolean; line: string }>;
   forceLoadTimeout: () => void;
+  clearRoster: () => void;
+  injectBadRecord: () => void;
 };
 
 declare global {
@@ -47,6 +49,8 @@ export function installVillageTestHook(
     selectVillager: api.selectVillager,
     playKindness: api.playKindness,
     forceLoadTimeout: api.forceLoadTimeout,
+    clearRoster: api.clearRoster,
+    injectBadRecord: api.injectBadRecord,
   };
   window.__VILLAGE_TEST__ = hook;
   return () => {

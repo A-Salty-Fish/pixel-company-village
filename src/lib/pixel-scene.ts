@@ -204,15 +204,18 @@ function ensureGround() {
       blitTopLeft(ctx, `path_${tileIndex(c, r) % 8}`, c * TILE, r * TILE);
     }
   }
-  ctx.fillStyle = "rgba(74, 42, 18, 0.55)";
+  ctx.fillStyle = "rgba(42, 24, 10, 0.82)";
   for (let r = 0; r < ROWS; r += 1) {
     for (let c = 0; c < COLS; c += 1) {
       if (!path[r][c]) continue;
       const edge = (dc: number, dr: number) => !block(c + dc, r + dr) || !path[r + dr]?.[c + dc];
-      if (edge(0, -1)) ctx.fillRect(c * TILE, r * TILE, TILE, 2);
-      if (edge(0, 1)) ctx.fillRect(c * TILE, r * TILE + TILE - 2, TILE, 2);
-      if (edge(-1, 0)) ctx.fillRect(c * TILE, r * TILE, 2, TILE);
-      if (edge(1, 0)) ctx.fillRect(c * TILE + TILE - 2, r * TILE, 2, TILE);
+      if (edge(0, -1)) ctx.fillRect(c * TILE, r * TILE, TILE, 3);
+      if (edge(0, 1)) ctx.fillRect(c * TILE, r * TILE + TILE - 3, TILE, 3);
+      if (edge(-1, 0)) ctx.fillRect(c * TILE, r * TILE, 3, TILE);
+      if (edge(1, 0)) ctx.fillRect(c * TILE + TILE - 3, r * TILE, 3, TILE);
+      ctx.fillStyle = "rgba(92, 58, 28, 0.45)";
+      ctx.fillRect(c * TILE + 6, r * TILE + 7, 4, 2);
+      ctx.fillStyle = "rgba(42, 24, 10, 0.82)";
     }
   }
 
@@ -371,6 +374,9 @@ function drawVillager(
   const bob = selected && !life?.reduceMotion ? (Math.floor(t * 5) % 2 === 0 ? 1 : 0) : 0;
   const x = person.x;
   y -= bob;
+  if (life?.decor?.nods.includes(person.name) && !life.reduceMotion) {
+    y -= Math.abs(Math.sin(t * 3)) * 3;
+  }
   const color = person.scored ? CAT_COLORS[person.identity.palette] : "lgrey";
   ctx.fillStyle = "rgba(20, 16, 8, 0.45)";
   ctx.fillRect(Math.round(x - 8), Math.round(y - 20), 16, 16);
@@ -392,6 +398,16 @@ function drawVillager(
   if (onActor && fx?.kind === "stretch") y -= life?.reduceMotion ? 2 : Math.sin(elapsed * 8) * 5;
   if (onActor && fx?.kind === "wave") drawWave(ctx, x + 12, y - 46 - (life?.reduceMotion ? 0 : Math.sin(elapsed * 8) * 3));
   if (onActor && fx?.kind === "clap") drawClap(ctx, x + 8, y - 30);
+  if (!person.scored) {
+    ctx.save();
+    ctx.strokeStyle = "#8a8478";
+    ctx.setLineDash([2, 2]);
+    ctx.strokeRect(Math.round(x - 11), Math.round(y - 30), 22, 28);
+    ctx.restore();
+  } else if (!selected) {
+    ctx.strokeStyle = "rgba(20, 12, 8, 0.55)";
+    ctx.strokeRect(Math.round(x - 10), Math.round(y - 30), 20, 28);
+  }
   if (life?.selfName === person.name && life.selfPreset) {
     drawStatusProp(ctx, life.selfPreset, x - 18, y - 28);
     drawStatusBadge(ctx, life.selfPreset, x - 4, y - 46);
@@ -606,6 +622,37 @@ function drawLifeMarks(
   if (life.selfName === person.name && life.selfProp) drawMiniProp(ctx, life.selfProp, x - 22, y + 4);
   const crop = life.gardenCrops[person.name];
   if (crop) drawMiniProp(ctx, crop, x + 8, y + 8);
+  const decor = life.decor;
+  if (!decor) return;
+  if (decor.pins.includes(person.name)) {
+    ctx.strokeStyle = "#f2d15c";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(Math.round(x - 14), Math.round(y - 36), 28, 34);
+  }
+  if (decor.hats.includes(person.name)) {
+    ctx.fillStyle = "#c44b3a";
+    ctx.fillRect(Math.round(x - 6), Math.round(y - 40), 12, 4);
+    ctx.fillRect(Math.round(x - 2), Math.round(y - 46), 4, 6);
+  }
+  if (decor.gifts.includes(person.name)) {
+    ctx.fillStyle = "#fff6d8";
+    ctx.fillRect(Math.round(x + 8), Math.round(y - 44), 3, 3);
+  }
+  if (life.selfName === person.name && decor.porch) {
+    ctx.fillStyle = "#f2d15c";
+    ctx.fillRect(Math.round(x - 18), Math.round(y - 8), 4, 4);
+  }
+  if (life.selfName === person.name && decor.watered) {
+    ctx.fillStyle = "#3a8fbc";
+    ctx.fillRect(Math.round(x + 6), Math.round(y - 6), 2, 3);
+  }
+  if (life.selfName === person.name && decor.instrument) {
+    drawMiniProp(ctx, decor.instrument, x - 16, y - 18);
+  }
+  if (life.selfName === person.name && decor.wreath) {
+    ctx.strokeStyle = decor.wreath;
+    ctx.strokeRect(Math.round(x - 12), Math.round(y - 34), 24, 8);
+  }
 }
 
 function jobPixels(person: PlacedVillager): "hoe" | "rod" | "scroll" | null {
@@ -681,6 +728,8 @@ const HOUSE_FACES = [
   { x: 500, y: 168, face: 0 },
   { x: 790, y: 156, face: 1 },
   { x: 1070, y: 940, face: 2 },
+  { x: 220, y: 150, face: 3 },
+  { x: 640, y: 980, face: 4 },
 ];
 
 function drawHouseFace(ctx: CanvasRenderingContext2D, face: number, x: number, y: number) {
@@ -693,6 +742,19 @@ function drawHouseFace(ctx: CanvasRenderingContext2D, face: number, x: number, y
   if (face === 0) {
     ctx.fillStyle = "#c44b3a";
     ctx.fillRect(left + 10, top - 6, 3, 6);
+  }
+  if (face === 3) {
+    ctx.fillStyle = "#3a8fbc";
+    ctx.fillRect(left, top, 10, 12);
+    ctx.fillStyle = "#fff6d8";
+    ctx.fillRect(left + 3, top + 2, 4, 4);
+  }
+  if (face === 4) {
+    ctx.fillStyle = "#2f6a3a";
+    ctx.fillRect(left, top, 16, 12);
+    ctx.fillStyle = "#f2d15c";
+    ctx.fillRect(left + 2, top + 3, 3, 3);
+    ctx.fillRect(left + 10, top + 3, 3, 3);
   }
 }
 
@@ -798,6 +860,64 @@ function drawActors(
       draw: () => drawSpotMarker(ctx, spot.x, spot.y, found ? "view" : "gather"),
     });
   }
+  if (life?.decor) {
+    const decor = life.decor;
+    for (const step of decor.footprints) {
+      queue.push({
+        sort: step.y,
+        draw: () => {
+          ctx.fillStyle = "rgba(90, 58, 28, 0.4)";
+          ctx.fillRect(step.x, step.y, 3, 2);
+        },
+      });
+    }
+    if (decor.sit) {
+      const sit = decor.sit;
+      queue.push({
+        sort: sit.y,
+        draw: () => {
+          ctx.fillStyle = "#6a3d18";
+          ctx.fillRect(sit.x - 8, sit.y, 16, 4);
+        },
+      });
+    }
+    if (decor.mill) {
+      queue.push({
+        sort: 220,
+        draw: () => {
+          ctx.fillStyle = "#8a5528";
+          ctx.fillRect(1088, 200, 4, 28);
+          ctx.save();
+          ctx.translate(1090, 198);
+          ctx.rotate(t * 0.35);
+          ctx.fillStyle = "#f2d15c";
+          ctx.fillRect(-10, -2, 20, 4);
+          ctx.fillRect(-2, -10, 4, 20);
+          ctx.restore();
+          ctx.fillStyle = "#6a3d18";
+          ctx.fillRect(70, 150, 6, 18);
+          ctx.fillStyle = "#3a8fbc";
+          ctx.fillRect(64, 146, 18, 4);
+        },
+      });
+    }
+    if (decor.stroll.length >= 2) {
+      const stroll = decor.stroll;
+      queue.push({
+        sort: 8,
+        draw: () => {
+          ctx.save();
+          ctx.strokeStyle = "rgba(255, 246, 216, 0.75)";
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(stroll[0].x, stroll[0].y);
+          for (const point of stroll.slice(1)) ctx.lineTo(point.x, point.y);
+          ctx.stroke();
+          ctx.restore();
+        },
+      });
+    }
+  }
   for (const person of villagers) {
     queue.push({
       sort: person.y,
@@ -869,6 +989,34 @@ export function paintVillage(
   if (life?.festivalSkin && life.festivalId) {
     drawFestivalOverlay(ctx, viewW, viewH, life.festivalId, t, Boolean(life.quiet), Boolean(life.reduceMotion));
   }
+  if (life?.decor?.dusk) {
+    ctx.fillStyle = "rgba(88, 48, 24, 0.28)";
+    ctx.fillRect(0, 0, viewW, viewH);
+  }
+  if (life?.decor && life.decor.stars > 0) {
+    for (let i = 0; i < life.decor.stars; i += 1) {
+      const sx = ((i * 97) % Math.max(1, viewW - 8)) + 4;
+      const sy = ((i * 53) % Math.max(1, Math.floor(viewH * 0.35))) + 4;
+      ctx.fillStyle = i % 2 ? "#fff6d8" : "#f2d15c";
+      ctx.fillRect(sx, sy, 2, 2);
+    }
+  }
+  if (life?.decor && life.decor.seasonParticles > 0) {
+    const count = life.decor.seasonParticles;
+    for (let i = 0; i < count; i += 1) {
+      const sx = ((i * 131) % Math.max(1, viewW - 8)) + 4;
+      const sy = ((i * 47) % Math.max(1, viewH - 8)) + 4;
+      ctx.fillStyle =
+        life.decor.seasonId === "spring"
+          ? "#f4b4c4"
+          : life.decor.seasonId === "summer"
+            ? "#3a7d4a"
+            : life.decor.seasonId === "autumn"
+              ? "#d46a32"
+              : "#fff6d8";
+      ctx.fillRect(sx, sy, 3, 3);
+    }
+  }
   drawNameLabels(ctx, villagers, zoom, camX, camY, emphasize, viewW, viewH, dpr, life);
 }
 
@@ -898,16 +1046,18 @@ export function drawNameLabels(
   const scale = cssScale * Math.max(1, Math.round(dpr));
   const placed: { x: number; y: number; w: number; h: number }[] = [];
   const showAll = Boolean(life?.showAllPlates);
+  const pins = new Set(life?.decor?.pins ?? []);
 
   const ordered = [...villagers].sort((a, b) => {
-    const ah = emphasize.has(a.name) ? 0 : 1;
-    const bh = emphasize.has(b.name) ? 0 : 1;
+    const ah = emphasize.has(a.name) || pins.has(a.name) ? 0 : 1;
+    const bh = emphasize.has(b.name) || pins.has(b.name) ? 0 : 1;
     if (ah !== bh) return ah - bh;
     return b.y - a.y;
   });
 
   for (const person of ordered) {
-    const hot = emphasize.has(person.name);
+    const pinned = pins.has(person.name);
+    const hot = emphasize.has(person.name) || pinned;
     if (zoom < 2 && !hot && !showAll) continue;
     const mode: LabelMode = hot ? "hot" : person.scored ? "scored" : "muted";
     const sprite = getLabelSprite(person.name, mode);
@@ -928,7 +1078,8 @@ export function drawNameLabels(
       ctx.fillStyle = FAMILIAR_RIM[level] ?? FAMILIAR_RIM[1];
       ctx.fillRect(Math.round(x - 2), Math.round(y - 2), dw + 4, dh + 4);
     }
-    blitLabel(ctx, sprite, x, y, scale, hot ? 1 : 0.84);
+    const alpha = hot ? 1 : mode === "muted" ? 0.7 : 0.92;
+    blitLabel(ctx, sprite, x, y, scale, alpha);
   }
 }
 

@@ -6,10 +6,18 @@ import { getScores } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ delayScores?: string }>;
+}) {
   const jar = await cookies();
   if (!(await isValidSession(jar.get(SESSION_COOKIE)?.value))) {
     redirect("/login");
+  }
+  const params = await searchParams;
+  if (process.env.NODE_ENV !== "production" && params.delayScores === "1") {
+    await new Promise((resolve) => setTimeout(resolve, 900));
   }
   const scores = await getScores();
   return <VillagePage initial={scores} />;
