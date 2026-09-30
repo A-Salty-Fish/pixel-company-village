@@ -25,8 +25,19 @@ type Props = {
 export function VillageLoopsPanel(props: Props) {
   const tally = loopTally(props.blob, props.pebbles, props.ymd);
   return (
-    <details className="hud-panel" data-testid="village-loops" data-loop-count={LOOP_IDS.length} data-viewer={props.selfName ?? ""}>
-      <summary className="hud-title cursor-pointer">村里小玩</summary>
+    <details
+      className="hud-panel"
+      data-testid="village-loops"
+      data-loop-count={LOOP_IDS.length}
+      data-viewer={props.selfName ?? ""}
+      data-motion={props.reduced ? "reduced" : "full"}
+    >
+      <summary className="hud-title cursor-pointer">
+        村里小玩
+        <span className="ml-2 text-xs font-normal" data-testid="loop-summary-tally">
+          {tally.done}/{tally.total}
+        </span>
+      </summary>
       <div className="space-y-3 px-3 py-3 text-sm text-[#2a1a10]">
         <p className="text-xs leading-5 text-[#6a3d18]">{LOOP_INTRO}</p>
         {props.selfName ? null : (

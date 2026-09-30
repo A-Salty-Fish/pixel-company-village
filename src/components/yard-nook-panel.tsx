@@ -26,8 +26,19 @@ type Props = {
 export function YardNookPanel(props: Props) {
   const tally = nookTally(props.blob, props.session, props.ymd);
   return (
-    <details className="hud-panel" data-testid="yard-nook" data-nook-count={NOOK_IDS.length} data-viewer={props.selfName ?? ""}>
-      <summary className="hud-title cursor-pointer">屋边角落</summary>
+    <details
+      className="hud-panel"
+      data-testid="yard-nook"
+      data-nook-count={NOOK_IDS.length}
+      data-viewer={props.selfName ?? ""}
+      data-motion={props.reduced ? "reduced" : "full"}
+    >
+      <summary className="hud-title cursor-pointer">
+        屋边角落
+        <span className="ml-2 text-xs font-normal" data-testid="nook-summary-tally">
+          {tally.done}/{tally.total}
+        </span>
+      </summary>
       <div className="space-y-3 px-3 py-3 text-sm text-[#2a1a10]">
         <p className="text-xs leading-5 text-[#6a3d18]">{NOOK_INTRO}</p>
         {props.selfName ? null : (

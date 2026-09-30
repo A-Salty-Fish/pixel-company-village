@@ -8,6 +8,7 @@ import {
   emoteFx,
   jokeFx,
   kindnessFx,
+  socialReplyMark,
   withSocialReply,
   quoteByIndex,
   quoteCount,
@@ -869,7 +870,13 @@ export function VillagePage({ initial }: Props) {
         onSelf={(name, nextPreset) => saveSelf(name, name ? nextPreset : null)}
         motionReduced={motion.reduced}
       />
-      <FirstRunGuide />
+      <FirstRunGuide
+        onShowMotion={() => {
+          const panel = document.querySelector<HTMLDetailsElement>("[data-testid='wave-d-panel']");
+          if (panel) panel.open = true;
+          document.querySelector<HTMLInputElement>("[data-testid='reduce-motion-toggle']")?.focus();
+        }}
+      />
       <VillageHelp />
 
       <div
@@ -991,6 +998,7 @@ export function VillagePage({ initial }: Props) {
               dataDateDetail={dateCopy.detail}
               disclaimer={payload.disclaimer}
               line={fx && fx.actor === selected.name ? fx.line : null}
+              socialReply={fx && fx.actor === selected.name ? socialReplyMark(fx, selfName) : null}
               waveHint={waveHint({
                 hasIdentity: Boolean(selfName),
                 allowed: Boolean(waveStatusNow?.allowed),

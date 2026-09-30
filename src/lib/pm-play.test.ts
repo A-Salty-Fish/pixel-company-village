@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { GUIDE_KEY, GUIDE_LINES, guideSeen } from "@/lib/first-run";
-import { emoteFx, kindnessFx, SOCIAL_KIND_REPLY, SOCIAL_WAVE_REPLY, withSocialReply } from "@/lib/interactions";
+import { emoteFx, kindnessFx, socialReplyFor, socialReplyMark, SOCIAL_KIND_REPLY, SOCIAL_WAVE_REPLY, withSocialReply } from "@/lib/interactions";
 import { DEFAULT_COMFORT } from "@/lib/village-life";
 import { choreAction, choreWorldOf, copyIsClean, noteWeekChore, weekBoard, EMPTY_WAVE, type WeekFacts } from "@/lib/wave-d";
 
@@ -42,7 +42,16 @@ test("wave and kindness toward someone else get one canned reply", () => {
   const kind = withSocialReply(kindnessFx("seed", "林小满"), "周野");
   assert.equal(kind.partner, "周野");
   assert.match(kind.line, new RegExp(SOCIAL_KIND_REPLY));
-  assert.equal(copyIsClean([wave.line, kind.line, ...GUIDE_LINES]), true);
+  assert.equal(socialReplyMark(kind, "周野"), "kind");
+  assert.equal(socialReplyMark(wave, "周野"), "wave");
+  assert.equal(socialReplyMark(self, "周野"), null);
+  const coffee = socialReplyFor("coffee");
+  const rod = socialReplyFor("rod");
+  assert.equal(coffee?.reply, "kind");
+  assert.notEqual(coffee?.line, SOCIAL_KIND_REPLY);
+  assert.notEqual(rod?.line, coffee?.line);
+  assert.equal(copyIsClean([wave.line, kind.line, coffee?.line ?? "", rod?.line ?? "", ...GUIDE_LINES]), true);
+  assert.match(GUIDE_LINES.join(""), /村里小玩/);
 });
 
 test("first-run guide stores a seen flag and keeps quiet village on", () => {

@@ -15,6 +15,7 @@ type Props = {
   dataDateDetail: string;
   disclaimer: string;
   line: string | null;
+  socialReply?: "wave" | "kind" | null;
   waveHint: string;
   kindnessNote: string;
   sundayNote: string | null;
@@ -154,7 +155,7 @@ export function SignalCard(props: Props) {
         ) : null}
         {props.anonNote ? <p className="hud-stat pixel-label text-[#2a1a10]">{props.anonNote}</p> : null}
         {props.line ? (
-          <p className="hud-stat pixel-label text-[#2a1a10]" data-event-line>
+          <p className="hud-stat pixel-label text-[#2a1a10]" data-event-line data-social-reply={props.socialReply ?? ""}>
             {props.line}
           </p>
         ) : (
