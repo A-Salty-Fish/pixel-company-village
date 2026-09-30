@@ -1490,7 +1490,7 @@ export function paintVillage(
       reduced: Boolean(life.reduceMotion),
     });
   }
-  // PV-PM-023 checkpoint: thin structure after the dark wash
+  // PV-PM-023 checkpoint: path, water, and silhouettes after the dark wash
   const nightRead = paintNightReadability(ctx, {
     viewW,
     viewH,

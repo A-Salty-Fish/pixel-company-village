@@ -1,6 +1,6 @@
 /**
  * PV-PM-023 — night stays dark, but paths, water, roofs, and people stay readable.
- * Does not retune the PV-PM-016 wash. Thin structure is drawn after that wash.
+ * Does not retune the PV-PM-016 wash. Path, pond, and roof shapes are drawn after that wash.
  * Set NIGHT_READABILITY_ENABLED to false to leave only the deep wash.
  */
 
@@ -17,6 +17,12 @@ export const WALKER_INK: Rgb = { r: 214, g: 176, b: 132 };
 export const AUTUMN_DOT: Rgb = { r: 212, g: 96, b: 42 };
 
 export const STROKE = 4;
+
+/** Same tiles as the ground paths and pond in the pixel map (16px tiles). */
+const NORTH_PATH = { x: 0, y: 208, w: 1216, h: 32 };
+const VERT_PATH = { x: 592, y: 208, w: 32, h: 896 };
+const SOUTH_PATH = { x: 32, y: 640, w: 1152, h: 32 };
+const POND = { x: 32, y: 32, w: 192, h: 96 };
 
 export type NightReadMark = "lift" | "off";
 
@@ -65,6 +71,30 @@ function rgb(color: Rgb) {
   return `rgb(${color.r}, ${color.g}, ${color.b})`;
 }
 
+function project(
+  cam: Cam,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  minW = 0,
+  minH = 0,
+) {
+  let sx = ((x - cam.camX) / cam.worldW) * cam.viewW;
+  let sy = ((y - cam.camY) / cam.worldH) * cam.viewH;
+  let sw = (w / cam.worldW) * cam.viewW;
+  let sh = (h / cam.worldH) * cam.viewH;
+  if (minW > 0 && sw < minW) {
+    sx -= (minW - sw) / 2;
+    sw = minW;
+  }
+  if (minH > 0 && sh < minH) {
+    sy -= (minH - sh) / 2;
+    sh = minH;
+  }
+  return { sx, sy, sw, sh };
+}
+
 function fillWorld(
   ctx: CanvasRenderingContext2D,
   cam: Cam,
@@ -73,14 +103,33 @@ function fillWorld(
   w: number,
   h: number,
   color: Rgb,
+  minW = 0,
+  minH = 0,
 ) {
-  const sx = ((x - cam.camX) / cam.worldW) * cam.viewW;
-  const sy = ((y - cam.camY) / cam.worldH) * cam.viewH;
-  const sw = (w / cam.worldW) * cam.viewW;
-  const sh = (h / cam.worldH) * cam.viewH;
-  if (sx + sw < 0 || sy + sh < 0 || sx > cam.viewW || sy > cam.viewH) return;
+  const box = project(cam, x, y, w, h, minW, minH);
+  if (box.sx + box.sw < 0 || box.sy + box.sh < 0 || box.sx > cam.viewW || box.sy > cam.viewH) return;
   ctx.fillStyle = rgb(color);
-  ctx.fillRect(sx, sy, Math.max(STROKE, sw), Math.max(2, sh));
+  ctx.fillRect(box.sx, box.sy, box.sw, box.sh);
+}
+
+function frameWorld(
+  ctx: CanvasRenderingContext2D,
+  cam: Cam,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  color: Rgb,
+) {
+  const box = project(cam, x, y, w, h, 22, 18);
+  if (box.sx + box.sw < 0 || box.sy + box.sh < 0 || box.sx > cam.viewW || box.sy > cam.viewH) return;
+  const t = Math.max(3, Math.round(Math.min(box.sw, box.sh) * 0.18));
+  ctx.fillStyle = rgb(color);
+  ctx.fillRect(box.sx, box.sy, box.sw, t);
+  ctx.fillRect(box.sx, box.sy + box.sh - t, box.sw, t);
+  ctx.fillRect(box.sx, box.sy, t, box.sh);
+  ctx.fillRect(box.sx + box.sw - t, box.sy, t, box.sh);
+  ctx.fillRect(box.sx + t, box.sy - Math.max(3, t - 1), box.sw - t * 2, Math.max(3, t - 1));
 }
 
 /** Still strokes. Reduced motion uses the same pixels. */
@@ -97,26 +146,26 @@ export function paintNightReadability(
   void input.reduced;
   if (nightReadMark(input.night) !== "lift") return { mode: "off" as const, autumn: 0 };
   ctx.save();
-  ctx.globalAlpha = 0.92;
-  fillWorld(ctx, input, 0, 220, 1216, STROKE, PATH_INK);
-  fillWorld(ctx, input, 604, 208, STROKE, 860, PATH_INK);
-  fillWorld(ctx, input, 32, 652, 1100, STROKE, PATH_INK);
-  fillWorld(ctx, input, 48, 48, 150, 3, WATER_INK);
-  fillWorld(ctx, input, 64, 72, 120, 3, WATER_INK);
-  fillWorld(ctx, input, 56, 96, 90, 3, WATER_INK);
+  ctx.globalAlpha = 0.9;
+  fillWorld(ctx, input, NORTH_PATH.x, NORTH_PATH.y, NORTH_PATH.w, NORTH_PATH.h, PATH_INK);
+  fillWorld(ctx, input, VERT_PATH.x, VERT_PATH.y, VERT_PATH.w, VERT_PATH.h, PATH_INK);
+  fillWorld(ctx, input, SOUTH_PATH.x, SOUTH_PATH.y, SOUTH_PATH.w, SOUTH_PATH.h, PATH_INK);
+  ctx.globalAlpha = 0.82;
+  fillWorld(ctx, input, POND.x, POND.y, POND.w, POND.h, WATER_INK);
+  ctx.globalAlpha = 1;
+  fillWorld(ctx, input, POND.x + 18, POND.y + 22, POND.w - 48, 4, WATER_INK);
+  fillWorld(ctx, input, POND.x + 36, POND.y + 48, POND.w - 80, 4, WATER_INK);
   for (const house of input.houses) {
-    fillWorld(ctx, input, house.x - 2, house.y - 4, 18, 2, HOUSE_INK);
-    fillWorld(ctx, input, house.x - 2, house.y + 12, 18, 2, HOUSE_INK);
-    fillWorld(ctx, input, house.x - 2, house.y - 2, 2, 16, HOUSE_INK);
-    fillWorld(ctx, input, house.x + 14, house.y - 2, 2, 16, HOUSE_INK);
+    frameWorld(ctx, input, house.x - 8, house.y - 10, 32, 28, HOUSE_INK);
   }
   for (const walker of input.walkers) {
-    fillWorld(ctx, input, walker.x - 4, walker.y - 18, 8, 12, WALKER_INK);
+    fillWorld(ctx, input, walker.x - 5, walker.y - 22, 10, 8, WALKER_INK, 8, 6);
+    fillWorld(ctx, input, walker.x - 4, walker.y - 14, 8, 12, WALKER_INK, 7, 10);
   }
   let autumn = 0;
   if (autumnDotsOn(input.seasonId, input.night)) {
-    for (let i = 0; i < 6; i += 1) {
-      fillWorld(ctx, input, 180 + i * 160, 206, 5, 5, AUTUMN_DOT);
+    for (let i = 0; i < 8; i += 1) {
+      fillWorld(ctx, input, 96 + i * 140, 196, 8, 8, AUTUMN_DOT, 7, 7);
       autumn += 1;
     }
   }
