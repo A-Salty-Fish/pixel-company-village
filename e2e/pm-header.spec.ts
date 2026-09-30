@@ -6,7 +6,7 @@ test("a stale score day is not called today", async ({ page }) => {
   await page.getByTestId("score-meta").locator("summary").click();
   const date = page.getByTestId("score-date");
   await expect(date).toHaveAttribute("data-honesty", "stale");
-  await expect(date).toContainText("最近一次评分日");
+  await expect(date).toContainText("村里仍是此刻");
   await expect(date).not.toContainText("今日");
   await expect(page.getByTestId("score-date-detail")).toContainText("分数仍停在评分日");
   await expect(page.getByTestId("score-date-detail")).not.toContainText("今日");

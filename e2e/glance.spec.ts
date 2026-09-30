@@ -16,7 +16,7 @@ test("a cleared store opens the visit, not a signal card", async ({ page }) => {
   await expect(score).toContainText("有分");
   const honesty = await score.getAttribute("data-honesty");
   if (honesty === "stale") {
-    await expect(score).toContainText("最近一次评分日");
+    await expect(score).toContainText("村里仍是此刻");
     await expect(page.getByTestId("score-date-detail")).toContainText("分数仍停在评分日");
     await expect(page.getByTestId("refresh-scores")).toHaveText("刷新评分日");
   }
