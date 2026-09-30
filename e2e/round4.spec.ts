@@ -16,7 +16,7 @@ test("weekly chores check off from a local action and diary shows the canned lin
 
   const labels = await chores.locator("[data-chore]").evaluateAll((els) => els.map((el) => el.getAttribute("data-chore")));
   if (labels.includes("浇自己的田")) {
-    await page.getByRole("button", { name: "浇自己的田" }).click();
+    await page.getByTestId("water-crop").click();
     await expect(chores.locator("[data-chore='浇自己的田']")).toHaveAttribute("data-done", "1");
   } else if (labels.includes("收一句罐头")) {
     await page.getByTestId("diary-0").click();

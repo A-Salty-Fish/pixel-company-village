@@ -3,9 +3,9 @@
 Date: 2026-09-30. Gate: `pixel-village-wave-d-acceptance-2026-09-30`.
 
 ```text
-SHA: Round 4 branch cursor/wave-d-round-4-9062 (from main 749b0e4)
+SHA: Round 5 branch cursor/wave-d-round-5-9062 (from main e63b2e6)
 npm test: PASS (31, includes weekly chore checks)
-Playwright smoke: round 3 adds dialog Esc, 44px targets, and reduced motion on top of the 41-test undo smoke. Visual job stays continue-on-error with a 2% pixel tolerance.
+Playwright smoke: PASS (52, includes the chore board and the PV-D-004 escape paths). Visual job stays continue-on-error with a 2% pixel tolerance.
 Privacy: PASS (e2e/privacy.spec.ts)
 Visual quiet/busy: PASS locally; CI job stays continue-on-error
 Steam rubric final: 8.3 / 10
@@ -20,6 +20,7 @@ Playtest 2026-09-30 follow-ups:
 - PV-D-003: the 3s deadline is stamped inside the undo row when that row mounts, for both 确认关照 and 匿名投喂. `e2e/undo-window.spec.ts` checks the first label is 「撤销（3秒）」, remaining time is still above 2s, the button is still there 2.5s later, and undo restores 今日 0/1. A slow confirm render no longer burns the first second before paint. Local smoke after the fix: 41 passed.
 - Round 3: the signal card is a non-modal dialog. Esc returns focus to that roster row and clears the open undo so reopening does not mint a new 3s window. Narrow split, close, password, and the name picker are at least 44px. Reduced motion drops the season fade. Dusk lights house windows, the bench has a back, and the stroll is stones.
 - Round 4: 本周小事 sits under the season banner. Water, diary, porch, pins, bench, a card, the gate, and the season banner check off the matching canned chore. Diary buttons show the canned sentence. Nothing is ranked or stored as free text.
+- Round 5: each chore on that board is a button. One to three clicks finishes it through the existing local action, then the button stays disabled so porch, pins, and the bench are not toggled back off. Footsteps store coordinates only. The strip says 「可在村里新事里关掉」 and does not add a second switch. Local smoke: 52 passed.
 - Fresh storage: `comfortFromStorage` unit plus `a cleared profile keeps quiet village checked`.
 - Stale score days label the button 「本地互动」.
 - Comfort settings are grouped into 安静 / 装饰 / 名牌 / 我是谁.

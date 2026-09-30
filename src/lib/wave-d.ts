@@ -274,6 +274,51 @@ function choreDone(label: string, facts: WeekFacts) {
   }
 }
 
+export type ChoreAction = "water" | "card" | "gate" | "porch" | "diary" | "steps" | "season" | "pin" | "rest";
+
+/** Only the nine canned chores map to an action. Anything else is ignored. */
+export function choreAction(label: string): ChoreAction | null {
+  switch (label) {
+    case "浇自己的田":
+      return "water";
+    case "看一张信号卡":
+      return "card";
+    case "在村口站一会儿":
+      return "gate";
+    case "给门灯点一下":
+      return "porch";
+    case "收一句罐头":
+      return "diary";
+    case "沿着小路走三步":
+      return "steps";
+    case "看季节色":
+      return "season";
+    case "钉一枚名牌":
+      return "pin";
+    case "把锄头放下":
+      return "rest";
+    default:
+      return null;
+  }
+}
+
+const STROLL_STEPS = [
+  { x: 480, y: 520 },
+  { x: 540, y: 500 },
+  { x: 600, y: 530 },
+] as const;
+
+/** One footprint on the path. Stops at three. Stores coordinates only. */
+export function addStrollStep(blob: WaveDBlob, now: number): WaveDBlob {
+  if (!systemOn(blob, "footprints")) return blob;
+  if (blob.footprints.length >= STROLL_STEPS.length) return blob;
+  const mark = STROLL_STEPS[blob.footprints.length];
+  return {
+    ...blob,
+    footprints: [...blob.footprints, { x: mark.x, y: mark.y, t: now }].slice(-FOOTPRINT_CAP),
+  };
+}
+
 export function duskActive(hour: number, enabled: boolean) {
   return enabled && hour >= 17 && hour < 20;
 }

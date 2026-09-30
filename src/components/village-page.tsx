@@ -58,6 +58,8 @@ import {
   visitorCopy,
   waterOnce,
   weekChores,
+  choreAction,
+  addStrollStep,
   type WaveDBlob,
   type WaveSystemId,
 } from "@/lib/wave-d";
@@ -592,6 +594,65 @@ export function VillagePage({ initial }: Props) {
     noticedSeason,
   };
 
+  function runChore(label: string) {
+    const action = choreAction(label);
+    if (!action || !selfName) {
+      if (!selfName) setWaveLine("先选定「我是谁」，小事才记在这台电脑上。");
+      return;
+    }
+    if (weekChores(clock.weekKey, weekFacts).find((item) => item.label === label)?.done) return;
+    if (action === "water") {
+      const result = waterOnce(waveState, clock.ymd);
+      setWaveLine(result.line);
+      if (result.ok) updateWave(() => result.blob);
+      return;
+    }
+    if (action === "card") {
+      const name = people.find((person) => person.name !== selfName)?.name ?? people[0]?.name;
+      if (name) selectOnly(name);
+      return;
+    }
+    if (action === "gate") {
+      setHomePulse((value) => value + 1);
+      setWaveLine("在村口站了一会儿。");
+      return;
+    }
+    if (action === "porch") {
+      updateWave((current) => (current.porch ? current : togglePorch(current)));
+      setWaveLine("门灯点上了。");
+      return;
+    }
+    if (action === "diary") {
+      const result = setDiary(waveState, clock.ymd, 0);
+      setWaveLine(result.line);
+      if (result.ok) updateWave(() => result.blob);
+      return;
+    }
+    if (action === "steps") {
+      updateWave((current) => addStrollStep(current, nowMs()));
+      setWaveLine("沿小路走了一步。");
+      return;
+    }
+    if (action === "season") {
+      setNoticedSeason(true);
+      setWaveLine("看过这一季的颜色了。");
+      return;
+    }
+    if (action === "pin") {
+      updateWave((current) => {
+        const target = current.pins.includes(selfName)
+          ? people.find((person) => !current.pins.includes(person.name))?.name
+          : selfName;
+        if (!target) return current;
+        return { ...current, pins: pinResult(current.pins, target).pins };
+      });
+      setWaveLine("钉了一枚名牌。");
+      return;
+    }
+    updateWave((current) => (current.sit ? current : sitDown(current, 640, 420)));
+    setWaveLine("把锄头放下，在长椅上坐下了。");
+  }
+
   return (
     <div
       className="farm-page mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-3 py-4 sm:px-5"
@@ -645,11 +706,19 @@ export function VillagePage({ initial }: Props) {
       {waveState.toggles.weekBoard ? (
         <section className="hud-panel px-3 py-3" data-testid="today-chores">
           <p className="pixel-label text-[#2a1a10]">本周小事</p>
-          <p className="mt-1 text-xs text-[#6a3d18]">做完会打勾。只记在这台电脑，不公示，也不跟别人比。</p>
+          <p className="mt-1 text-xs text-[#6a3d18]">点一下就做。做完会停住。只记在这台电脑，不公示，也不跟别人比。</p>
+          <p className="mt-1 text-xs text-[#6a3d18]">可在村里新事里关掉。</p>
           <ul className="today-chores">
             {weekChores(clock.weekKey, weekFacts).map((item) => (
               <li key={item.label} data-chore={item.label} data-done={item.done ? "1" : "0"}>
-                {item.done ? "已做" : "还没"} · {item.label}
+                <button
+                  type="button"
+                  className="hud-btn hud-btn-ghost"
+                  disabled={item.done || !selfName}
+                  onClick={() => runChore(item.label)}
+                >
+                  {item.done ? "已做" : "去做"} · {item.label}
+                </button>
               </li>
             ))}
           </ul>
