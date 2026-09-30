@@ -63,7 +63,10 @@ import {
   addStrollStep,
   strollStepLine,
   weekTally,
+  emptyViewerChores,
+  rememberViewerChores,
   WEEK_DONE_LINE,
+  type ViewerChoreFlags,
   type WaveDBlob,
   type WaveSystemId,
 } from "@/lib/wave-d";
@@ -159,7 +162,7 @@ export function VillagePage({ initial }: Props) {
   const waveSnap = useSyncExternalStore(subscribeWave, getWaveSnapshot, getServerWaveSnapshot);
   const waveState = waveSnap.wave;
   const [homePulse, setHomePulse] = useState(0);
-  const [noticedSeason, setNoticedSeason] = useState(false);
+  const [choreBook, setChoreBook] = useState<ReadonlyMap<string, ViewerChoreFlags>>(() => new Map());
   const [waveLine, setWaveLine] = useState<string | null>(null);
   const lastTap = useRef({ name: "", at: 0 });
   const play = playSnap.play;
@@ -353,32 +356,37 @@ export function VillagePage({ initial }: Props) {
     return out;
   }, [people, insights]);
   const spotlights = festival ? stageNames(people.map((person) => person.name), payload.date) : [];
-  const keptChore = useRef(new Map<string, { card: boolean; porch: boolean; pin: boolean; sat: boolean }>());
-  const viewerKey = selfName ?? "";
-  let kept = keptChore.current.get(viewerKey);
-  if (!kept) {
-    kept = { card: false, porch: false, pin: false, sat: false };
-    keptChore.current.set(viewerKey, kept);
-  }
-  const seenViewer = useRef<string | null>(null);
-  const justSwitched = seenViewer.current !== viewerKey;
-  seenViewer.current = viewerKey;
   const waveMatches = waveSnap.viewer === selfName;
-  if (!justSwitched && selectedName) kept.card = true;
-  if (waveMatches && waveState.porch) kept.porch = true;
-  if (waveMatches && waveState.pins.length > 0) kept.pin = true;
-  if (waveMatches && waveState.sit) kept.sat = true;
+  const kept = (selfName ? choreBook.get(selfName) : undefined) ?? emptyViewerChores();
+  const liveWave = waveMatches ? waveState : null;
   const weekFacts = {
-    wateredToday: waveState.waterDay === clock.ymd,
+    wateredToday: liveWave?.waterDay === clock.ymd,
     cardOpen: kept.card,
-    visitedGate: homePulse > 0,
-    porchOn: kept.porch || waveState.porch,
-    diaryToday: waveState.diaryDay === clock.ymd && waveState.diaryIndex !== null,
-    steps: waveState.footprints.length,
-    pinned: kept.pin,
-    resting: kept.sat,
-    noticedSeason,
+    visitedGate: kept.gate,
+    porchOn: kept.porch || Boolean(liveWave?.porch),
+    diaryToday: Boolean(liveWave && liveWave.diaryDay === clock.ymd && liveWave.diaryIndex !== null),
+    steps: liveWave?.footprints.length ?? 0,
+    pinned: kept.pin || Boolean(liveWave && liveWave.pins.length > 0),
+    resting: kept.sat || Boolean(liveWave?.sit),
+    noticedSeason: kept.season,
   };
+  const prevSelected = useRef<string | null>(null);
+  useEffect(() => {
+    const changed = prevSelected.current !== selectedName;
+    prevSelected.current = selectedName;
+    if (!changed || !selectedName || !selfName) return;
+    setChoreBook((book) => rememberViewerChores(book, selfName, { card: true }));
+  }, [selectedName, selfName]);
+  useEffect(() => {
+    if (!selfName || waveSnap.viewer !== selfName) return;
+    setChoreBook((book) =>
+      rememberViewerChores(book, selfName, {
+        porch: waveState.porch,
+        pin: waveState.pins.length > 0,
+        sat: Boolean(waveState.sit),
+      }),
+    );
+  }, [selfName, waveSnap.viewer, waveState.porch, waveState.pins.length, waveState.sit]);
   const chores = weekChores(clock.weekKey, weekFacts);
   const tally = weekTally(chores);
   const decor = buildDecor({
@@ -616,6 +624,18 @@ export function VillagePage({ initial }: Props) {
 
   const waveStatusNow = selected ? waveStatus(selected.name) : null;
 
+  function rememberChore(flag: keyof ViewerChoreFlags) {
+    if (!selfName) return;
+    setChoreBook((book) => rememberViewerChores(book, selfName, { [flag]: true }));
+  }
+
+  function visitOwnGate(line?: string) {
+    if (!selfName) return;
+    rememberChore("gate");
+    setHomePulse((value) => value + 1);
+    if (line) setWaveLine(line);
+  }
+
   function runChore(label: string) {
     const action = choreAction(label);
     if (!action || !selfName) {
@@ -635,8 +655,7 @@ export function VillagePage({ initial }: Props) {
       return;
     }
     if (action === "gate") {
-      setHomePulse((value) => value + 1);
-      setWaveLine("在村口站了一会儿。");
+      visitOwnGate("在村口站了一会儿。");
       return;
     }
     if (action === "porch") {
@@ -658,7 +677,7 @@ export function VillagePage({ initial }: Props) {
       return;
     }
     if (action === "season") {
-      setNoticedSeason(true);
+      rememberChore("season");
       setWaveLine("看过这一季的颜色了。");
       return;
     }
@@ -725,7 +744,7 @@ export function VillagePage({ initial }: Props) {
         seasonId={season.id}
         festival={festival}
         people={people}
-        onNotice={() => setNoticedSeason(true)}
+        onNotice={() => rememberChore("season")}
       />
       {waveState.toggles.weekBoard ? (
         <section
@@ -990,7 +1009,7 @@ export function VillagePage({ initial }: Props) {
             setWaveLine("先选定「我是谁」，镜头才回得了自己的小屋。");
             return;
           }
-          setHomePulse((value) => value + 1);
+          visitOwnGate();
         }}
         onPostcard={() => {
           const meta = postcardMeta(selfName, clock.ymd);
@@ -1009,9 +1028,7 @@ export function VillagePage({ initial }: Props) {
 
       <div className="thumb-bar" data-testid="thumb-bar">
         <button type="button" className="hud-btn" data-testid="thumb-home" disabled={!selfName} onClick={() => {
-          if (!selfName) return;
-          setHomePulse((value) => value + 1);
-          setWaveLine("镜头回到自己的小屋。");
+          visitOwnGate("镜头回到自己的小屋。");
         }}>
           回家
         </button>

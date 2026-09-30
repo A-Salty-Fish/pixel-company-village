@@ -315,6 +315,50 @@ export function weekTally(items: { done: boolean }[]) {
   return { done, total: items.length, complete: items.length > 0 && done === items.length };
 }
 
+export type ViewerChoreFlags = {
+  card: boolean;
+  porch: boolean;
+  pin: boolean;
+  sat: boolean;
+  season: boolean;
+  gate: boolean;
+};
+
+const EMPTY_VIEWER_CHORES: ViewerChoreFlags = {
+  card: false,
+  porch: false,
+  pin: false,
+  sat: false,
+  season: false,
+  gate: false,
+};
+
+export function emptyViewerChores(): ViewerChoreFlags {
+  return { ...EMPTY_VIEWER_CHORES };
+}
+
+/** Turn canned chore flags on for one viewer. Never clears a flag, and never writes another viewer. */
+export function rememberViewerChores(
+  book: ReadonlyMap<string, ViewerChoreFlags>,
+  viewer: string,
+  patch: Partial<ViewerChoreFlags>,
+): ReadonlyMap<string, ViewerChoreFlags> {
+  if (!viewer) return book;
+  const current = book.get(viewer) ?? EMPTY_VIEWER_CHORES;
+  let changed = false;
+  const nextFlags: ViewerChoreFlags = { ...current };
+  for (const key of Object.keys(EMPTY_VIEWER_CHORES) as (keyof ViewerChoreFlags)[]) {
+    if (patch[key] === true && !current[key]) {
+      nextFlags[key] = true;
+      changed = true;
+    }
+  }
+  if (!changed) return book;
+  const next = new Map(book);
+  next.set(viewer, nextFlags);
+  return next;
+}
+
 /** Idle step buttons stay short. A started stroll shows how many footprints are down. */
 export function choreButtonCopy(label: string, done: boolean, steps: number) {
   if (done) return `已做 · ${label}`;

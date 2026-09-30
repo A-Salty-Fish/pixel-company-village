@@ -3,9 +3,9 @@
 Date: 2026-09-30. Gate: `pixel-village-wave-d-acceptance-2026-09-30`.
 
 ```text
-SHA: Round 6 branch cursor/wave-d-round-6-9062 (from main 9da47b7)
+SHA: PV-D-005 branch cursor/wave-d-round-7-9062 (from main 383e3c9)
 npm test: PASS (31, includes weekly chore checks)
-Playwright smoke: PASS (53, includes the week ribbon and the earlier chore board). Visual job stays continue-on-error with a 2% pixel tolerance.
+Playwright smoke: PASS (54, includes PV-D-005 viewer chore scope). Visual job stays continue-on-error with a 2% pixel tolerance.
 Privacy: PASS (e2e/privacy.spec.ts)
 Visual quiet/busy: PASS locally; CI job stays continue-on-error
 Steam rubric final: 8.3 / 10
@@ -21,7 +21,8 @@ Playtest 2026-09-30 follow-ups:
 - Round 3: the signal card is a non-modal dialog. Esc returns focus to that roster row and clears the open undo so reopening does not mint a new 3s window. Narrow split, close, password, and the name picker are at least 44px. Reduced motion drops the season fade. Dusk lights house windows, the bench has a back, and the stroll is stones.
 - Round 4: 本周小事 sits under the season banner. Water, diary, porch, pins, bench, a card, the gate, and the season banner check off the matching canned chore. Diary buttons show the canned sentence. Nothing is ranked or stored as free text.
 - Round 5: each chore on that board is a button. One to three clicks finishes it through the existing local action, then the button stays disabled so porch, pins, and the bench are not toggled back off. Footsteps store coordinates only. The strip says 「可在村里新事里关掉」 and does not add a second switch. Local smoke: 52 passed.
-- Round 6: the strip counts 本周 n/3. A started stroll shows n/3 on the button. When all three are done, the canned line 「三件都做完了。布条只挂在这台电脑上。」 appears and the map sets data-week-ribbon. Closing the card or turning the lamp and bench back off does not erase that session's finished chores. Switching 「我是谁」 does not hand the ribbon to the next viewer. The ribbon uses the existing week-board switch. Nothing new is stored. Local smoke: 53 passed.
+- Round 6: the strip counts 本周 n/3. A started stroll shows n/3 on the button. When all three are done, the canned line 「三件都做完了。布条只挂在这台电脑上。」 appears and the map sets data-week-ribbon. Closing the card or turning the lamp and bench back off does not erase that session's finished chores. The ribbon uses the existing week-board switch. Nothing new is stored. Local smoke: 53 passed.
+- PV-D-005: season notice and the gate visit were one shared session flag, so the next identity inherited the first finished chore. Those flags now live in a per-viewer book. `e2e/pv-d-005.spec.ts` checks B is 本周 0/3 with no ribbon, then A still has 3/3.
 - Fresh storage: `comfortFromStorage` unit plus `a cleared profile keeps quiet village checked`.
 - Stale score days label the button 「本地互动」.
 - Comfort settings are grouped into 安静 / 装饰 / 名牌 / 我是谁.
