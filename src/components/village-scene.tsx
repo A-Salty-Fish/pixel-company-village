@@ -20,6 +20,7 @@ import { deriveLoadStage, loadStageLabel, type LoadStage } from "@/lib/load-mach
 import { hitSpot } from "@/lib/play-systems";
 import type { PersonWithState } from "@/lib/types";
 import { EASING, particleAllowance } from "@/lib/wave-d";
+import { FIND_ME_LABEL, plateLegend } from "@/lib/worldcraft";
 import { availabilityFor, shanghaiClock, type SceneLife } from "@/lib/village-life";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
@@ -38,6 +39,7 @@ type Props = {
   onEmote?: (kind: "stretch" | "sit" | "clap" | "wave") => void;
   homePulse?: number;
   onEmpty?: (x: number, y: number) => void;
+  onFindMe?: () => void;
 };
 
 const MIN_ZOOM = 1;
@@ -57,6 +59,7 @@ export function VillageScene({
   onEmote,
   homePulse = 0,
   onEmpty,
+  onFindMe,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -432,6 +435,7 @@ export function VillageScene({
       data-sitting={life.decor?.sit ? "1" : "0"}
       data-season={life.decor?.seasonId ?? ""}
       data-week-ribbon={life.decor?.weekRibbon ? "1" : "0"}
+      data-plate-lod={life.quiet && !life.showAllPlates ? "quiet" : "open"}
     >
       {shownStage === "timeout" || shownStage === "failed" ? (
         <div className="load-recovery" data-testid="load-recovery">
@@ -480,7 +484,7 @@ export function VillageScene({
         <span>
           <i className="swatch swatch-muted" /> 灰猫 · 灰名牌 · 未评分
         </span>
-        <span>远景先收起名牌</span>
+        <span>{plateLegend(life.quiet)}</span>
       </div>
       {life.selfName && onEmote ? (
         <div className="emote-bar" data-testid="emote-bar">
@@ -517,6 +521,15 @@ export function VillageScene({
           onClick={onTogglePlates}
         >
           {life.showAllPlates ? "收起" : "全显"}
+        </button>
+        <button
+          type="button"
+          className="hud-icon hud-icon-find"
+          data-testid="find-me"
+          disabled={!life.selfName}
+          onClick={onFindMe}
+        >
+          {FIND_ME_LABEL}
         </button>
       </div>
     </div>

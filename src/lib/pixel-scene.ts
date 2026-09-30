@@ -5,6 +5,18 @@ import { FLOWER_MARK_CAP, GATHER_SPOTS, GLYPH_BUDGET, PARTICLE_BUDGET, VIEWPOINT
 import { artReady, drawSprite, spriteFrame, type SpriteFrame } from "@/lib/sprites";
 import type { PersonWithState } from "@/lib/types";
 import { availabilityFor, glyphFor, ringClosure, shanghaiClock, type SceneLife } from "@/lib/village-life";
+import {
+  benchFrame,
+  benchPose,
+  chorePixels,
+  findMeRing,
+  landmarkPixels,
+  nearPorch,
+  porchPixels,
+  proximityNods,
+  showNameplate,
+  type Pixel,
+} from "@/lib/worldcraft";
 
 export const WORLD_W = 1216;
 export const WORLD_H = 1120;
@@ -473,6 +485,13 @@ function drawSeasonSpeck(ctx: CanvasRenderingContext2D, seasonId: string, x: num
   ctx.fillRect(left + 1, top + 2, 1, 1);
 }
 
+function paintPixels(ctx: CanvasRenderingContext2D, pixels: Pixel[], originX = 0, originY = 0) {
+  for (const pixel of pixels) {
+    ctx.fillStyle = pixel.color;
+    ctx.fillRect(pixel.x + originX, pixel.y + originY, pixel.w, pixel.h);
+  }
+}
+
 function drawFence(ctx: CanvasRenderingContext2D, x: number, y: number, w: number) {
   const frame = spriteFrame("fence_0");
   if (!frame) return;
@@ -515,6 +534,9 @@ function drawVillager(
   bloom: boolean,
   showGlyph: boolean,
   clock: ReturnType<typeof shanghaiClock>,
+  zoom = 2,
+  seated = false,
+  nodding = false,
 ) {
   const elapsed = fx ? (Date.now() - fx.startedAt) / 1000 : 0;
   const onActor = fx?.actor === person.name;
@@ -531,11 +553,12 @@ function drawVillager(
     if (fx.kind === "coffee") y -= Math.sin(elapsed * 10) * 2;
   }
   if ((onActor || onPartner) && fx?.kind === "pair") anim = "water";
+  if (seated) anim = "sit";
   const frame = Math.floor(t * fps * person.speed);
   const bob = selected && !life?.reduceMotion ? (Math.floor(t * 5) % 2 === 0 ? 1 : 0) : 0;
   const x = person.x;
   y -= bob;
-  if (life?.decor?.nods.includes(person.name) && !life.reduceMotion) {
+  if (nodding && !life?.reduceMotion) {
     y -= Math.abs(Math.sin(t * 3)) * 3;
   }
   const color = person.scored ? CAT_COLORS[person.identity.palette] : "lgrey";
@@ -544,6 +567,11 @@ function drawVillager(
   ctx.fillStyle = "rgba(24, 36, 16, 0.35)";
   ctx.fillRect(Math.round(x - 8), Math.round(y - 2), 16, 3);
   drawSprite(ctx, catFrame(color, person.dir, anim, frame), x, y);
+  if (zoom < 2) {
+    ctx.strokeStyle = "#2a1a10";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(Math.round(x - 11), Math.round(y - 32), 22, 30);
+  }
   if (selected || life?.neighbors.includes(person.name)) {
     ctx.strokeStyle = selected ? "#fff6d8" : "#f2d15c";
     ctx.lineWidth = 2;
@@ -829,17 +857,6 @@ function drawWaterDrop(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.fillRect(left, top + 2, 4, 3);
 }
 
-function drawBench(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  const left = Math.round(x);
-  const top = Math.round(y);
-  ctx.fillStyle = "#6a3d18";
-  ctx.fillRect(left - 10, top - 6, 20, 2);
-  ctx.fillRect(left - 10, top, 20, 3);
-  ctx.fillStyle = "#8a5528";
-  ctx.fillRect(left - 8, top + 3, 2, 4);
-  ctx.fillRect(left + 6, top + 3, 2, 4);
-}
-
 function drawWeekRibbon(ctx: CanvasRenderingContext2D, x: number, y: number) {
   const left = Math.round(x);
   const top = Math.round(y);
@@ -1035,6 +1052,7 @@ function drawActors(
   selectedName: string | null,
   fx: VillageFx | null,
   life: SceneLife | null,
+  zoom: number,
 ) {
   const blooms = bloomNames(villagers, life, selectedName);
   const glyphs = glyphNames(villagers, life, selectedName);
@@ -1088,9 +1106,14 @@ function drawActors(
     }
     if (decor.sit) {
       const sit = decor.sit;
+      const frame = benchFrame(sit);
       queue.push({
-        sort: sit.y,
-        draw: () => drawBench(ctx, sit.x, sit.y),
+        sort: sit.y - 1,
+        draw: () => paintPixels(ctx, frame.back),
+      });
+      queue.push({
+        sort: sit.y + 20,
+        draw: () => paintPixels(ctx, frame.seat),
       });
     }
     if (decor.mill) {
@@ -1130,7 +1153,23 @@ function drawActors(
         draw: () => drawWeekRibbon(ctx, 88, 128),
       });
     }
-    if (decor.dusk) {
+  }
+  const self = life?.selfName ? villagers.find((person) => person.name === life.selfName) : undefined;
+  const nearNames = new Set(life?.decor?.nods ?? []);
+  for (const name of proximityNods(self ?? null, villagers)) nearNames.add(name);
+  const home = self ? { x: self.homeX + 48, y: self.homeY + 24 } : null;
+  paintPixels(ctx, landmarkPixels(home));
+  if (life?.craft) paintPixels(ctx, chorePixels(life.craft));
+  if (self) {
+    const lampOn = Boolean(life?.decor?.porch);
+    const homeNear = nearPorch(self, { x: self.homeX, y: self.homeY });
+    paintPixels(ctx, porchPixels(homeNear, lampOn, Boolean(life?.reduceMotion), t), self.homeX, self.homeY);
+    queue.push({
+      sort: self.y + 1,
+      draw: () => paintPixels(ctx, findMeRing(self.x, self.y, Boolean(life?.reduceMotion), t)),
+    });
+  }
+  if (life?.decor?.dusk) {
       for (const house of HOUSE_FACES) {
         queue.push({
           sort: house.y + 8,
@@ -1141,13 +1180,14 @@ function drawActors(
             ctx.fillRect(house.x + 3, house.y + 4, 2, 1);
           },
         });
-      }
     }
   }
   for (const person of villagers) {
     const bench = life?.decor?.sit;
     const seated = Boolean(bench && life?.selfName === person.name);
-    const actor = seated && bench ? { ...person, x: bench.x, y: bench.y, state: "slacking" as const } : person;
+    const pose = seated && bench ? benchPose(bench) : null;
+    const actor = pose ? { ...person, x: pose.x, y: pose.y, state: "slacking" as const } : person;
+    const nodding = nearNames.has(person.name);
     queue.push({
       sort: actor.y,
       draw: () => {
@@ -1161,6 +1201,9 @@ function drawActors(
           blooms.has(person.name),
           glyphs.has(person.name),
           clock,
+          zoom,
+          seated,
+          nodding,
         );
         if (flowers.has(person.name)) drawSprite(ctx, "flower_3", person.x + 14, person.y + 2);
       },
@@ -1199,7 +1242,7 @@ export function paintVillage(
   world.clearRect(0, 0, WORLD_W, WORLD_H);
   world.drawImage(groundCanvas, 0, 0);
   drawWater(world, life?.reduceMotion ? 0 : t);
-  drawActors(world, villagers, t, selectedName, fx, life);
+  drawActors(world, villagers, t, selectedName, fx, life, zoom);
 
   const span = viewSpan(zoom);
   const viewWorldW = span.w;
@@ -1283,7 +1326,7 @@ export function drawNameLabels(
   for (const person of ordered) {
     const pinned = pins.has(person.name);
     const hot = emphasize.has(person.name) || pinned;
-    if (zoom < 2 && !hot && !showAll) continue;
+    if (!showNameplate(zoom, hot, showAll, Boolean(life?.quiet))) continue;
     const mode: LabelMode = hot ? "hot" : person.scored ? "scored" : "muted";
     const sprite = getLabelSprite(person.name, mode);
     if (!sprite) continue;

@@ -3,6 +3,7 @@
  * No chat text, no rankings, no server quota.
  */
 
+import { CHORE_STEPS, FIND_ME_LABEL, PLATE_LOUD_LINE, PLATE_QUIET_LINE } from "./worldcraft";
 import { emptyYard, readYard, yardCopyLines, yardLook, type YardState } from "./yard";
 
 export const SEASON_FADE_MS = 400;
@@ -347,11 +348,7 @@ export function choreAction(label: string): ChoreAction | null {
   }
 }
 
-const STROLL_STEPS = [
-  { x: 480, y: 520 },
-  { x: 540, y: 500 },
-  { x: 600, y: 530 },
-] as const;
+const STROLL_STEPS = CHORE_STEPS;
 
 export const WEEK_DONE_LINE = "三件都做完了。布条只挂在这台电脑上。";
 
@@ -648,6 +645,9 @@ export function publicCopyLines() {
     ATLAS_FALLBACK,
     WEEK_DONE_LINE,
     WEEK_KEPT_LINE,
+    PLATE_QUIET_LINE,
+    PLATE_LOUD_LINE,
+    FIND_ME_LABEL,
     strollStepLine(0, 0),
     strollStepLine(0, 1),
     strollStepLine(2, 3),

@@ -451,6 +451,11 @@ export function VillagePage({ initial }: Props) {
     bell: playSnap.bell,
     gardenCrops: play.garden2,
     decor,
+    craft: {
+      steps: weekFacts.steps,
+      watered: weekFacts.wateredToday,
+      ribbon: tally.complete,
+    },
   };
 
   function resolveKindness(target: string) {
@@ -850,6 +855,7 @@ export function VillagePage({ initial }: Props) {
             onTogglePlates={() => saveComfort({ ...comfort, showAllPlates: !comfort.showAllPlates })}
             onEmote={selfName ? emote : undefined}
             homePulse={homePulse}
+            onFindMe={() => visitOwnGate()}
             onEmpty={(x, y) => {
               if (!selfName) return;
               updateWave((current) => {
