@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { GUIDE_KEY, GUIDE_LINES, guideSeen } from "@/lib/first-run";
+import { GUIDE_KEY, GUIDE_LINES, guideSeen, visitComplete, visitStep, type VisitFlags } from "@/lib/first-run";
 
 const listeners = new Set<() => void>();
 
@@ -32,17 +32,26 @@ function dismiss() {
   emit();
 }
 
-export function FirstRunGuide({ onShowMotion }: { onShowMotion?: () => void }) {
+export function FirstRunGuide({ flags, onShowMotion }: { flags: VisitFlags; onShowMotion?: () => void }) {
   const seen = useSyncExternalStore(subscribe, readSeen, () => true);
-  if (seen) return null;
+  if (seen || visitComplete(flags)) return null;
+  const step = visitStep(flags);
   return (
-    <section className="hud-panel px-3 py-3" data-testid="first-run-guide" data-open="1">
-      <h2 className="pixel-label text-[#2a1a10]">第一次来</h2>
-      <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs leading-5 text-[#6a3d18]">
-        {GUIDE_LINES.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
+    <section className="hud-panel px-3 py-3" data-testid="first-run-guide" data-open="1" data-visit-step={step}>
+      <h2 className="pixel-label text-[#2a1a10]">先在村里走一圈</h2>
+      <ol className="mt-2 space-y-1 text-sm text-[#2a1a10]">
+        <li data-visit="self" data-current={step === "self" ? "1" : "0"}>
+          {flags.self ? "已选定我是谁。" : GUIDE_LINES[0]}
+        </li>
+        <li data-visit="yard" data-current={step === "yard" ? "1" : "0"}>
+          {flags.yard ? "院里或本周小事做过了。" : GUIDE_LINES[1]}
+        </li>
+        <li data-visit="social" data-current={step === "social" ? "1" : "0"}>
+          {flags.social ? "挥手或关照做过了。" : GUIDE_LINES[2]}
+        </li>
       </ol>
+      <p className="mt-2 text-xs text-[#6a3d18]">{GUIDE_LINES[3]}</p>
+      <p className="text-xs text-[#6a3d18]">{GUIDE_LINES[4]}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" className="hud-btn" data-testid="first-run-dismiss" onClick={dismiss}>
           知道了

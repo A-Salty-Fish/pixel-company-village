@@ -19,8 +19,10 @@ test("re-login restores header and roster without opening 村里的事", async (
   const roster = page.getByTestId("roster-list");
   await expect(header).toBeVisible();
   await expect(header).toContainText("像素公司村");
-  await expect(header).toContainText("有分");
+  await expect(page.getByTestId("village-glance")).toBeVisible();
   await expect(page.getByTestId("refresh-scores")).toBeVisible();
+  await page.getByTestId("score-meta").locator("summary").click();
+  await expect(header).toContainText("有分");
   await expect(page.getByTestId("toggle-plates")).toBeVisible();
   await expect(roster).toBeVisible();
   await expect(roster.locator("[data-roster-item]").first()).toBeVisible();
