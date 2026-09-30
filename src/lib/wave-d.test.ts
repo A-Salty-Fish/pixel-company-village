@@ -287,6 +287,13 @@ test("sanitize drops chat-shaped storage and keeps toggles", () => {
   assert.equal(yardKept.yard.bell, 2);
   assert.equal(yardKept.yard.laundry, true);
   assert.equal(JSON.stringify(yardKept.yard).includes("原文"), false);
+  const laneKept = sanitizeWave({
+    lane: { wellDay: "2026-09-30", ducks: 2, lantern: true, text: "聊天原文" },
+  });
+  assert.equal(laneKept.lane.wellDay, "2026-09-30");
+  assert.equal(laneKept.lane.ducks, 2);
+  assert.equal(laneKept.lane.lantern, true);
+  assert.equal(JSON.stringify(laneKept.lane).includes("原文"), false);
   assert.deepEqual(storageSweepPlan(["village:score-history-v1", "chat-transcript", "village:viewer:林:wave-d"]), [
     "chat-transcript",
   ]);
@@ -381,6 +388,9 @@ test("acceptance helpers: fade, water day, migration, seasons, particles, shapes
   assert.equal(spinning.yard.on, true);
   assert.equal(spinning.yard.wear, true);
   assert.equal(spinning.yard.hen, false);
+  assert.equal(spinning.lane.on, true);
+  assert.equal(spinning.lane.bob, true);
+  assert.equal(spinning.lane.well, false);
   assert.equal(spinning.weekRibbon, false);
   assert.equal(
     buildDecor({

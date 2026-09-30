@@ -449,6 +449,80 @@ function drawYardCraft(
   }
 }
 
+function drawLaneCraft(
+  ctx: CanvasRenderingContext2D,
+  lane: NonNullable<SceneLife["decor"]>["lane"],
+  sway: number,
+) {
+  const bob = lane.bob ? Math.round(Math.sin(sway) * 1) : 0;
+  ctx.fillStyle = "#8a9aa8";
+  ctx.fillRect(948, 688, 22, 16);
+  ctx.fillStyle = "#3a8fbc";
+  ctx.fillRect(954, 694, 10, 6);
+  ctx.fillStyle = "#6a3d18";
+  ctx.fillRect(968, 684, 2, 18);
+  if (lane.well) {
+    ctx.fillStyle = "#c4a060";
+    ctx.fillRect(942, 702, 8, 6);
+    ctx.fillStyle = "#3a8fbc";
+    ctx.fillRect(944, 704, 4, 3);
+  }
+
+  ctx.fillStyle = lane.fence ? "#c4a060" : "#5a3214";
+  for (let i = 0; i < 5; i += 1) {
+    ctx.fillRect(36 + i * 16, 312, 2, 16);
+    ctx.fillRect(36 + i * 16, 318, 14, 2);
+  }
+
+  ctx.fillStyle = "#2a1a10";
+  ctx.fillRect(852, 340, 3, 28);
+  ctx.fillStyle = lane.lantern ? "#f2d15c" : "#6a3d18";
+  ctx.fillRect(848, 332, 11, 8);
+  if (lane.lantern) {
+    ctx.fillStyle = "#fff6d8";
+    ctx.fillRect(851, 335, 5, 3);
+  }
+
+  ctx.fillStyle = "#efe6d6";
+  ctx.fillRect(48, 748, 4, 22);
+  ctx.fillRect(78, 748, 4, 22);
+  if (lane.gate) {
+    ctx.fillStyle = "#6a3d18";
+    ctx.fillRect(52, 756, 26, 3);
+    ctx.fillRect(52, 764, 26, 3);
+  }
+
+  ctx.fillStyle = "#8a5528";
+  ctx.fillRect(1088, 792, 28, 4);
+  ctx.fillRect(1088, 800, 28, 4);
+  ctx.fillStyle = "#5a3214";
+  ctx.fillRect(1084, 788, 4, 20);
+  ctx.fillRect(1116, 788, 4, 20);
+  if (lane.bridge) {
+    ctx.fillStyle = "#fff6d8";
+    ctx.fillRect(1098, 786, 4, 6);
+  }
+
+  if (lane.stone > 0) {
+    ctx.fillStyle = "#8a9aa8";
+    for (let i = 0; i < lane.stone; i += 1) ctx.fillRect(200 + i * 8, 640, 5, 4);
+  }
+  if (lane.hat) {
+    ctx.fillStyle = "#c4a060";
+    ctx.fillRect(64, 300, 12, 3);
+    ctx.fillStyle = "#6a3d18";
+    ctx.fillRect(68, 303, 4, 4);
+  }
+  if (lane.ducks > 0) {
+    for (let i = 0; i < lane.ducks; i += 1) {
+      ctx.fillStyle = "#fff6d8";
+      ctx.fillRect(992 + i * 10, 756 + bob, 6, 4);
+      ctx.fillStyle = "#d46a32";
+      ctx.fillRect(998 + i * 10, 757 + bob, 2, 1);
+    }
+  }
+}
+
 function drawSeasonSpeck(ctx: CanvasRenderingContext2D, seasonId: string, x: number, y: number) {
   const left = Math.round(x);
   const top = Math.round(y);
@@ -1158,6 +1232,12 @@ function drawActors(
       queue.push({
         sort: 520,
         draw: () => drawYardCraft(ctx, decor.yard, t),
+      });
+    }
+    if (decor.lane.on) {
+      queue.push({
+        sort: 700,
+        draw: () => drawLaneCraft(ctx, decor.lane, t),
       });
     }
     if (decor.stroll.length >= 2) {

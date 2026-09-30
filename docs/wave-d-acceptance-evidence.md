@@ -25,6 +25,7 @@ Playtest 2026-09-30 follow-ups:
 - PV-D-005: season notice and the gate visit were one shared session flag, so the next identity inherited the first finished chore. Those flags now live in a per-viewer book. `e2e/pv-d-005.spec.ts` checks B is 本周 0/3 with no ribbon, then A still has 3/3.
 - Round 7: finished chores are stored as canned labels on that viewer's wave record for the current week key only. A reload keeps the ribbon. Another identity stays at 0/3. Free text and unknown labels are dropped. Local smoke: 55 passed.
 - Round 8: nine canned yard acts live on the viewer wave record. A reload keeps the hen, the bell count, and a swept path. Another identity starts with an unworn path and no hen. Night wash and moth/sparrow/firefly/butterfly follow the clock only when the village is not quiet. `e2e/round8.spec.ts`.
+- Lane errands: nine canned acts live on the same viewer record, separate from the yard and from the yard-edge loops. A reload keeps the well and the duck count. Another identity starts at zero. Wind stores an index, not a sentence. Reduced motion clears `data-lane-bob`. `e2e/round9-lane.spec.ts`.
 - Fresh storage: `comfortFromStorage` unit plus `a cleared profile keeps quiet village checked`.
 - Stale score days label the button 「本地互动」.
 - Comfort settings are grouped into 安静 / 装饰 / 名牌 / 我是谁.

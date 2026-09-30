@@ -694,6 +694,7 @@ a:focus-visible,
 @media (prefers-reduced-motion: reduce) {
   .empty-yard-art span,
   .yard-chip,
+  .lane-chip,
   .week-ribbon-note,
   .empty-dock {
     animation: none;
@@ -703,6 +704,7 @@ a:focus-visible,
 
 .farm-page[data-reduce-motion="1"] .empty-yard-art span,
 .farm-page[data-reduce-motion="1"] .yard-chip,
+.farm-page[data-reduce-motion="1"] .lane-chip,
 .farm-page[data-reduce-motion="1"] .week-ribbon-note {
   animation: none;
   transition: none;
