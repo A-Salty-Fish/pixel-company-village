@@ -292,13 +292,7 @@ details.hud-panel {
   list-style: none;
 }
 
-.today-chores li {
-  border: 2px solid #6a3d18;
-  background: #efe0c0;
-  padding: 0.2rem 0.45rem;
-}
-
-.today-chores li[data-done="1"] {
+.today-chores li[data-done="1"] button {
   background: #e7f3c8;
 }
 

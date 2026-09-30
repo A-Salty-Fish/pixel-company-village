@@ -55,6 +55,8 @@ import {
   weatherFor,
   weekBoard,
   weekChores,
+  choreAction,
+  addStrollStep,
   wreathColor,
 } from "./wave-d";
 
@@ -95,6 +97,15 @@ test("weekly chores check off from local actions and ignore unknown labels", () 
   });
   assert.equal(done.every((item) => item.done), true);
   assert.equal(weekChores("not-a-real-label", { ...quiet, wateredToday: true }).some((item) => item.label === "聊天原文"), false);
+  assert.equal(choreAction("浇自己的田"), "water");
+  assert.equal(choreAction("沿着小路走三步"), "steps");
+  assert.equal(choreAction("聊天原文"), null);
+  let stepped = addStrollStep(EMPTY_WAVE, 1);
+  stepped = addStrollStep(stepped, 2);
+  stepped = addStrollStep(stepped, 3);
+  const held = addStrollStep(stepped, 4);
+  assert.equal(held.footprints.length, 3);
+  assert.equal(JSON.stringify(held).includes("聊天"), false);
 });
 
 test("pins stay private and cap at three", () => {
