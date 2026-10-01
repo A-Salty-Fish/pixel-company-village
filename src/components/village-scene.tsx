@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { loadVillageArt, resetVillageArt, artReady } from "@/lib/sprites";
 import {
   WORLD_H,
@@ -43,6 +43,8 @@ import { toyPulseMark } from "@/features/yard-toy-focus/yard-toy-focus";
 import { GestureChrome } from "@/features/gesture-sfx/gesture-chrome";
 import { autumnLeafCount, leafDriftMark } from "@/features/autumn-leaf-drift/autumn-leaf-drift";
 import { waitingCueMark } from "@/features/waiting-cue/waiting-cue";
+import { MAP_HUD_FOLD_ENABLED, hitToy } from "@/features/map-hud-fold/map-hud-fold";
+import type { ToyId } from "@/features/yard-toy-focus/yard-toy-focus";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
 
@@ -66,6 +68,10 @@ type Props = {
   onSfxMute?: (muted: boolean) => void;
   onAmbient?: (on: boolean) => void;
   onMapReady?: () => void;
+  mapMore?: boolean;
+  onMapMore?: (open: boolean) => void;
+  onToyTap?: (id: ToyId) => void;
+  children?: ReactNode;
 };
 
 const MIN_ZOOM = 1;
@@ -91,6 +97,10 @@ export function VillageScene({
   onSfxMute,
   onAmbient,
   onMapReady,
+  mapMore = false,
+  onMapMore,
+  onToyTap,
+  children,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -109,6 +119,7 @@ export function VillageScene({
   const stageRef = useRef<LoadStage>("terrain");
   const onSpotRef = useRef(onSpot);
   const onEmptyRef = useRef(onEmpty);
+  const onToyTapRef = useRef(onToyTap);
   const forceRef = useRef(forceTimeout);
   const startCam = defaultCamera();
   const [zoom, setZoom] = useState(startCam.zoom);
@@ -150,6 +161,10 @@ export function VillageScene({
   useEffect(() => {
     onEmptyRef.current = onEmpty;
   }, [onEmpty]);
+
+  useEffect(() => {
+    onToyTapRef.current = onToyTap;
+  }, [onToyTap]);
 
   useEffect(() => {
     if (!mapAim?.token) return;
@@ -410,6 +425,13 @@ export function VillageScene({
         onSelectRef.current(found.name);
         return;
       }
+      if (MAP_HUD_FOLD_ENABLED) {
+        const toy = hitToy(world.x, world.y);
+        if (toy) {
+          onToyTapRef.current?.(toy);
+          return;
+        }
+      }
       const spot = hitSpot(world.x, world.y);
       if (spot) onSpotRef.current?.(spot);
       else {
@@ -636,38 +658,41 @@ export function VillageScene({
           拖动画布 · 滚轮缩放 · 点小人看今日信号
         </p>
       )}
-      {life.decor?.showWeather ? (
-        <div className="weather-chip" data-testid="weather-chip">
-          村口 · {life.decor.weatherLabel}
+      <div className="map-more-sheet" data-testid="map-more-sheet">
+        {children}
+        {life.decor?.showWeather ? (
+          <div className="weather-chip" data-testid="weather-chip">
+            村口 · {life.decor.weatherLabel}
+          </div>
+        ) : null}
+        <div className="name-legend" data-testid="name-legend">
+          <span>
+            <i className="swatch swatch-scored" /> 彩猫 · 琥珀名牌 · 有分
+          </span>
+          <span>
+            <i className="swatch swatch-muted" /> 灰猫 · 灰名牌 · 未评分
+          </span>
+          <span>{plateLegend(life.quiet)}</span>
         </div>
-      ) : null}
-      <div className="name-legend" data-testid="name-legend">
-        <span>
-          <i className="swatch swatch-scored" /> 彩猫 · 琥珀名牌 · 有分
-        </span>
-        <span>
-          <i className="swatch swatch-muted" /> 灰猫 · 灰名牌 · 未评分
-        </span>
-        <span>{plateLegend(life.quiet)}</span>
+        {life.selfName && onEmote ? (
+          <div className="emote-bar" data-testid="emote-bar">
+            <button type="button" className="hud-btn hud-btn-ghost" onClick={() => onEmote("stretch")}>
+              伸懒腰
+            </button>
+            <button type="button" className="hud-btn hud-btn-ghost" onClick={() => onEmote("sit")}>
+              坐下
+            </button>
+            <button type="button" className="hud-btn hud-btn-ghost" onClick={() => onEmote("clap")}>
+              鼓掌
+            </button>
+            <button type="button" className="hud-btn hud-btn-ghost" data-testid="header-wave" onClick={() => onEmote("wave")}>
+              挥手
+            </button>
+          </div>
+        ) : null}
       </div>
-      {life.selfName && onEmote ? (
-        <div className="emote-bar" data-testid="emote-bar">
-          <button type="button" className="hud-btn hud-btn-ghost" onClick={() => onEmote("stretch")}>
-            伸懒腰
-          </button>
-          <button type="button" className="hud-btn hud-btn-ghost" onClick={() => onEmote("sit")}>
-            坐下
-          </button>
-          <button type="button" className="hud-btn hud-btn-ghost" onClick={() => onEmote("clap")}>
-            鼓掌
-          </button>
-          <button type="button" className="hud-btn hud-btn-ghost" data-testid="header-wave" onClick={() => onEmote("wave")}>
-            挥手
-          </button>
-        </div>
-      ) : null}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-gradient-to-b from-[#2a1a10]/20 to-transparent" />
-      <div className="absolute bottom-3 left-3 z-10 flex gap-1">
+      <div className="map-tools absolute bottom-3 left-3 z-10 flex gap-1" data-testid="map-tools">
         <button type="button" className="hud-icon" onClick={() => applyZoom(zoom - 1)} aria-label="拉远">
           −
         </button>
@@ -679,7 +704,7 @@ export function VillageScene({
         </button>
         <button
           type="button"
-          className="hud-icon hud-icon-wide"
+          className="hud-icon hud-icon-wide map-more-item"
           data-testid="toggle-plates"
           aria-pressed={life.showAllPlates}
           onClick={onTogglePlates}
@@ -706,6 +731,18 @@ export function VillageScene({
         >
           {FIND_ME_LABEL}
         </button>
+        {MAP_HUD_FOLD_ENABLED ? (
+          <button
+            type="button"
+            className="hud-icon map-more-toggle"
+            data-testid="map-more"
+            aria-expanded={mapMore}
+            aria-label="更多"
+            onClick={() => onMapMore?.(!mapMore)}
+          >
+            ⋯
+          </button>
+        ) : null}
       </div>
     </div>
   );

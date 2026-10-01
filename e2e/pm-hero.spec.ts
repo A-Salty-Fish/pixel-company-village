@@ -48,6 +48,15 @@ test("a narrow fresh session still fits the map above the fold", async ({ page }
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page);
   expectHero(await heroBox(page));
+  const today = page.getByTestId("today-entry");
+  await expect(today).toBeVisible();
+  await expect(today).toContainText("今日");
+  const todayBox = await today.boundingBox();
+  expect(todayBox && todayBox.height <= 48 && todayBox.height >= 44).toBeTruthy();
+  await expect(page.getByTestId("ritual-badge")).toBeHidden();
+  await expect(page.getByTestId("week-badge")).toBeHidden();
+  await expect(page.getByTestId("season-banner")).toBeHidden();
+  await page.getByTestId("header-fold").click();
   const refresh = await page.getByTestId("refresh-scores").boundingBox();
   expect(refresh && refresh.height >= 44 && refresh.width >= 44).toBeTruthy();
 });

@@ -37,6 +37,7 @@ import { NAMEPLATE_CLEAR_ENABLED, NEAR_PLATE_CAP, layoutClearPlates } from "@/fe
 import { feedbackPulsePixels } from "@/features/village-feedback/village-feedback";
 import { autumnLeafFrame } from "@/features/autumn-leaf-drift/autumn-leaf-drift";
 import { waitingCuePixels } from "@/features/waiting-cue/waiting-cue";
+import { wanderPose } from "@/features/local-stroll/local-stroll";
 
 export const WORLD_W = 1216;
 export const WORLD_H = 1120;
@@ -72,6 +73,8 @@ export type PlacedVillager = PersonWithState & {
   identity: Identity;
   wanderPhase: number;
   orchard: boolean;
+  /** True while a local stroll is standing still. The world ring never rests. */
+  wanderRest?: boolean;
 };
 
 const BASES: NpcBase[] = ["wilds"];
@@ -150,24 +153,14 @@ function fishingSpot(plot: number) {
 
 export function updateVillager(person: PlacedVillager, t: number) {
   if (person.scored && person.state === "wander") {
-    const path = [
-      [48, 216],
-      [1168, 216],
-      [1168, 1064],
-      [48, 1064],
-    ];
-    const u = (t * 0.08 * person.speed + person.wanderPhase) % 1;
-    const seg = Math.min(3, Math.floor(u * 4));
-    const local = u * 4 - seg;
-    const a = path[seg];
-    const b = path[(seg + 1) % 4];
-    person.x = a[0] + (b[0] - a[0]) * local;
-    person.y = a[1] + (b[1] - a[1]) * local;
-    const dx = b[0] - a[0];
-    const dy = b[1] - a[1];
-    person.dir = Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? "right" : "left") : dy >= 0 ? "down" : "up";
+    const pose = wanderPose(person, t);
+    person.x = pose.x;
+    person.y = pose.y;
+    person.dir = pose.dir;
+    person.wanderRest = pose.rest;
     return;
   }
+  person.wanderRest = false;
   if (person.scored && person.state === "fishing") {
     const spot = fishingSpot(person.plot);
     person.x = spot.x;
@@ -606,7 +599,7 @@ function catAnim(person: PlacedVillager, t: number): { anim: CatAnim; fps: numbe
   if (person.state === "mixed") return { anim: Math.floor(t * 0.35) % 2 === 0 ? "dig" : "water", fps: 8 };
   if (person.state === "fishing") return { anim: "hold", fps: 4 };
   if (person.state === "slacking") return { anim: "sit", fps: 4 };
-  if (person.state === "wander") return { anim: "walk", fps: 8 };
+  if (person.state === "wander") return person.wanderRest ? { anim: "idle", fps: 4 } : { anim: "walk", fps: 8 };
   return { anim: "idle", fps: 4 };
 }
 

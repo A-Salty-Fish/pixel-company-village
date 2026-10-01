@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.3.1";
+export const APP_VERSION = "1.4.0";
 
 export const RELEASE_BOARD_TITLE = "更新日志";
 
@@ -31,6 +31,19 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.4.0",
+    date: "2026-10-01",
+    title: "手机也想多待",
+    notes: [
+      "窄屏上，页头收成一行。今日仪式、本周和季节收进「今日」，点开才展开。",
+      "先看见地图。",
+      "地图上平时只留缩放、找我和静音。图例、伸懒腰和相伴收进「更多」。",
+      "还没选定「我是谁」时，底下只有这一颗。选定之后才有「回家」。",
+      "灯笼、稻草人和路石平时不挡在地图上。点到它们，或打开「院子」，才看见亮灭和颗数。地上会亮一圈。",
+      "村里溜达的人在自己田边走走停停，不再绕着村边跑圈。",
+    ],
+  },
   {
     version: "1.3.1",
     date: "2026-10-01",

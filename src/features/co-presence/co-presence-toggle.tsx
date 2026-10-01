@@ -9,7 +9,7 @@ export function CoPresenceToggle(props: Props) {
   return (
     <button
       type="button"
-      className="hud-btn hud-btn-ghost co-presence-toggle"
+      className="hud-btn hud-btn-ghost co-presence-toggle map-more-item"
       data-testid="co-presence-toggle"
       aria-pressed={props.on}
       onClick={() => props.onToggle(!props.on)}
