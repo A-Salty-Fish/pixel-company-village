@@ -1,4 +1,5 @@
 import { ClearHintOnGate } from "@/features/today-can-do/clear-hint-on-gate";
+import { softChromeMark } from "@/features/soft-chrome/soft-chrome";
 
 const DISCLAIMER = "代理信号≠绩效；摸鱼分是趣味雷达";
 
@@ -16,7 +17,7 @@ export function LoginForm({ errorCode }: Props) {
   const error = errorCode ? ERRORS[errorCode] ?? ERRORS.invalid : null;
 
   return (
-    <div className="farm-page flex flex-1 items-center justify-center px-4 py-10">
+    <div className="farm-page flex flex-1 items-center justify-center px-4 py-10" data-soft-chrome={softChromeMark()}>
       <script
         dangerouslySetInnerHTML={{
           __html:

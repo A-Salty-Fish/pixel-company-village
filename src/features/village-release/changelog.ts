@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.6.1";
+export const APP_VERSION = "1.6.2";
 
 export const RELEASE_BOARD_TITLE = "更新日志";
 
@@ -31,6 +31,18 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.6.2",
+    date: "2026-10-01",
+    title: "手感再暖一点",
+    notes: [
+      "木牌和按钮的边、影子更软，字还是看得清。",
+      "地图上的缩放、找我、回家，还有底下的按钮，点一下会轻轻一缩，闪一下暖金。",
+      "和「更多」那一下是同一种暖。减少动作时不缩，只留暖色。",
+      "名牌的字距松一点，灰名牌不那么挤。",
+      "草叶会轻轻动，灯笼会轻轻闪。减少动作或安静村子里，它们停住。",
+    ],
+  },
   {
     version: "1.6.1",
     date: "2026-10-01",

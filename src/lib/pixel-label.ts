@@ -1,5 +1,7 @@
 /** Fusion Pixel nameplates. Glyphs are rasterized at 12px, then nearest-neighbor scaled. */
 
+import { NAMEPLATE_AIR_ENABLED, nameplateTrack } from "@/features/nameplate-air/nameplate-air";
+
 export type LabelMode = "hot" | "scored" | "muted";
 
 const labelCache = new Map<string, { canvas: HTMLCanvasElement; w: number; h: number }>();
@@ -18,12 +20,21 @@ function crisp(canvas: HTMLCanvasElement, read = false) {
   return ctx;
 }
 
+function applyTrack(ctx: CanvasRenderingContext2D, track: number) {
+  if (track <= 0) return;
+  const pen = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
+  if (!("letterSpacing" in pen)) return;
+  pen.letterSpacing = `${track}px`;
+}
+
 function rasterText(text: string, color: string) {
   const fontPx = 12;
+  const track = nameplateTrack();
   const probe = crisp(makeCanvas(4, 4));
   const font = `${fontPx}px FusionPixel`;
   if (!probe) return null;
   probe.font = font;
+  applyTrack(probe, track);
   const measured = Math.ceil(probe.measureText(text).width);
   const tw = Math.max(fontPx, measured);
   const th = fontPx + 2;
@@ -31,6 +42,7 @@ function rasterText(text: string, color: string) {
   const ctx = crisp(canvas, true);
   if (!ctx) return null;
   ctx.font = font;
+  applyTrack(ctx, track);
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
   ctx.fillStyle = "#ffffff";
@@ -59,7 +71,8 @@ export function clearLabelCache() {
 }
 
 export function getLabelSprite(name: string, mode: LabelMode) {
-  const key = `fusion|${mode}|${name}`;
+  const air = NAMEPLATE_AIR_ENABLED;
+  const key = `fusion|${mode}|${name}|air${nameplateTrack()}`;
   const hit = labelCache.get(key);
   if (hit) return hit;
 
@@ -67,16 +80,16 @@ export function getLabelSprite(name: string, mode: LabelMode) {
   const text = rasterText(name, ink);
   if (!text) return null;
 
-  const padX = 4;
-  const padY = 3;
+  const padX = air ? 3 : 4;
+  const padY = air ? 2 : 3;
   const w = text.w + padX * 2;
   const h = text.h + padY * 2;
   const canvas = makeCanvas(w, h);
   const ctx = crisp(canvas);
   if (!ctx) return null;
 
-  const fill = mode === "hot" ? "#ffe7a3" : mode === "scored" ? "#f4d7a2" : "#efe6d6";
-  const rim = mode === "hot" ? "#6a3412" : mode === "scored" ? "#5a3214" : "#6a5a48";
+  const fill = mode === "hot" ? "#ffe7a3" : mode === "scored" ? "#f4d7a2" : air ? "#f7f1e4" : "#efe6d6";
+  const rim = mode === "hot" ? "#6a3412" : mode === "scored" ? "#5a3214" : air ? "#8a6a48" : "#6a5a48";
   const lip = mode === "hot" ? "#fff6d0" : "#fff1cf";
   ctx.fillStyle = rim;
   ctx.fillRect(0, 0, w, h);
@@ -84,8 +97,10 @@ export function getLabelSprite(name: string, mode: LabelMode) {
   ctx.fillRect(2, 2, w - 4, h - 4);
   ctx.fillStyle = lip;
   ctx.fillRect(2, 2, w - 4, 1);
-  ctx.fillStyle = mode === "muted" ? "#8d8274" : "#c4924a";
-  ctx.fillRect(2, 2, 2, h - 4);
+  if (!(air && mode === "muted")) {
+    ctx.fillStyle = mode === "muted" ? "#8d8274" : "#c4924a";
+    ctx.fillRect(2, 2, 2, h - 4);
+  }
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(text.canvas, padX, padY);
 
