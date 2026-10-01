@@ -36,6 +36,8 @@ import { plateViewport } from "@/features/nameplate-viewport/nameplate-viewport"
 import { NAMEPLATE_CLEAR_ENABLED, NEAR_PLATE_CAP, layoutClearPlates } from "@/features/nameplate-clear/nameplate-clear";
 import { feedbackPulsePixels } from "@/features/village-feedback/village-feedback";
 import { autumnLeafFrame } from "@/features/autumn-leaf-drift/autumn-leaf-drift";
+import { idleGrassFrame, idleLanternFrame } from "@/features/idle-breeze/idle-breeze";
+import { nameplateAirAlpha, shortPlateAlpha } from "@/features/nameplate-air/nameplate-air";
 import { waitingCuePixels } from "@/features/waiting-cue/waiting-cue";
 import { wanderPose } from "@/features/local-stroll/local-stroll";
 
@@ -1342,6 +1344,22 @@ function drawActors(
         draw: () => paintPixels(ctx, leaves),
       });
     }
+    const breezeStill = Boolean(life.reduceMotion);
+    const breezeQuiet = Boolean(life.quiet);
+    const grass = idleGrassFrame(breezeStill, breezeQuiet, t);
+    if (grass.length > 0) {
+      queue.push({
+        sort: 3,
+        draw: () => paintPixels(ctx, grass),
+      });
+    }
+    const lantern = idleLanternFrame(breezeStill, breezeQuiet, t);
+    if (lantern.length > 0) {
+      queue.push({
+        sort: 324,
+        draw: () => paintPixels(ctx, lantern),
+      });
+    }
     if (life.waitingCue) {
       const cue = life.waitingCue;
       queue.push({
@@ -1697,7 +1715,8 @@ export function drawNameLabels(
       ctx.fillStyle = FAMILIAR_RIM[item.level] ?? FAMILIAR_RIM[1];
       ctx.fillRect(Math.round(box.x - 1), Math.round(box.y - 1), box.w + 2, box.h + 2);
     }
-    const alpha = (item.hot ? 1 : item.mode === "muted" ? 0.7 : 0.92) * item.plateAlpha * (place?.alpha ?? 1);
+    const air = item.hot ? 1 : nameplateAirAlpha(item.role);
+    const alpha = (item.hot ? 1 : item.mode === "muted" ? 0.7 : 0.92) * item.plateAlpha * (place?.alpha ?? 1) * air;
     blitLabel(ctx, item.sprite, box.x, box.y, item.scale, alpha);
     drawn += 1;
   }
@@ -1731,7 +1750,7 @@ export function drawNameLabels(
     const dist = selfPerson ? Math.hypot(person.x - selfPerson.x, person.y - selfPerson.y) : 0;
     const fade = clearOn ? Math.max(0.4, 1 - Math.min(1, dist / 280) * 0.5) : 1;
     placed.push(box);
-    blitLabel(ctx, sprite, x, y, shortScale, 0.86 * fade);
+    blitLabel(ctx, sprite, x, y, shortScale, shortPlateAlpha(0.86 * fade));
     shortDrawn += 1;
   }
   return { plates: drawn, shortPlates: shortDrawn };
