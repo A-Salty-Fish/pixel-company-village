@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.4.0";
+export const APP_VERSION = "1.5.0";
 
 export const RELEASE_BOARD_TITLE = "更新日志";
 
@@ -31,6 +31,21 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.5.0",
+    date: "2026-10-01",
+    title: "再来一趟",
+    notes: [
+      "平板上也先看见地图。页头收成一行，今日仪式收进「今日」。",
+      "第一次来，「更多」上会轻轻亮一下。点开，或过一会儿，就不再亮。",
+      "挥一下手、打开今日，或选定我是谁，今日可做打一个轻勾，换成下一句。",
+      "没有弹窗。",
+      "傍晚来的时候，地图上写着「灯笼该亮了」。点一下就去看灯笼。这一趟只一次。",
+      "选定「我是谁」之后，镜头马上找到自己，底下换成回家。",
+      "村里溜达的人在每处站一会儿，再走向下一处。",
+      "页头的版本可以点开。更新日志就在眼前。",
+    ],
+  },
   {
     version: "1.4.0",
     date: "2026-10-01",

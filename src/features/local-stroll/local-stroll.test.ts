@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { updateVillager, type PlacedVillager } from "@/lib/pixel-scene";
 import {
+  STROLL_PAUSE_MAX_S,
+  STROLL_PAUSE_MIN_S,
   WANDER_WORLD_RING_ENABLED,
   localStrollPose,
   onWorldRing,
+  strollPauses,
   wanderPose,
   worldRingPose,
 } from "@/features/local-stroll/local-stroll";
@@ -36,6 +39,40 @@ test("the world ring is off and wander stays near home", () => {
     assert.equal(seen.far, 0);
     assert.ok(seen.rest > seen.steps * 0.45);
   }
+});
+
+test("each short stop is a still pause between 1.5 and 3 seconds", () => {
+  const pauses = strollPauses();
+  assert.equal(pauses.length, 3);
+  for (const pause of pauses) {
+    assert.ok(pause >= STROLL_PAUSE_MIN_S && pause <= STROLL_PAUSE_MAX_S);
+  }
+  let restStart: number | null = null;
+  let stops = 0;
+  let walked = false;
+  const dt = 0.05;
+  for (let t = 0; t <= 30; t += dt) {
+    const pose = localStrollPose(400, 420, 0, t, 1.35);
+    const next = localStrollPose(400, 420, 0, t + dt, 1.35);
+    if (pose.rest) {
+      if (restStart == null) restStart = t;
+      if (next.rest) {
+        assert.equal(pose.x, next.x);
+        assert.equal(pose.y, next.y);
+      }
+    } else {
+      walked = true;
+      if (restStart != null) {
+        const held = t - restStart;
+        assert.ok(held + 0.001 >= STROLL_PAUSE_MIN_S, `pause ${held}`);
+        assert.ok(held <= STROLL_PAUSE_MAX_S + dt);
+        stops += 1;
+        restStart = null;
+      }
+    }
+  }
+  assert.equal(walked, true);
+  assert.ok(stops >= 4);
 });
 
 test("turning the ring back on restores the outer lap", () => {
