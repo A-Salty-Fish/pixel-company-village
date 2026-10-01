@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.6.2";
+export const APP_VERSION = "1.6.3";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,19 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.6.3",
+    date: "2026-10-01",
+    title: "告别廉价",
+    notes: [
+      "木牌和按钮的影子轻了一点，字还是看得清。按下去都暖一下。",
+      "名字牌的字拉开了一点。草会轻轻歪，灯笼会慢慢呼吸。",
+      "减少动作时，草和灯笼停住。",
+      "田里多了屋檐、脚下的影子和路上的石子。点人还是点得到。",
+      "人会轻轻动一下，不再像贴上去的纸片。",
+      "手机第一眼先看见村子。眼睛先落在田上。",
+    ],
+  },
   {
     version: "1.6.2",
     date: "2026-10-01",

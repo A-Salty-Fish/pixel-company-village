@@ -73,10 +73,11 @@ function fitInside(
 
 export function layoutClearPlates(
   plates: ClearInput[],
-  options: { cap?: number; viewW: number; viewH: number; enabled?: boolean },
+  options: { cap?: number; viewW: number; viewH: number; enabled?: boolean; gap?: number },
 ): Map<string, ClearPlace> {
   const enabled = options.enabled ?? NAMEPLATE_CLEAR_ENABLED;
   const cap = options.cap ?? NEAR_PLATE_CAP;
+  const gap = options.gap ?? 3;
   const out = new Map<string, ClearPlace>();
   if (!enabled) {
     for (const plate of plates) {
@@ -106,10 +107,10 @@ export function layoutClearPlates(
       const hit = placed.find((other) => overlaps(box, other));
       if (!hit) break;
       const optionsBox = [
-        { ...box, y: hit.y + hit.h + 3 },
-        { ...box, y: hit.y - box.h - 3 },
-        { ...box, x: hit.x + hit.w + 3 },
-        { ...box, x: hit.x - box.w - 3 },
+        { ...box, y: hit.y + hit.h + gap },
+        { ...box, y: hit.y - box.h - gap },
+        { ...box, x: hit.x + hit.w + gap },
+        { ...box, x: hit.x - box.w - gap },
       ];
       let moved: { x: number; y: number; w: number; h: number } | null = null;
       for (const option of optionsBox) {

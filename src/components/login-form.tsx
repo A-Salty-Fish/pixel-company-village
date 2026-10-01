@@ -1,4 +1,7 @@
 import { ClearHintOnGate } from "@/features/today-can-do/clear-hint-on-gate";
+import { focalVillageMark } from "@/features/focal-village/focal-village";
+import { softChromeMark } from "@/features/soft-chrome/soft-chrome";
+import { woodPlaqueMark } from "@/features/wood-plaque/wood-plaque";
 
 const DISCLAIMER = "代理信号≠绩效；摸鱼分是趣味雷达";
 
@@ -16,7 +19,12 @@ export function LoginForm({ errorCode }: Props) {
   const error = errorCode ? ERRORS[errorCode] ?? ERRORS.invalid : null;
 
   return (
-    <div className="farm-page flex flex-1 items-center justify-center px-4 py-10">
+    <div
+      className="farm-page flex flex-1 items-center justify-center px-4 py-10"
+      data-soft-chrome={softChromeMark()}
+      data-wood-plaque={woodPlaqueMark()}
+      data-focal-village={focalVillageMark()}
+    >
       <script
         dangerouslySetInnerHTML={{
           __html:

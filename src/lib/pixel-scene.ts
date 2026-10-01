@@ -34,6 +34,10 @@ import { beatRingPixels } from "@/features/week-next-beat/next-beat";
 import { isToyId, toyFocusPixels, toyWorldPixels } from "@/features/yard-toy-focus/yard-toy-focus";
 import { plateViewport } from "@/features/nameplate-viewport/nameplate-viewport";
 import { NAMEPLATE_CLEAR_ENABLED, NEAR_PLATE_CAP, layoutClearPlates } from "@/features/nameplate-clear/nameplate-clear";
+import { nameplateGap } from "@/features/nameplate-air/nameplate-air";
+import { meadowBreathFrame } from "@/features/meadow-breath/meadow-breath";
+import { mapDepthGround, mapDepthRoofLayers } from "@/features/map-depth/map-depth";
+import { villagerIdleBob, villagerReadOn, villagerShadowPixels } from "@/features/villager-read/villager-read";
 import { feedbackPulsePixels } from "@/features/village-feedback/village-feedback";
 import { autumnLeafFrame } from "@/features/autumn-leaf-drift/autumn-leaf-drift";
 import { waitingCuePixels } from "@/features/waiting-cue/waiting-cue";
@@ -642,7 +646,9 @@ function drawVillager(
   if ((onActor || onPartner) && fx?.kind === "pair") anim = "water";
   if (seated) anim = "sit";
   const frame = Math.floor(t * fps * person.speed);
-  const bob = selected && !life?.reduceMotion ? (Math.floor(t * 5) % 2 === 0 ? 1 : 0) : 0;
+  const bob = selected && !life?.reduceMotion
+    ? (Math.floor(t * 5) % 2 === 0 ? 1 : 0)
+    : villagerIdleBob({ t, reduced: Boolean(life?.reduceMotion), selected });
   const x = person.x;
   y -= bob;
   if (nodding && !life?.reduceMotion) {
@@ -657,12 +663,17 @@ function drawVillager(
     ctx.fillRect(Math.round(x + 13), Math.round(y - 7), 1, 5);
   }
   const color = person.scored ? CAT_COLORS[person.identity.palette] : "lgrey";
-  ctx.fillStyle = "rgba(20, 16, 8, 0.45)";
-  ctx.fillRect(Math.round(x - 8), Math.round(y - 20), 16, 16);
-  ctx.fillStyle = "rgba(24, 36, 16, 0.35)";
-  ctx.fillRect(Math.round(x - 8), Math.round(y - 2), 16, 3);
+  const stood = villagerReadOn();
+  if (stood) {
+    paintPixels(ctx, villagerShadowPixels(x, y));
+  } else {
+    ctx.fillStyle = "rgba(20, 16, 8, 0.45)";
+    ctx.fillRect(Math.round(x - 8), Math.round(y - 20), 16, 16);
+    ctx.fillStyle = "rgba(24, 36, 16, 0.35)";
+    ctx.fillRect(Math.round(x - 8), Math.round(y - 2), 16, 3);
+  }
   drawSprite(ctx, catFrame(color, person.dir, anim, frame), x, y);
-  if (zoom < 2) {
+  if (!stood && zoom < 2) {
     ctx.strokeStyle = "#2a1a10";
     ctx.lineWidth = 2;
     ctx.strokeRect(Math.round(x - 11), Math.round(y - 32), 22, 30);
@@ -690,13 +701,13 @@ function drawVillager(
     ctx.fillRect(Math.round(x - 18), Math.round(y - 42), 4, 4);
   }
   if (onActor && fx?.kind === "clap") drawClap(ctx, x + 8, y - 30);
-  if (!person.scored) {
+  if (!stood && !person.scored) {
     ctx.save();
     ctx.strokeStyle = "#8a8478";
     ctx.setLineDash([2, 2]);
     ctx.strokeRect(Math.round(x - 11), Math.round(y - 30), 22, 28);
     ctx.restore();
-  } else if (!selected) {
+  } else if (!stood && !selected) {
     ctx.strokeStyle = "rgba(20, 12, 8, 0.55)";
     ctx.strokeRect(Math.round(x - 10), Math.round(y - 30), 20, 28);
   }
@@ -1343,6 +1354,33 @@ function drawActors(
         draw: () => paintPixels(ctx, leaves),
       });
     }
+    const depthGround = mapDepthGround();
+    if (depthGround.length > 0) {
+      queue.push({
+        sort: 3,
+        draw: () => paintPixels(ctx, depthGround),
+      });
+    }
+    for (const layer of mapDepthRoofLayers()) {
+      const pixels = layer.pixels;
+      queue.push({
+        sort: layer.sort,
+        draw: () => paintPixels(ctx, pixels),
+      });
+    }
+    const breath = meadowBreathFrame(Boolean(life.reduceMotion), t);
+    if (breath.grass.length > 0) {
+      queue.push({
+        sort: 4,
+        draw: () => paintPixels(ctx, breath.grass),
+      });
+    }
+    if (breath.lantern.length > 0) {
+      queue.push({
+        sort: 230,
+        draw: () => paintPixels(ctx, breath.lantern),
+      });
+    }
     if (life.waitingCue) {
       const cue = life.waitingCue;
       queue.push({
@@ -1681,7 +1719,7 @@ export function drawNameLabels(
   const laid = clearOn
     ? layoutClearPlates(
         pending.map((item) => ({ id: item.name, role: item.role, ...item.box, dist: item.dist })),
-        { cap: NEAR_PLATE_CAP, viewW, viewH },
+        { cap: NEAR_PLATE_CAP, viewW, viewH, gap: nameplateGap() },
       )
     : null;
 

@@ -1689,3 +1689,214 @@ a:focus-visible,
     flex: 1 1 auto;
   }
 }
+
+/* PV-D-014 — shorter wood shadow and a little more room. Ink stays #2a1a10 / #fff6d8. */
+.farm-page[data-soft-chrome="soft"] .hud-panel {
+  box-shadow:
+    inset 0 0 0 2px #e4c888,
+    2px 3px 0 rgb(92 58 34 / 32%);
+}
+
+.farm-page[data-soft-chrome="soft"] [data-testid="village-version"] {
+  box-shadow: 1px 2px 0 rgb(92 58 34 / 38%);
+  color: #2a1a10;
+}
+
+.farm-page[data-soft-chrome="soft"] .pixel-frame {
+  box-shadow:
+    inset 0 0 0 2px #d4b070,
+    3px 4px 0 rgb(92 58 34 / 34%);
+}
+
+.farm-page[data-soft-chrome="soft"] .hud-title {
+  letter-spacing: 0.08em;
+  padding: 0.5rem 0.95rem;
+  color: #fff6d8;
+}
+
+.farm-page[data-soft-chrome="soft"] .hud-btn {
+  padding: 0.5rem 0.95rem;
+  border-color: #5a3a22;
+  box-shadow: 1px 2px 0 rgb(92 58 34 / 42%);
+  color: #fff6d8;
+}
+
+.farm-page[data-soft-chrome="soft"] .hud-btn-ghost {
+  color: #2a1a10;
+}
+
+.farm-page[data-soft-chrome="soft"] .hud-icon {
+  border-color: #6a3d18;
+  box-shadow: 1px 2px 0 rgb(92 58 34 / 38%);
+  color: #2a1a10;
+}
+
+.farm-page[data-soft-chrome="soft"] .hud-icon-find,
+.farm-page[data-soft-chrome="soft"] .hud-icon-wide {
+  padding-left: 0.7rem;
+  padding-right: 0.7rem;
+}
+
+.farm-page[data-soft-chrome="soft"] .map-tools {
+  gap: 0.45rem;
+}
+
+.farm-page[data-soft-chrome="soft"] .disclaimer-banner {
+  padding: 0.7rem 0.95rem;
+  box-shadow: inset 0 0 0 2px #e4c888, 2px 2px 0 rgb(92 58 34 / 35%);
+  color: #6a3d18;
+}
+
+.farm-page[data-soft-chrome="soft"] .parchment-badge {
+  padding: 0.35rem 0.8rem;
+  box-shadow: 1px 2px 0 rgb(92 58 34 / 38%);
+  color: #2a1a10;
+}
+
+.farm-page[data-soft-chrome="soft"] .today-hint {
+  padding: 0.5rem 0.7rem 0.55rem;
+  box-shadow: 2px 2px 0 rgb(92 58 34 / 32%);
+  color: #4a3a28;
+}
+
+.farm-page[data-soft-chrome="soft"] .season-banner {
+  padding: 0.75rem 0.9rem;
+  box-shadow: 2px 2px 0 rgb(92 58 34 / 28%);
+}
+
+@media (max-width: 899px) {
+  .farm-page[data-soft-chrome="soft"][data-thumb-identity="1"] .thumb-bar {
+    padding: 0.5rem 0.75rem calc(0.6rem + env(safe-area-inset-bottom));
+    box-shadow: 0 -1px 0 rgb(92 58 34 / 35%);
+  }
+}
+
+/* PV-D-015 — 找我, 回家, 更多, zoom, and the bottom bar press the same way. */
+.farm-page[data-press-feel="shared"] .map-tools .hud-icon,
+.farm-page[data-press-feel="shared"] .thumb-bar .hud-btn {
+  transition:
+    transform 90ms var(--ease-village),
+    background-color 90ms var(--ease-village),
+    box-shadow 90ms var(--ease-village),
+    color 90ms var(--ease-village);
+}
+
+.farm-page[data-press-feel="shared"] .map-tools .hud-icon:active:not(:disabled),
+.farm-page[data-press-feel="shared"] .thumb-bar .hud-btn:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  background-color: #ffe7a3;
+  color: #3a2208;
+  box-shadow: inset 0 0 0 2px #e7b14a;
+}
+
+.farm-page[data-reduce-motion="1"][data-press-feel="shared"] .map-tools .hud-icon,
+.farm-page[data-reduce-motion="1"][data-press-feel="shared"] .thumb-bar .hud-btn {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .farm-page[data-press-feel="shared"] .map-tools .hud-icon,
+  .farm-page[data-press-feel="shared"] .thumb-bar .hud-btn {
+    transition: none;
+  }
+}
+
+/* PV-D-024 — cut wood. Square corners, a grain, a top lip. Ink stays #2a1a10. */
+.farm-page[data-wood-plaque="plaque"] .hud-panel,
+.farm-page[data-wood-plaque="plaque"] .parchment-badge,
+.farm-page[data-wood-plaque="plaque"] .hud-chip,
+.farm-page[data-wood-plaque="plaque"] .season-banner,
+.farm-page[data-wood-plaque="plaque"] [data-testid="village-version"],
+.farm-page[data-wood-plaque="plaque"] .hud-btn,
+.farm-page[data-wood-plaque="plaque"] .hud-icon,
+.farm-page[data-wood-plaque="plaque"] .hud-select,
+.farm-page[data-wood-plaque="plaque"] .hud-stat,
+.farm-page[data-wood-plaque="plaque"] .hud-roster,
+.farm-page[data-wood-plaque="plaque"] .today-hint,
+.farm-page[data-wood-plaque="plaque"] .disclaimer-banner,
+.farm-page[data-wood-plaque="plaque"] .week-ribbon-note,
+.farm-page[data-wood-plaque="plaque"] .split-chip,
+.farm-page[data-wood-plaque="plaque"] input,
+.farm-page[data-wood-plaque="plaque"] button,
+.farm-page[data-wood-plaque="plaque"] .rounded-sm {
+  border-radius: 0;
+}
+
+.farm-page[data-wood-plaque="plaque"] .hud-panel {
+  background:
+    linear-gradient(#fff1c8, #fff1c8) 0 0 / 100% 3px no-repeat,
+    repeating-linear-gradient(90deg, #f6e6c0 0 8px, #f0d9ae 8px 9px, #f8e8c6 9px 16px);
+  box-shadow:
+    inset 0 3px 0 #fff6d8,
+    inset 0 0 0 2px #e4c888,
+    2px 3px 0 rgb(92 58 34 / 32%);
+}
+
+.farm-page[data-wood-plaque="plaque"] .hud-title {
+  background:
+    linear-gradient(#c4a060, #c4a060) 0 0 / 100% 2px no-repeat,
+    repeating-linear-gradient(90deg, #8a5528 0 10px, #7a4a22 10px 12px);
+}
+
+.farm-page[data-wood-plaque="plaque"] .hud-chip,
+.farm-page[data-wood-plaque="plaque"] .parchment-badge,
+.farm-page[data-wood-plaque="plaque"] [data-testid="village-version"],
+.farm-page[data-wood-plaque="plaque"] .split-chip {
+  background:
+    linear-gradient(#fff6d8, #fff6d8) 0 0 / 100% 2px no-repeat,
+    repeating-linear-gradient(90deg, #efe0c0 0 6px, #e8d4a8 6px 7px);
+  color: #2a1a10;
+  box-shadow:
+    inset 0 2px 0 #fff6d8,
+    1px 2px 0 rgb(92 58 34 / 38%);
+}
+
+.farm-page[data-wood-plaque="plaque"] .today-hint,
+.farm-page[data-wood-plaque="plaque"] .disclaimer-banner,
+.farm-page[data-wood-plaque="plaque"] .season-banner {
+  background:
+    linear-gradient(#fff6d8, #fff6d8) 0 0 / 100% 2px no-repeat,
+    repeating-linear-gradient(90deg, #fff3c8 0 7px, #f3e1c0 7px 8px);
+  color: #2a1a10;
+}
+
+@media (max-width: 899px) {
+  .farm-page[data-wood-plaque="plaque"][data-thumb-identity="1"] .thumb-bar {
+    background:
+      linear-gradient(#fff1c8, #fff1c8) 0 0 / 100% 3px no-repeat,
+      repeating-linear-gradient(90deg, #efe0c0 0 8px, #e8d4a8 8px 9px);
+  }
+}
+
+/* PV-D-025 — the first look is the meadow. No sky stripe, no floating header gutters. */
+.farm-page[data-focal-village="village"] {
+  background: #4f8a3d;
+  background-image: none;
+}
+
+html:has(.farm-page[data-focal-village="village"]),
+body:has(.farm-page[data-focal-village="village"]) {
+  background: #4f8a3d;
+  background-image: none;
+}
+
+@media (max-width: 899px) {
+  .farm-page[data-focal-village="village"] {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .farm-page[data-focal-village="village"] .village-header {
+    left: 0;
+    right: 0;
+  }
+
+  .farm-page[data-focal-village="village"][data-thumb-identity="1"] .thumb-bar {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+  }
+}
