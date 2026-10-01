@@ -8,11 +8,15 @@ import {
   TODAY_FADE_MS,
   TODAY_HINT_MS,
   TODAY_LINES,
+  TODAY_LOOP_ENABLED,
+  advanceTodayLoop,
   clearHintClock,
   loadHintClock,
   todayHintCopy,
   todayHintDismisses,
   todayHintPhase,
+  todayLoopCopy,
+  todayLoopView,
   type HintStorage,
 } from "@/features/today-can-do/today-can-do";
 
@@ -33,6 +37,25 @@ test("PV-PM-034 hint stays a corner note and leaves after a relevant action or h
   assert.equal(copyIsClean(todayHintCopy()), true);
   assert.equal(todayHintCopy().join("").includes("他说"), false);
   assert.deepEqual([...TODAY_LINES], ["点一盏门灯", "做一件本周小事", "找一个人"]);
+});
+
+test("one soft tip checks off and the next one takes its place", () => {
+  assert.equal(TODAY_LOOP_ENABLED, true);
+  assert.equal(copyIsClean(todayLoopCopy()), true);
+  const wave = advanceTodayLoop([], "wave");
+  assert.equal(wave.advanced, true);
+  assert.equal(wave.cleared, false);
+  assert.deepEqual(wave.done, ["wave"]);
+  const view = todayLoopView(wave.done);
+  assert.equal(view.find((step) => step.id === "wave")?.done, true);
+  assert.equal(view.find((step) => step.id === "today")?.current, true);
+  const again = advanceTodayLoop(wave.done, "wave");
+  assert.equal(again.advanced, false);
+  const today = advanceTodayLoop(wave.done, "today");
+  const who = advanceTodayLoop(today.done, "who");
+  assert.equal(who.cleared, true);
+  assert.equal(todayLoopView(who.done).every((step) => step.done && !step.current), true);
+  assert.equal(advanceTodayLoop([], "wave", false).advanced, false);
 });
 
 test("hint clock starts when storage is empty and a fresh gate clears a leftover stamp", () => {

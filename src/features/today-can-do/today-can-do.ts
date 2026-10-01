@@ -12,6 +12,51 @@ export const TODAY_FADE_MS = 22_000;
 export const TODAY_TITLE = "今日可做";
 export const TODAY_LINES = ["点一盏门灯", "做一件本周小事", "找一个人"] as const;
 
+/**
+ * PV-PM-049 — one soft action checks the current tip and shows the next.
+ * Wave, opening 今日, or picking a name. No dialog.
+ * Set TODAY_LOOP_ENABLED to false to leave the three lines without the checks.
+ */
+export const TODAY_LOOP_ENABLED = true;
+
+export const TODAY_LOOP_STEPS = [
+  { id: "wave", line: "挥一下手" },
+  { id: "today", line: "打开今日" },
+  { id: "who", line: "选定我是谁" },
+] as const;
+
+export type TodayLoopId = (typeof TODAY_LOOP_STEPS)[number]["id"];
+
+export function advanceTodayLoop(
+  done: readonly TodayLoopId[],
+  action: TodayLoopId,
+  enabled = TODAY_LOOP_ENABLED,
+) {
+  if (!enabled || done.includes(action)) {
+    return {
+      done: [...done],
+      advanced: false,
+      cleared: enabled && done.length >= TODAY_LOOP_STEPS.length,
+    };
+  }
+  const next = [...done, action];
+  return { done: next, advanced: true, cleared: next.length >= TODAY_LOOP_STEPS.length };
+}
+
+export function todayLoopView(done: readonly string[]) {
+  const current = TODAY_LOOP_STEPS.find((step) => !done.includes(step.id))?.id ?? null;
+  return TODAY_LOOP_STEPS.map((step) => ({
+    id: step.id,
+    line: step.line,
+    done: done.includes(step.id),
+    current: step.id === current,
+  }));
+}
+
+export function todayLoopCopy() {
+  return TODAY_LOOP_STEPS.map((step) => step.line);
+}
+
 export const HINT_START_KEY = "village:today-hint-start-v1";
 export const HINT_DISMISS_KEY = "village:today-hint-dismiss-v1";
 

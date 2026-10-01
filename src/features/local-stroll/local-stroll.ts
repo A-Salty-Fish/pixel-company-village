@@ -1,7 +1,19 @@
 /**
- * PV-PM-045 — scored wanderers stroll near home instead of the world ring.
+ * PV-PM-045 / PV-PM-052 — scored wanderers stroll near home instead of the world ring.
+ * Each short seat is a still pause of 1.5–3s. Walks are the gaps between them.
  * Set WANDER_WORLD_RING_ENABLED to true to put the outer racetrack back.
  */
+
+export const STROLL_PAUSE_MIN_S = 1.5;
+export const STROLL_PAUSE_MAX_S = 3;
+
+/** Home, yard, seat. Speed does not shrink these. The next lap starts at home again. */
+const STROLL_PAUSES_S = [2.4, 2.2, 1.8] as const;
+const STROLL_WALKS_S = [1.15, 1.05, 1.0] as const;
+
+export function strollPauses() {
+  return [...STROLL_PAUSES_S];
+}
 
 export const WANDER_WORLD_RING_ENABLED = false;
 
@@ -71,40 +83,41 @@ export function worldRingPose(phase: number, t: number, speed: number): WanderPo
 
 /**
  * Short seats around home: rest, yard offset, rest, neighbor seat, rest, home.
- * Walks are the short gaps. Most of the cycle is standing still.
+ * Walks are the short gaps. Each rest is a readable idle, not a skate.
  */
 export function localStrollPose(baseX: number, baseY: number, phase: number, t: number, speed: number): WanderPose {
   const home = clampPoint(baseX, baseY, baseX, baseY);
   const yard = clampPoint(baseX + Math.cos(phase) * 36, baseY + Math.sin(phase) * 20, baseX, baseY);
   const seat = clampPoint(baseX + Math.cos(phase + 2.2) * 28, baseY + Math.sin(phase + 1.1) * 24, baseX, baseY);
-  const period = 12 / Math.max(0.55, speed);
-  const raw = (t / period + (phase % 1)) % 1;
-  const u = raw < 0 ? raw + 1 : raw;
-  const plan: Array<{ until: number; from: Point; to: Point; rest: boolean }> = [
-    { until: 0.22, from: home, to: home, rest: true },
-    { until: 0.34, from: home, to: yard, rest: false },
-    { until: 0.56, from: yard, to: yard, rest: true },
-    { until: 0.68, from: yard, to: seat, rest: false },
-    { until: 0.84, from: seat, to: seat, rest: true },
-    { until: 0.94, from: seat, to: home, rest: false },
-    { until: 1.01, from: home, to: home, rest: true },
+  const walkScale = 1 / Math.max(0.7, Math.min(1.35, speed));
+  const plan: Array<{ seconds: number; from: Point; to: Point; rest: boolean }> = [
+    { seconds: STROLL_PAUSES_S[0], from: home, to: home, rest: true },
+    { seconds: STROLL_WALKS_S[0] * walkScale, from: home, to: yard, rest: false },
+    { seconds: STROLL_PAUSES_S[1], from: yard, to: yard, rest: true },
+    { seconds: STROLL_WALKS_S[1] * walkScale, from: yard, to: seat, rest: false },
+    { seconds: STROLL_PAUSES_S[2], from: seat, to: seat, rest: true },
+    { seconds: STROLL_WALKS_S[2] * walkScale, from: seat, to: home, rest: false },
   ];
-  let prev = 0;
+  const period = plan.reduce((sum, step) => sum + step.seconds, 0);
+  const raw = (t + (phase % 1) * period) % period;
+  const u = raw < 0 ? raw + period : raw;
+  let cursor = 0;
   for (const step of plan) {
-    if (u < step.until) {
-      const span = step.until - prev;
-      const local = span <= 0 ? 1 : (u - prev) / span;
+    const end = cursor + step.seconds;
+    if (u < end) {
+      const span = step.seconds;
+      const local = span <= 0 ? 1 : (u - cursor) / span;
       const pos = step.rest ? step.from : lerp(step.from, step.to, local);
       return {
-        x: pos.x,
-        y: pos.y,
+        x: step.rest ? Math.round(pos.x) : pos.x,
+        y: step.rest ? Math.round(pos.y) : pos.y,
         dir: step.rest ? "down" : facing(step.from, step.to),
         rest: step.rest,
       };
     }
-    prev = step.until;
+    cursor = end;
   }
-  return { x: home.x, y: home.y, dir: "down", rest: true };
+  return { x: Math.round(home.x), y: Math.round(home.y), dir: "down", rest: true };
 }
 
 export function wanderPose(

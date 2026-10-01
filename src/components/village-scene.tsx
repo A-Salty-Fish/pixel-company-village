@@ -45,6 +45,8 @@ import { autumnLeafCount, leafDriftMark } from "@/features/autumn-leaf-drift/aut
 import { waitingCueMark } from "@/features/waiting-cue/waiting-cue";
 import { MAP_HUD_FOLD_ENABLED, hitToy } from "@/features/map-hud-fold/map-hud-fold";
 import type { ToyId } from "@/features/yard-toy-focus/yard-toy-focus";
+import { IDENTITY_LAND_ENABLED, IDENTITY_LAND_MS } from "@/features/identity-land/identity-land";
+import { MoreDiscoverDot } from "@/features/more-discover/more-cue";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
 
@@ -71,6 +73,7 @@ type Props = {
   mapMore?: boolean;
   onMapMore?: (open: boolean) => void;
   onToyTap?: (id: ToyId) => void;
+  identityPulse?: number;
   children?: ReactNode;
 };
 
@@ -100,6 +103,7 @@ export function VillageScene({
   mapMore = false,
   onMapMore,
   onToyTap,
+  identityPulse = 0,
   children,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -190,6 +194,19 @@ export function VillageScene({
     setCamMark({ x: Math.round(focus.x), y: Math.round(focus.y), zoom: nextZoom });
     kickRef.current?.();
   }, [homePulse, life.selfName]);
+
+  useLayoutEffect(() => {
+    if (!IDENTITY_LAND_ENABLED || !identityPulse || !life.selfName) return;
+    const person = villagersRef.current.find((v) => v.name === life.selfName);
+    if (!person) return;
+    const nextZoom = zoomRef.current;
+    const focus = cameraFocus(person, nextZoom);
+    camRef.current = focus;
+    setCamMark({ x: Math.round(focus.x), y: Math.round(focus.y), zoom: nextZoom });
+    glowUntilRef.current = Date.now() + FIND_ME_HOLD_MS;
+    aimHoldRef.current = Date.now() + IDENTITY_LAND_MS;
+    kickRef.current?.();
+  }, [identityPulse, life.selfName]);
 
   useEffect(() => {
     forceRef.current = forceTimeout;
@@ -741,6 +758,7 @@ export function VillageScene({
             onClick={() => onMapMore?.(!mapMore)}
           >
             ⋯
+            <MoreDiscoverDot ready={ready} opened={mapMore} reduceMotion={life.reduceMotion} />
           </button>
         ) : null}
       </div>

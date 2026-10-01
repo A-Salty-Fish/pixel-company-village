@@ -94,6 +94,8 @@ import {
 import { FeedbackStrip } from "@/features/village-feedback/feedback-strip";
 import {
   TODAY_CAN_DO_ENABLED,
+  TODAY_LOOP_ENABLED,
+  advanceTodayLoop,
   clearHintClock,
   loadHintClock,
   storeHintDismiss,
@@ -101,6 +103,7 @@ import {
   todayHintPhase,
   type TodayAction,
   type TodayHintPhase,
+  type TodayLoopId,
 } from "@/features/today-can-do/today-can-do";
 import { TodayHint } from "@/features/today-can-do/today-hint";
 import { waitingCueFor } from "@/features/waiting-cue/waiting-cue";
@@ -110,6 +113,8 @@ import { RITUAL_RIM_MS, RITUAL_RIM_TOAST, ritualRimOffer } from "@/features/ritu
 import { NARROW_CHROME_ENABLED, todayEntryLabel } from "@/features/narrow-chrome/narrow-chrome";
 import { MAP_HUD_FOLD_ENABLED, toyTapCopy } from "@/features/map-hud-fold/map-hud-fold";
 import { THUMB_IDENTITY_ENABLED, thumbShowsHome } from "@/features/thumb-identity/thumb-identity";
+import { DUSK_LANTERN_ENABLED, DUSK_LANTERN_LINE, duskLanternOffer } from "@/features/dusk-lantern/dusk-lantern";
+import { identityLandDue } from "@/features/identity-land/identity-land";
 import { POST_WEEK_PRESENCE_ENABLED, loadGlance, presencePhase, storeGlance, type GlanceSave } from "@/features/post-week-presence/presence";
 import { PostWeekPresence } from "@/features/post-week-presence/presence-view";
 import {
@@ -300,6 +305,14 @@ export function VillagePage({ initial }: Props) {
   const [headerFold, setHeaderFold] = useState(false);
   const [todayOpen, setTodayOpen] = useState(false);
   const [mapMore, setMapMore] = useState(false);
+  const [loopDone, setLoopDone] = useState<TodayLoopId[]>([]);
+  const loopDoneRef = useRef<TodayLoopId[]>([]);
+  const loopSeeded = useRef(false);
+  const [pulseToken, setPulseToken] = useState(0);
+  const [pulseOn, setPulseOn] = useState(false);
+  const [duskCue, setDuskCue] = useState(false);
+  const duskShown = useRef(false);
+  const [identityPulse, setIdentityPulse] = useState(0);
   const [yardOpen, setYardOpen] = useState(false);
   const [mapAim, setMapAim] = useState<{ token: number; kind: string; x: number; y: number; at: number } | null>(null);
   const [ambientOn, setAmbientOn] = useState(false);
@@ -573,6 +586,29 @@ export function VillagePage({ initial }: Props) {
   }, [hintDismissed]);
 
   useEffect(() => {
+    if (loopSeeded.current) return;
+    loopSeeded.current = true;
+    if (!selfName || loopDoneRef.current.includes("who")) return;
+    const done = [...loopDoneRef.current, "who" as const];
+    loopDoneRef.current = done;
+    setLoopDone(done);
+  }, [selfName]);
+
+  useEffect(() => {
+    if (!pulseToken) return;
+    setPulseOn(true);
+    const id = window.setTimeout(() => setPulseOn(false), 1200);
+    return () => window.clearTimeout(id);
+  }, [pulseToken]);
+
+  useEffect(() => {
+    if (!DUSK_LANTERN_ENABLED) return;
+    if (!duskLanternOffer({ hour: clock.hour, alreadyShown: duskShown.current })) return;
+    duskShown.current = true;
+    setDuskCue(true);
+  }, [clock.hour]);
+
+  useEffect(() => {
     if (!ritualRimOn) return;
     const id = window.setTimeout(() => setRitualRimOn(false), RITUAL_RIM_MS);
     return () => window.clearTimeout(id);
@@ -818,6 +854,20 @@ export function VillagePage({ initial }: Props) {
     setHintDismissed(true);
   }
 
+  function advanceLoop(action: TodayLoopId) {
+    if (!TODAY_LOOP_ENABLED || hintDismissedRef.current) return;
+    const next = advanceTodayLoop(loopDoneRef.current, action);
+    if (!next.advanced) return;
+    loopDoneRef.current = next.done;
+    setLoopDone(next.done);
+    setPulseToken((value) => value + 1);
+    if (next.cleared) {
+      hintDismissedRef.current = true;
+      storeHintDismiss();
+      setHintDismissed(true);
+    }
+  }
+
   function selectOnly(name: string | null) {
     setSelectedName(name);
   }
@@ -928,6 +978,7 @@ export function VillagePage({ initial }: Props) {
     }
     setFx(withSocialReply(emoteFx(selected.name, "wave"), selfName, familiarity[selected.name] ?? 0));
     markGesture("wave");
+    advanceLoop("wave");
     const name = selected.name;
     if (selfName && name !== selfName) {
       commitPlay((current) => ({ ...current, bonds: bumpBond(current.bonds, name) }));
@@ -943,6 +994,7 @@ export function VillagePage({ initial }: Props) {
       return;
     }
     commitPlay((current) => ({ ...current, emoteAt: now }));
+    if (kind === "wave") advanceLoop("wave");
     if (kind === "wave" && HEADER_WAVE_RECEIPT_ENABLED) {
       const placed = placeVillagers(people);
       const self = placed.find((person) => person.name === selfName) ?? null;
@@ -1313,6 +1365,7 @@ export function VillagePage({ initial }: Props) {
   const ritualShown = ritualMark ? RITUAL_BEATS[ritualMark.beat] : ritualBeat(clock.hour);
   const openParchment = (id: "ritual" | "week" | "season") => {
     setParchment((current) => (current === id ? null : id));
+    if (parchment !== id) advanceLoop("today");
   };
 
   return (
@@ -1339,6 +1392,9 @@ export function VillagePage({ initial }: Props) {
       data-soft-ambient={softAmbientOn({ muted: comfort.sfxMuted, reduceMotion: motion.reduced }) ? "live" : "off"}
       data-ritual-rim={ritualRimOn ? "warm" : "off"}
       data-narrow-chrome={NARROW_CHROME_ENABLED ? "1" : "0"}
+      data-today-loop={TODAY_LOOP_ENABLED ? "1" : "0"}
+      data-dusk-lantern={duskCue ? "1" : "0"}
+      data-identity-land={identityPulse > 0 ? "1" : "0"}
       data-map-hud={MAP_HUD_FOLD_ENABLED ? "fold" : "open"}
       data-thumb-identity={THUMB_IDENTITY_ENABLED ? "1" : "0"}
     >
@@ -1428,7 +1484,10 @@ export function VillagePage({ initial }: Props) {
             className="narrow-today-summary"
             data-testid="today-entry"
             aria-expanded={todayOpen}
-            onClick={() => setTodayOpen((open) => !open)}
+            onClick={() => {
+              setTodayOpen((open) => !open);
+              if (!todayOpen) advanceLoop("today");
+            }}
           >
             {todayEntryLabel(tally.done, tally.total, waveState.toggles.weekBoard)}
           </button>
@@ -1609,6 +1668,7 @@ export function VillagePage({ initial }: Props) {
           data-testid="village-map-slot"
           data-map-more={mapMore ? "1" : "0"}
           data-yard={yardShown ? "open" : "shut"}
+          data-today-pulse={pulseOn ? "1" : "0"}
         >
           {people.length === 0 ? (
             <div className="empty-yard" data-testid="empty-yard">
@@ -1658,6 +1718,7 @@ export function VillagePage({ initial }: Props) {
             onMapReady={() => setMapReady(true)}
             mapMore={mapMore}
             onMapMore={setMapMore}
+            identityPulse={identityPulse}
             onToyTap={(id) => {
               setYardOpen(true);
               const spot = toyAnchor(id);
@@ -1681,9 +1742,33 @@ export function VillagePage({ initial }: Props) {
               });
             }}
           >
-            <TodayHint phase={hintPhase} />
+            <TodayHint phase={hintPhase} done={loopDone} />
           </VillageScene>
           <FeedbackStrip beat={feedback} />
+          {duskCue ? (
+            <div
+              className="dusk-lantern-chip"
+              data-testid="dusk-lantern"
+              data-module="dusk-lantern"
+              data-motion={motion.reduced ? "still" : "pulse"}
+            >
+              <button
+                type="button"
+                className="dusk-lantern-go"
+                onClick={() => {
+                  setDuskCue(false);
+                  setYardOpen(true);
+                  const spot = toyAnchor("lantern");
+                  aimMap("lantern", spot.x, spot.y);
+                }}
+              >
+                {DUSK_LANTERN_LINE}
+              </button>
+              <button type="button" className="hud-icon" aria-label="收起" onClick={() => setDuskCue(false)}>
+                ×
+              </button>
+            </div>
+          ) : null}
           <div className="map-corner" data-testid="map-corner">
             {MAP_HUD_FOLD_ENABLED ? (
               <button
@@ -1889,7 +1974,14 @@ export function VillagePage({ initial }: Props) {
         preset={preset}
         names={(rosterMode === "empty" ? payload.people : people).map((person) => person.name)}
         onComfort={(next: Comfort) => saveComfort(next)}
-        onSelf={(name, nextPreset) => saveSelf(name, name ? nextPreset : null)}
+        onSelf={(name, nextPreset) => {
+          const previous = selfName;
+          saveSelf(name, name ? nextPreset : null);
+          if (!identityLandDue({ previous, next: name })) return;
+          setIdentityPulse((value) => value + 1);
+          advanceLoop("who");
+          document.querySelector("[data-testid='village-hero']")?.scrollIntoView({ block: "start" });
+        }}
         motionReduced={motion.reduced}
       />
       <ReleaseNotes />

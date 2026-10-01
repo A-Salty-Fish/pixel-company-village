@@ -82,3 +82,23 @@
   line-height: 1.55;
   background: linear-gradient(#8a5528, #8a5528) 0 0.55em / 6px 6px no-repeat;
 }
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 88;
+  margin: 0;
+  padding: 0;
+  background: rgb(42 26 16 / 35%);
+  border: 0;
+}
+
+.sheet {
+  position: fixed;
+  z-index: 90;
+  left: max(0.75rem, env(safe-area-inset-left));
+  right: max(0.75rem, env(safe-area-inset-right));
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  max-height: min(72dvh, 36rem);
+  overflow: auto;
+}
