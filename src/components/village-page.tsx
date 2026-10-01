@@ -114,7 +114,13 @@ import { NARROW_CHROME_ENABLED, todayEntryLabel } from "@/features/narrow-chrome
 import { MAP_HUD_FOLD_ENABLED, toyTapCopy } from "@/features/map-hud-fold/map-hud-fold";
 import { THUMB_IDENTITY_ENABLED, thumbShowsHome } from "@/features/thumb-identity/thumb-identity";
 import { DUSK_LANTERN_ENABLED, DUSK_LANTERN_LINE, duskLanternOffer } from "@/features/dusk-lantern/dusk-lantern";
+import { dawnPanTarget, dawnPorchOffer, pickDawnSpot, type DawnSpot } from "@/features/dawn-porch/dawn-porch";
+import { EXIT_SOFT_BYE_ENABLED, exitByePlan } from "@/features/exit-soft-bye/exit-soft-bye";
+import { HOME_SETTLE_ENABLED, HOME_SETTLE_MS, HOME_SETTLE_TOAST, HOME_WARM_MS, roofFocus } from "@/features/home-settle/home-settle";
 import { identityLandDue } from "@/features/identity-land/identity-land";
+import { NIGHT_LINGER_DONE, loadNightLinger, nightCornerFree, nightLingerOffer, pickNightSpot, saveNightLinger, type NightSpot } from "@/features/night-linger/night-linger";
+import { RETURN_WARM_MS, loadReturnVisit, pickLineCue, returnWarmLine, returnWarmOffer, saveReturnVisit } from "@/features/return-warm/return-warm";
+import { EXTRA_WALK_DONE, extraWalkOffer, loadExtraWalk, pickExtraWalk, saveExtraWalk, type ExtraWalkSpot } from "@/features/ritual-extra-walk/ritual-extra-walk";
 import { POST_WEEK_PRESENCE_ENABLED, loadGlance, presencePhase, storeGlance, type GlanceSave } from "@/features/post-week-presence/presence";
 import { PostWeekPresence } from "@/features/post-week-presence/presence-view";
 import {
@@ -312,6 +318,25 @@ export function VillagePage({ initial }: Props) {
   const [pulseOn, setPulseOn] = useState(false);
   const [duskCue, setDuskCue] = useState(false);
   const duskShown = useRef(false);
+  const [returnOn, setReturnOn] = useState(false);
+  const [returnLine, setReturnLine] = useState("");
+  const returnToken = useRef("");
+  const returnShowing = useRef(false);
+  const [dawnOn, setDawnOn] = useState(false);
+  const [dawnSpot, setDawnSpot] = useState<DawnSpot | null>(null);
+  const dawnSeen = useRef(false);
+  const [nightOn, setNightOn] = useState(false);
+  const [nightSpot, setNightSpot] = useState<NightSpot | null>(null);
+  const nightSeen = useRef(false);
+  const [extraOn, setExtraOn] = useState(false);
+  const [extraSpot, setExtraSpot] = useState<ExtraWalkSpot | null>(null);
+  const extraToken = useRef("");
+  const extraShowing = useRef(false);
+  const [exitBye, setExitBye] = useState<string | null>(null);
+  const leaving = useRef(false);
+  const [homeSettle, setHomeSettle] = useState(0);
+  const [homeWarm, setHomeWarm] = useState(false);
+  const [homeSettling, setHomeSettling] = useState(false);
   const [identityPulse, setIdentityPulse] = useState(0);
   const [yardOpen, setYardOpen] = useState(false);
   const [mapAim, setMapAim] = useState<{ token: number; kind: string; x: number; y: number; at: number } | null>(null);
@@ -402,8 +427,19 @@ export function VillagePage({ initial }: Props) {
   }
 
   async function logout() {
+    if (leaving.current) return;
+    leaving.current = true;
+    const plan = exitByePlan(EXIT_SOFT_BYE_ENABLED);
+    if (plan.line) setExitBye(plan.line);
+    const started = Date.now();
     clearHintClock();
-    await fetch("/api/logout", { method: "POST", cache: "no-store" });
+    try {
+      await fetch("/api/logout", { method: "POST", cache: "no-store" });
+    } catch {
+      /* the line can show, and the gate still opens */
+    }
+    const wait = Math.max(0, plan.waitMs - (Date.now() - started));
+    if (wait > 0) await new Promise((resolve) => window.setTimeout(resolve, wait));
     // Full document load. A client-router return to "/" was reusing the shell
     // from before the cookie clear, so the header and roster stayed blank
     // until the next local event.
@@ -602,11 +638,16 @@ export function VillagePage({ initial }: Props) {
   }, [pulseToken]);
 
   useEffect(() => {
-    if (!DUSK_LANTERN_ENABLED) return;
-    if (!duskLanternOffer({ hour: clock.hour, alreadyShown: duskShown.current })) return;
-    duskShown.current = true;
-    setDuskCue(true);
-  }, [clock.hour]);
+    if (!homeWarm) return;
+    const id = window.setTimeout(() => setHomeWarm(false), HOME_WARM_MS);
+    return () => window.clearTimeout(id);
+  }, [homeWarm]);
+
+  useEffect(() => {
+    if (!homeSettling) return;
+    const id = window.setTimeout(() => setHomeSettling(false), HOME_SETTLE_MS);
+    return () => window.clearTimeout(id);
+  }, [homeSettling]);
 
   useEffect(() => {
     if (!ritualRimOn) return;
@@ -1220,6 +1261,12 @@ export function VillagePage({ initial }: Props) {
     setWaveLine("把锄头放下，在长椅上坐下了。");
   }
 
+  const line = pickLineCue({
+    returnWarm: returnOn,
+    dusk: duskCue,
+    dawn: dawnOn,
+    night: nightOn && nightCornerFree({ dusk: duskCue, extraWalk: extraOn }),
+  });
   const autumnMark = autumnPaletteMark(season.id);
   const nextBeat = useMemo(() => {
     if (!nextBeatOffer(tally.complete)) return null;
@@ -1263,6 +1310,113 @@ export function VillagePage({ initial }: Props) {
     const id = window.setInterval(() => setStayNow(Date.now()), 5000);
     return () => window.clearInterval(id);
   }, [stayOn]);
+
+  useEffect(() => {
+    if (!selfName || !mapReady) {
+      returnShowing.current = false;
+      return;
+    }
+    const token = `${selfName}:${clock.ymd}`;
+    if (returnToken.current === token) return;
+    returnToken.current = token;
+    const show = returnWarmOffer({ storedYmd: loadReturnVisit(selfName), today: clock.ymd });
+    saveReturnVisit(selfName, clock.ymd);
+    returnShowing.current = show;
+    if (!show) {
+      setReturnOn(false);
+      return;
+    }
+    setReturnLine(returnWarmLine(selfName, clock.ymd));
+    setReturnOn(true);
+  }, [selfName, clock.ymd, mapReady]);
+
+  useEffect(() => {
+    if (!returnOn) return;
+    const id = window.setTimeout(() => {
+      returnShowing.current = false;
+      setReturnOn(false);
+    }, RETURN_WARM_MS);
+    return () => window.clearTimeout(id);
+  }, [returnOn]);
+
+  useEffect(() => {
+    if (!mapReady || dawnSeen.current) return;
+    if (!dawnPorchOffer({ hour: clock.hour, alreadyShown: false })) return;
+    if (returnShowing.current) return;
+    dawnSeen.current = true;
+    const placed = selfName ? placeVillagers(people).find((person) => person.name === selfName) ?? null : null;
+    const spot = pickDawnSpot(clock.ymd);
+    const target = dawnPanTarget(spot, placed ? { homeX: placed.homeX, homeY: placed.homeY } : null);
+    setDawnSpot({ ...spot, x: target.x, y: target.y });
+    setDawnOn(true);
+  }, [mapReady, clock.hour, clock.ymd, returnOn, selfName, people]);
+
+  useEffect(() => {
+    const evening = DUSK_LANTERN_ENABLED && duskLanternOffer({ hour: clock.hour, alreadyShown: false });
+    if (!evening) {
+      if (duskCue) setDuskCue(false);
+      return;
+    }
+    if (duskShown.current || returnShowing.current) return;
+    duskShown.current = true;
+    setDuskCue(true);
+  }, [clock.hour, returnOn, duskCue]);
+
+  useEffect(() => {
+    if (!selfName) {
+      extraToken.current = "";
+      extraShowing.current = false;
+      setExtraOn(false);
+      return;
+    }
+    const token = `${selfName}:${clock.ymd}:${ritualMark?.beat ?? ""}:${stayOn ? "1" : "0"}:${people.length}`;
+    if (extraToken.current === token) return;
+    extraToken.current = token;
+    const due = extraWalkOffer({
+      ritualToday: Boolean(ritualMark),
+      walkedYmd: loadExtraWalk(selfName),
+      today: clock.ymd,
+      stayAwhile: stayOn,
+    });
+    extraShowing.current = due;
+    if (!due) {
+      setExtraOn(false);
+      return;
+    }
+    const placed = placeVillagers(people).find((person) => person.name === selfName) ?? null;
+    setExtraSpot(
+      pickExtraWalk({
+        name: selfName,
+        ymd: clock.ymd,
+        roof: placed ? { homeX: placed.homeX, homeY: placed.homeY } : null,
+      }),
+    );
+    saveExtraWalk(selfName, clock.ymd);
+    setExtraOn(true);
+  }, [selfName, clock.ymd, ritualMark, stayOn, people]);
+
+  useEffect(() => {
+    if (!selfName || nightSeen.current) return;
+    const due = nightLingerOffer({
+      hour: clock.hour,
+      ritualToday: Boolean(ritualMark),
+      storedYmd: loadNightLinger(selfName),
+      today: clock.ymd,
+      blocked: !nightCornerFree({ dusk: duskCue, extraWalk: extraShowing.current }),
+    });
+    if (!due || returnShowing.current) return;
+    nightSeen.current = true;
+    saveNightLinger(selfName, clock.ymd);
+    const placed = placeVillagers(people).find((person) => person.name === selfName) ?? null;
+    setNightSpot(
+      pickNightSpot({
+        name: selfName,
+        ymd: clock.ymd,
+        roof: placed ? { homeX: placed.homeX, homeY: placed.homeY } : null,
+      }),
+    );
+    setNightOn(true);
+  }, [selfName, clock.hour, clock.ymd, ritualMark, duskCue, extraOn, returnOn, people]);
 
   useEffect(() => {
     setStayHeld(stayKey ? stayKey.split("|") : []);
@@ -1393,7 +1547,12 @@ export function VillagePage({ initial }: Props) {
       data-ritual-rim={ritualRimOn ? "warm" : "off"}
       data-narrow-chrome={NARROW_CHROME_ENABLED ? "1" : "0"}
       data-today-loop={TODAY_LOOP_ENABLED ? "1" : "0"}
-      data-dusk-lantern={duskCue ? "1" : "0"}
+      data-dusk-lantern={line === "dusk" ? "1" : "0"}
+      data-return-warm={line === "return" ? "1" : "0"}
+      data-dawn-porch={line === "dawn" ? "1" : "0"}
+      data-night-linger={line === "night" ? "1" : "0"}
+      data-home-settle={homeSettling ? "1" : "0"}
+      data-home-warm={homeWarm ? "1" : "0"}
       data-identity-land={identityPulse > 0 ? "1" : "0"}
       data-map-hud={MAP_HUD_FOLD_ENABLED ? "fold" : "open"}
       data-thumb-identity={THUMB_IDENTITY_ENABLED ? "1" : "0"}
@@ -1440,9 +1599,14 @@ export function VillagePage({ initial }: Props) {
             <button type="button" className="hud-btn" onClick={refresh} disabled={loading} data-testid="refresh-scores" data-loading={loading ? "1" : "0"}>
               {loading ? "正在刷新…" : dateCopy.refresh}
             </button>
-            <button type="button" className="hud-btn hud-btn-ghost" onClick={logout}>
+            <button type="button" className="hud-btn hud-btn-ghost" data-testid="exit-village" onClick={logout}>
               出村
             </button>
+            {exitBye ? (
+              <p className="exit-soft-bye" data-testid="exit-soft-bye" data-module="exit-soft-bye" data-motion={motion.reduced ? "still" : "fade"}>
+                {exitBye}
+              </p>
+            ) : null}
             {visitorLine ? <p className="header-fold-visitor">{visitorLine}</p> : null}
             <button
               type="button"
@@ -1669,6 +1833,8 @@ export function VillagePage({ initial }: Props) {
           data-map-more={mapMore ? "1" : "0"}
           data-yard={yardShown ? "open" : "shut"}
           data-today-pulse={pulseOn ? "1" : "0"}
+          data-home-warm={homeWarm ? "1" : "0"}
+          data-home-settle={homeSettling ? "1" : "0"}
         >
           {people.length === 0 ? (
             <div className="empty-yard" data-testid="empty-yard">
@@ -1719,6 +1885,7 @@ export function VillagePage({ initial }: Props) {
             mapMore={mapMore}
             onMapMore={setMapMore}
             identityPulse={identityPulse}
+            homeSettle={homeSettle}
             onToyTap={(id) => {
               setYardOpen(true);
               const spot = toyAnchor(id);
@@ -1745,7 +1912,56 @@ export function VillagePage({ initial }: Props) {
             <TodayHint phase={hintPhase} done={loopDone} />
           </VillageScene>
           <FeedbackStrip beat={feedback} />
-          {duskCue ? (
+          {line === "return" ? (
+            <SoftLineChip
+              testId="return-warm"
+              module="return-warm"
+              line={returnLine}
+              motion={motion.reduced ? "still" : "fade"}
+              onGo={() => {
+                returnShowing.current = false;
+                setReturnOn(false);
+              }}
+              onClose={() => {
+                returnShowing.current = false;
+                setReturnOn(false);
+              }}
+            />
+          ) : null}
+          {line === "dawn" && dawnSpot ? (
+            <SoftLineChip
+              testId="dawn-porch"
+              module="dawn-porch"
+              line={dawnSpot.label}
+              motion={motion.reduced ? "still" : "pulse"}
+              onGo={() => {
+                setDawnOn(false);
+                aimMap(dawnSpot.id, dawnSpot.x, dawnSpot.y);
+              }}
+              onClose={() => setDawnOn(false)}
+            />
+          ) : null}
+          {line === "night" && nightSpot ? (
+            <SoftLineChip
+              testId="night-linger"
+              module="night-linger"
+              line={nightSpot.label}
+              motion={motion.reduced ? "still" : "pulse"}
+              onGo={() => {
+                setNightOn(false);
+                const sent = noteFeedback({
+                  toast: NIGHT_LINGER_DONE,
+                  targetId: nightSpot.id,
+                  state: "night",
+                  x: nightSpot.x,
+                  y: nightSpot.y,
+                });
+                if (!sent) aimMap(nightSpot.id, nightSpot.x, nightSpot.y);
+              }}
+              onClose={() => setNightOn(false)}
+            />
+          ) : null}
+          {line === "dusk" ? (
             <div
               className="dusk-lantern-chip"
               data-testid="dusk-lantern"
@@ -1793,6 +2009,29 @@ export function VillagePage({ initial }: Props) {
                 }}
               >
                 院子
+              </button>
+            ) : null}
+            {extraOn && extraSpot ? (
+              <button
+                type="button"
+                className="hud-btn hud-btn-ghost stay-slot"
+                data-testid="ritual-extra-walk"
+                data-module="ritual-extra-walk"
+                data-motion={motion.reduced ? "still" : "soft"}
+                onClick={() => {
+                  extraShowing.current = false;
+                  setExtraOn(false);
+                  const sent = noteFeedback({
+                    toast: EXTRA_WALK_DONE,
+                    targetId: extraSpot.id,
+                    state: "walk",
+                    x: extraSpot.x,
+                    y: extraSpot.y,
+                  });
+                  if (!sent) aimMap(extraSpot.id, extraSpot.x, extraSpot.y);
+                }}
+              >
+                {extraSpot.label}
               </button>
             ) : null}
             {stayOn ? <StayCorner note={STAY_NOTE} slots={staySlots} onPick={runStay} /> : null}
@@ -1987,7 +2226,11 @@ export function VillagePage({ initial }: Props) {
       <ReleaseNotes />
       <VillageHelp />
 
-      <VillageDrawer>
+      <VillageDrawer
+        discoverActive={Boolean(selfName) && mapReady && (tally.done >= 1 || Boolean(ritualMark))}
+        reduceMotion={motion.reduced}
+        moreOpened={mapMore}
+      >
       <WaveDPanel
         selfName={selfName}
         wave={waveState}
@@ -2135,7 +2378,26 @@ export function VillagePage({ initial }: Props) {
           hidden={!thumbShowsHome(Boolean(selfName))}
           disabled={!selfName}
           onClick={() => {
-            visitOwnGate("镜头回到自己的小屋。");
+            if (!HOME_SETTLE_ENABLED) {
+              visitOwnGate("镜头回到自己的小屋。");
+              return;
+            }
+            if (!selfName) return;
+            rememberChore("gate");
+            setHomeSettle((value) => value + 1);
+            setHomeSettling(true);
+            if (!motion.reduced) setHomeWarm(true);
+            const home = placeVillagers(people).find((person) => person.name === selfName);
+            const spot = home ? roofFocus(home) : null;
+            const sent = noteFeedback({
+              toast: HOME_SETTLE_TOAST,
+              targetId: "roof",
+              state: "home",
+              x: spot?.x,
+              y: spot?.y,
+              aim: false,
+            });
+            if (!sent && spot) aimMap("roof", spot.x, spot.y);
           }}
         >
           回家
@@ -2221,6 +2483,33 @@ export function VillagePage({ initial }: Props) {
           草地、水、树、房子、悬崖和七色猫咪村民来自 Little Wilds 完整包。作物 CC0 josehzz。名牌是 Fusion Pixel Font。详见 CREDITS.md。
         </p>
       </section>
+    </div>
+  );
+}
+
+function SoftLineChip({
+  testId,
+  module,
+  line,
+  motion,
+  onGo,
+  onClose,
+}: {
+  testId: string;
+  module: string;
+  line: string;
+  motion: "fade" | "still" | "pulse";
+  onGo: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="soft-line-chip" data-testid={testId} data-module={module} data-motion={motion}>
+      <button type="button" className="dusk-lantern-go" onClick={onGo}>
+        {line}
+      </button>
+      <button type="button" className="hud-icon" aria-label="收起" onClick={onClose}>
+        ×
+      </button>
     </div>
   );
 }
