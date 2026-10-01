@@ -47,6 +47,10 @@ import { meadowBreathCount, meadowBreathMark } from "@/features/meadow-breath/me
 import { villagerReadMark } from "@/features/villager-read/villager-read";
 import { nameplateAirMark } from "@/features/nameplate-air/nameplate-air";
 import { narrowFillCamera, narrowMapFillMark } from "@/features/narrow-map-fill/narrow-map-fill";
+import { autumnHintMark } from "@/features/autumn-hint/autumn-hint";
+import { findPrintCount, findPrintMark } from "@/features/find-footprints/find-footprints";
+import { eaveFlashOn, eaveGlowMark } from "@/features/home-eave-glow/home-eave-glow";
+import { PLAZA, plazaInView, plazaSitMark } from "@/features/plaza-sit/plaza-sit";
 import { waitingCueMark } from "@/features/waiting-cue/waiting-cue";
 import { MAP_HUD_FOLD_ENABLED, hitToy } from "@/features/map-hud-fold/map-hud-fold";
 import type { ToyId } from "@/features/yard-toy-focus/yard-toy-focus";
@@ -152,6 +156,7 @@ export function VillageScene({
   const kickRef = useRef<(() => void) | null>(null);
   const wheelAt = useRef(0);
   const glowUntilRef = useRef(0);
+  const idleAtRef = useRef(Date.now());
   const aimHoldRef = useRef(0);
   const onMapReadyRef = useRef(onMapReady);
 
@@ -273,6 +278,20 @@ export function VillageScene({
     lifeRef.current = life;
     kickRef.current?.();
   }, [life]);
+
+  useEffect(() => {
+    const mark = () => {
+      idleAtRef.current = Date.now();
+    };
+    window.addEventListener("pointerdown", mark);
+    window.addEventListener("keydown", mark);
+    window.addEventListener("wheel", mark, { passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", mark);
+      window.removeEventListener("keydown", mark);
+      window.removeEventListener("wheel", mark);
+    };
+  }, []);
 
   useEffect(() => {
     selectedRef.current = selectedName;
@@ -403,6 +422,34 @@ export function VillageScene({
       }
       const highlight = nowMs < glowUntilRef.current;
       host.dataset.selfHighlight = highlight ? "1" : "0";
+      const lifeNowEarly = lifeRef.current;
+      if (lifeNowEarly) {
+        const span = viewSpan(zoomRef.current);
+        const nearPlaza = plazaInView({ x: camRef.current.x, y: camRef.current.y, w: span.w, h: span.h }, PLAZA);
+        const plaza = plazaSitMark({
+          idleMs: nowMs - idleAtRef.current,
+          near: nearPlaza,
+          reduced: Boolean(lifeNowEarly.reduceMotion),
+        });
+        lifeNowEarly.plazaSit = plaza;
+        host.dataset.plazaSit = plaza;
+        const printMark = findPrintMark(lifeNowEarly.findPrintAt ?? null, nowMs, Boolean(lifeNowEarly.reduceMotion));
+        host.dataset.findPrints = printMark;
+        host.dataset.findPrintCount = String(
+          printMark === "off" ? 0 : findPrintCount(lifeNowEarly.selfName ?? "", printMark === "still"),
+        );
+        const eave = eaveGlowMark({
+          hasSelf: Boolean(lifeNowEarly.selfName),
+          flashing: eaveFlashOn(lifeNowEarly.eaveFlashAt ?? null, nowMs),
+          reduced: Boolean(lifeNowEarly.reduceMotion),
+        });
+        host.dataset.eaveGlow = eave;
+        host.dataset.autumnHint = autumnHintMark({
+          month: lifeNowEarly.calendarMonth ?? 0,
+          quiet: Boolean(lifeNowEarly.quiet),
+          reduced: Boolean(lifeNowEarly.reduceMotion),
+        });
+      }
       host.dataset.waveReply =
         activeFx && activeFx.kind === "wave" && nowMs - activeFx.startedAt < activeFx.duration ? "1" : "0";
       if (lifeRef.current) lifeRef.current.selfHighlight = highlight;
@@ -686,6 +733,11 @@ export function VillageScene({
       data-plate-short-cap={life.quiet ? String(QUIET_SHORT_CAP) : String(SHORT_CAP)}
       data-plate-count="0"
       data-self-highlight="0"
+      data-plaza-sit="off"
+      data-find-prints="off"
+      data-find-print-count="0"
+      data-eave-glow="off"
+      data-autumn-hint="off"
       data-wave-reply="0"
       data-ritual-done={life.ritual?.done ? "1" : "0"}
       data-ritual-beat={life.ritual?.beat ?? ""}

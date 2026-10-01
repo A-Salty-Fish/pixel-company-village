@@ -120,6 +120,20 @@ import { focalVillageMark } from "@/features/focal-village/focal-village";
 import { DUSK_LANTERN_ENABLED, DUSK_LANTERN_LINE, duskLanternOffer } from "@/features/dusk-lantern/dusk-lantern";
 import { dawnPanTarget, dawnPorchOffer, pickDawnSpot, type DawnSpot } from "@/features/dawn-porch/dawn-porch";
 import { EXIT_SOFT_BYE_ENABLED, exitByePlan } from "@/features/exit-soft-bye/exit-soft-bye";
+import { SAME_DAY_AGAIN_ENABLED, SAME_DAY_AGAIN_LINE, SAME_DAY_AGAIN_MS, claimSameDayVisit } from "@/features/same-day-again/same-day-again";
+import { FIND_FOOTPRINTS_ENABLED, FIND_PRINT_MS, FIND_PRINT_STILL_MS, findPrintCount } from "@/features/find-footprints/find-footprints";
+import {
+  TODAY_TOUCH_DISMISS_MS,
+  TODAY_TOUCH_ENABLED,
+  TODAY_TOUCH_LINE,
+  loadTodayTouch,
+  saveTodayTouch,
+  todayTouchCompletes,
+  todayTouchPhase,
+} from "@/features/today-touch/today-touch";
+import { autumnHintMark } from "@/features/autumn-hint/autumn-hint";
+import { EAVE_FLASH_MS, eaveGlowMark } from "@/features/home-eave-glow/home-eave-glow";
+import { NIGHT_LEAVE_ENABLED, NIGHT_LEAVE_HOLD_MS, NIGHT_LEAVE_LINE, NIGHT_LEAVE_SKIP, loadNightLeave, nightLeaveOffer, saveNightLeave } from "@/features/night-leave/night-leave";
 import { HOME_SETTLE_ENABLED, HOME_SETTLE_MS, HOME_SETTLE_TOAST, HOME_WARM_MS, roofFocus } from "@/features/home-settle/home-settle";
 import { identityLandDue } from "@/features/identity-land/identity-land";
 import { NIGHT_LINGER_DONE, loadNightLinger, nightCornerFree, nightLingerOffer, pickNightSpot, saveNightLinger, type NightSpot } from "@/features/night-linger/night-linger";
@@ -338,6 +352,12 @@ export function VillagePage({ initial }: Props) {
   const extraShowing = useRef(false);
   const [exitBye, setExitBye] = useState<string | null>(null);
   const leaving = useRef(false);
+  const leaveRelease = useRef<(() => void) | null>(null);
+  const [nightHold, setNightHold] = useState(false);
+  const [againOn, setAgainOn] = useState(false);
+  const [todayTouch, setTodayTouch] = useState<"open" | "done" | "off">("off");
+  const [findPrintAt, setFindPrintAt] = useState<number | null>(null);
+  const [eaveFlashAt, setEaveFlashAt] = useState<number | null>(null);
   const [homeSettle, setHomeSettle] = useState(0);
   const [homeWarm, setHomeWarm] = useState(false);
   const [homeSettling, setHomeSettling] = useState(false);
@@ -430,9 +450,24 @@ export function VillagePage({ initial }: Props) {
     }
   }
 
+  function skipNightLeave() {
+    setNightHold(false);
+    leaveRelease.current?.();
+  }
+
   async function logout() {
     if (leaving.current) return;
     leaving.current = true;
+    const night = nightLeaveOffer({
+      hour: clock.hour,
+      storedYmd: loadNightLeave(selfName ?? ""),
+      today: clock.ymd,
+      enabled: NIGHT_LEAVE_ENABLED,
+    });
+    if (night) {
+      saveNightLeave(selfName ?? "", clock.ymd);
+      setNightHold(true);
+    }
     const plan = exitByePlan(EXIT_SOFT_BYE_ENABLED);
     if (plan.line) setExitBye(plan.line);
     const started = Date.now();
@@ -442,8 +477,18 @@ export function VillagePage({ initial }: Props) {
     } catch {
       /* the line can show, and the gate still opens */
     }
-    const wait = Math.max(0, plan.waitMs - (Date.now() - started));
-    if (wait > 0) await new Promise((resolve) => window.setTimeout(resolve, wait));
+    const extra = night ? NIGHT_LEAVE_HOLD_MS : 0;
+    const wait = Math.max(0, plan.waitMs + extra - (Date.now() - started));
+    if (wait > 0) {
+      await new Promise<void>((resolve) => {
+        const timer = window.setTimeout(resolve, wait);
+        leaveRelease.current = () => {
+          window.clearTimeout(timer);
+          resolve();
+        };
+      });
+    }
+    leaveRelease.current = null;
     // Full document load. A client-router return to "/" was reusing the shell
     // from before the cookie clear, so the header and roster stayed blank
     // until the next local event.
@@ -532,6 +577,32 @@ export function VillagePage({ initial }: Props) {
   }, [selfName, clock.ymd]);
 
   useEffect(() => {
+    if (!selfName || !SAME_DAY_AGAIN_ENABLED) return;
+    if (!claimSameDayVisit(selfName, clock.ymd)) return;
+    setAgainOn(true);
+    const id = window.setTimeout(() => setAgainOn(false), SAME_DAY_AGAIN_MS);
+    return () => window.clearTimeout(id);
+  }, [selfName, clock.ymd]);
+
+  useEffect(() => {
+    if (!selfName || !TODAY_TOUCH_ENABLED) {
+      setTodayTouch("off");
+      return;
+    }
+    const stored = loadTodayTouch(selfName);
+    setTodayTouch((current) => {
+      if (current === "done") return current;
+      return todayTouchPhase({ hasSelf: true, storedYmd: stored, today: clock.ymd });
+    });
+  }, [selfName, clock.ymd]);
+
+  useEffect(() => {
+    if (todayTouch !== "done") return;
+    const id = window.setTimeout(() => setTodayTouch("off"), TODAY_TOUCH_DISMISS_MS);
+    return () => window.clearTimeout(id);
+  }, [todayTouch]);
+
+  useEffect(() => {
     setGlanceMark(loadGlance(selfName, clock.weekKey));
   }, [selfName, clock.weekKey]);
 
@@ -578,6 +649,18 @@ export function VillagePage({ initial }: Props) {
   const season = seasonOf(clock);
   const festival = festivalOf(clock);
   const motion = motionGovernor({ systemReduced, comfort });
+  useEffect(() => {
+    if (!FIND_FOOTPRINTS_ENABLED || findPrintAt == null) return;
+    const span = motion.reduced ? FIND_PRINT_STILL_MS : FIND_PRINT_MS;
+    const id = window.setTimeout(() => setFindPrintAt(null), Math.max(0, span - (Date.now() - findPrintAt)));
+    return () => window.clearTimeout(id);
+  }, [findPrintAt, motion.reduced]);
+
+  useEffect(() => {
+    if (eaveFlashAt == null) return;
+    const id = window.setTimeout(() => setEaveFlashAt(null), Math.max(0, EAVE_FLASH_MS - (Date.now() - eaveFlashAt)));
+    return () => window.clearTimeout(id);
+  }, [eaveFlashAt]);
   useEffect(() => {
     if (ritualGlowAt == null) return;
     const reduced = motion.reduced;
@@ -804,6 +887,9 @@ export function VillagePage({ initial }: Props) {
     mapAim: mapAim ? { kind: mapAim.kind, x: mapAim.x, y: mapAim.y, at: mapAim.at } : null,
     feedbackPulse: feedback?.pulse ? { x: feedback.x, y: feedback.y } : null,
     sfxMuted: comfort.sfxMuted,
+    findPrintAt,
+    eaveFlashAt,
+    calendarMonth: Number(clock.ymd.slice(5, 7)) || 0,
     presenceOn:
       presencePhase({
         weekComplete: tally.complete,
@@ -1200,15 +1286,26 @@ export function VillagePage({ initial }: Props) {
     if (line) setWaveLine(line);
   }
 
+  function finishTodayTouch(action: string) {
+    if (!TODAY_TOUCH_ENABLED || !selfName || !todayTouchCompletes(action)) return;
+    if (loadTodayTouch(selfName) === clock.ymd) return;
+    saveTodayTouch(selfName, clock.ymd);
+    setTodayTouch("done");
+  }
+
   function settleHome() {
     if (!HOME_SETTLE_ENABLED) {
       visitOwnGate("镜头回到自己的小屋。");
+      setEaveFlashAt(Date.now());
+      finishTodayTouch("home");
       return;
     }
     if (!selfName) return;
     rememberChore("gate");
     setHomeSettle((value) => value + 1);
     setHomeSettling(true);
+    setEaveFlashAt(Date.now());
+    finishTodayTouch("home");
     if (!motion.reduced) setHomeWarm(true);
     const home = placeVillagers(people).find((person) => person.name === selfName);
     const spot = home ? roofFocus(home) : null;
@@ -1580,6 +1677,21 @@ export function VillagePage({ initial }: Props) {
       data-night-linger={line === "night" ? "1" : "0"}
       data-home-settle={homeSettling ? "1" : "0"}
       data-home-warm={homeWarm ? "1" : "0"}
+      data-same-day={againOn ? "1" : "0"}
+      data-today-touch={todayTouch}
+      data-night-leave={nightHold ? "1" : "0"}
+      data-find-prints={findPrintAt == null ? "off" : motion.reduced ? "still" : "live"}
+      data-find-print-count={String(findPrintAt == null ? 0 : findPrintCount(selfName ?? "", motion.reduced))}
+      data-eave-glow={eaveGlowMark({
+        hasSelf: Boolean(selfName),
+        flashing: eaveFlashAt != null,
+        reduced: motion.reduced,
+      })}
+      data-autumn-hint={autumnHintMark({
+        month: Number(clock.ymd.slice(5, 7)) || 0,
+        quiet: comfort.quiet,
+        reduced: motion.reduced,
+      })}
       data-identity-land={identityPulse > 0 ? "1" : "0"}
       data-map-hud={MAP_HUD_FOLD_ENABLED ? "fold" : "open"}
       data-thumb-identity={THUMB_IDENTITY_ENABLED ? "1" : "0"}
@@ -1599,6 +1711,16 @@ export function VillagePage({ initial }: Props) {
                 像素公司村
               </p>
               <ReleaseChip />
+              {againOn ? (
+                <p
+                  className="same-day-chip"
+                  data-testid="same-day-again"
+                  data-module="same-day-again"
+                  data-motion={motion.reduced ? "still" : "fade"}
+                >
+                  {SAME_DAY_AGAIN_LINE}
+                </p>
+              ) : null}
             </div>
             <p className="glance-line text-xs text-[#2a1a10]" data-testid="village-glance">
               {glanceLine({
@@ -1608,6 +1730,12 @@ export function VillagePage({ initial }: Props) {
                 selfName,
               })}
             </p>
+            {todayTouch === "open" || todayTouch === "done" ? (
+              <p className="today-touch" data-testid="today-touch" data-module="today-touch" data-today-touch={todayTouch}>
+                {TODAY_TOUCH_LINE}
+                {todayTouch === "done" ? " ✓" : ""}
+              </p>
+            ) : null}
             {dayMark !== "off" ? (
               <p className={`glance-line text-xs ${scoreDayStyles.line}`} data-testid="score-day-cue" data-score-day={dayMark}>
                 {SCORE_DAY_LINE}
@@ -1633,6 +1761,17 @@ export function VillagePage({ initial }: Props) {
             <button type="button" className="hud-btn hud-btn-ghost" data-testid="exit-village" onClick={logout}>
               出村
             </button>
+            {nightHold ? (
+              <p className="night-leave" data-testid="night-leave" data-module="night-leave" data-motion={motion.reduced ? "still" : "fade"}>
+                {NIGHT_LEAVE_LINE}
+                <button type="button" className="hud-icon" data-testid="night-leave-skip" onClick={skipNightLeave}>
+                  {NIGHT_LEAVE_SKIP}
+                </button>
+                <button type="button" className="hud-icon" aria-label="先走" onClick={skipNightLeave}>
+                  ×
+                </button>
+              </p>
+            ) : null}
             {exitBye ? (
               <p className="exit-soft-bye" data-testid="exit-soft-bye" data-module="exit-soft-bye" data-motion={motion.reduced ? "still" : "fade"}>
                 {exitBye}
@@ -1781,12 +1920,13 @@ export function VillagePage({ initial }: Props) {
           hour={clock.hour}
           near={ritualNear}
           saved={ritualMark}
-          onComplete={() => {
+            onComplete={() => {
             if (!selfName) return;
             const beat = ritualBeat(clock.hour);
             setRitualMark(storeRitual(selfName, clock.ymd, clock.hour));
             setRitualGlowAt(Date.now());
             setRitualPhase(afterglowPhase(0, motion.reduced));
+            finishTodayTouch("ritual");
             if (beat.id === "dawn") noteToday("lamp");
             if (ritualRimOffer({ justCompleted: true, alreadyShown: rimShown.current })) {
               rimShown.current = true;
@@ -1898,6 +2038,8 @@ export function VillagePage({ initial }: Props) {
               noteToday("person");
               markGesture("find");
               visitOwnGate();
+              finishTodayTouch("find");
+              if (FIND_FOOTPRINTS_ENABLED) setFindPrintAt(Date.now());
               const home = selfName ? placeVillagers(people).find((person) => person.name === selfName) : null;
               noteFeedback({
                 toast: "找到了。",

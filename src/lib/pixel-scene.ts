@@ -40,6 +40,10 @@ import { mapDepthGround, mapDepthRoofLayers } from "@/features/map-depth/map-dep
 import { villagerIdleBob, villagerReadOn, villagerShadowPixels } from "@/features/villager-read/villager-read";
 import { feedbackPulsePixels } from "@/features/village-feedback/village-feedback";
 import { autumnLeafFrame } from "@/features/autumn-leaf-drift/autumn-leaf-drift";
+import { autumnHintFrame } from "@/features/autumn-hint/autumn-hint";
+import { findPrintPixels } from "@/features/find-footprints/find-footprints";
+import { eaveGlowMark, eaveGlowPixels, eaveFlashOn } from "@/features/home-eave-glow/home-eave-glow";
+import { PLAZA, plazaSitSprite } from "@/features/plaza-sit/plaza-sit";
 import { waitingCuePixels } from "@/features/waiting-cue/waiting-cue";
 import { wanderPose } from "@/features/local-stroll/local-stroll";
 
@@ -1331,6 +1335,15 @@ function drawActors(
   paintPixels(ctx, landmarkPixels(home));
   // self-yard-marker checkpoint: still roof pin, separate from the find-me ring
   paintPixels(ctx, selfYardPixels(home));
+  if (life && home) {
+    const flashing = eaveFlashOn(life.eaveFlashAt ?? null, Date.now());
+    const eave = eaveGlowMark({
+      hasSelf: Boolean(life.selfName),
+      flashing,
+      reduced: Boolean(life.reduceMotion),
+    });
+    paintPixels(ctx, eaveGlowPixels(home, t, eave));
+  }
   // ambient-life + season-ground-props checkpoints (paint only; hitTest is unchanged)
   if (life) {
     const specks = ambientSpecks(Boolean(life.quiet), Boolean(life.reduceMotion));
@@ -1381,6 +1394,18 @@ function drawActors(
         draw: () => paintPixels(ctx, breath.lantern),
       });
     }
+    const hintLeaves = autumnHintFrame({
+      month: life.calendarMonth ?? 0,
+      quiet: Boolean(life.quiet),
+      reduced: Boolean(life.reduceMotion),
+      t,
+    });
+    if (hintLeaves.length > 0) {
+      queue.push({
+        sort: 7,
+        draw: () => paintPixels(ctx, hintLeaves),
+      });
+    }
     if (life.waitingCue) {
       const cue = life.waitingCue;
       queue.push({
@@ -1416,6 +1441,30 @@ function drawActors(
           ),
       });
     }
+    const prints = findPrintPixels({
+      origin: { x: self.x, y: self.y },
+      name: self.name,
+      elapsedMs: life?.findPrintAt == null ? -1 : Date.now() - life.findPrintAt,
+      reduced: Boolean(life?.reduceMotion),
+    });
+    if (prints.length > 0) {
+      queue.push({
+        sort: self.y - 1,
+        draw: () => paintPixels(ctx, prints),
+      });
+    }
+  }
+  if (life?.plazaSit === "sit" || life?.plazaSit === "stand") {
+    const mode = life.plazaSit;
+    queue.push({
+      sort: PLAZA.y,
+      draw: () => {
+        ctx.save();
+        ctx.globalAlpha = 0.78;
+        drawSprite(ctx, plazaSitSprite(mode, mode === "stand" ? 0 : t), PLAZA.x, PLAZA.y);
+        ctx.restore();
+      },
+    });
   }
   if (life?.decor?.dusk) {
       for (const house of HOUSE_FACES) {
