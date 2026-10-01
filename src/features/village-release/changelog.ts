@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.5.1";
+export const APP_VERSION = "1.6.0";
 
 export const RELEASE_BOARD_TITLE = "更新日志";
 
@@ -31,6 +31,22 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.6.0",
+    date: "2026-10-01",
+    title: "慢慢住下",
+    notes: [
+      "隔天再来，地图上有一句很短的欢迎。当天再进，就不说了。",
+      "今日仪式做完，地图角上留一处：长椅、湖边，或自己的屋顶。",
+      "点一下，镜头过去。本周已经安顿时，这一处就让开。",
+      "清晨进村，地图上写着门灯或露水。点一下镜头过去。这一趟只一次。",
+      "底下的「回家」会慢慢送到自己的屋顶，再暖一下。",
+      "做过一件小事，或做过今日仪式，「村里」的木牌会亮一会儿。",
+      "夜里仪式做完，可以再看暖窗、湖上的星，或长椅。一次只留一处。",
+      "出村时有一句很短的送别，不用再确认。",
+      "不写说过的话。",
+    ],
+  },
   {
     version: "1.5.1",
     date: "2026-10-01",

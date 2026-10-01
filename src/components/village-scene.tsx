@@ -46,6 +46,7 @@ import { waitingCueMark } from "@/features/waiting-cue/waiting-cue";
 import { MAP_HUD_FOLD_ENABLED, hitToy } from "@/features/map-hud-fold/map-hud-fold";
 import type { ToyId } from "@/features/yard-toy-focus/yard-toy-focus";
 import { IDENTITY_LAND_ENABLED, IDENTITY_LAND_MS } from "@/features/identity-land/identity-land";
+import { HOME_SETTLE_ENABLED, HOME_SETTLE_MS, homeSettleFrame, roofFocus } from "@/features/home-settle/home-settle";
 import { MoreDiscoverDot } from "@/features/more-discover/more-cue";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
@@ -74,6 +75,7 @@ type Props = {
   onMapMore?: (open: boolean) => void;
   onToyTap?: (id: ToyId) => void;
   identityPulse?: number;
+  homeSettle?: number;
   children?: ReactNode;
 };
 
@@ -104,6 +106,7 @@ export function VillageScene({
   onMapMore,
   onToyTap,
   identityPulse = 0,
+  homeSettle = 0,
   children,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -194,6 +197,36 @@ export function VillageScene({
     setCamMark({ x: Math.round(focus.x), y: Math.round(focus.y), zoom: nextZoom });
     kickRef.current?.();
   }, [homePulse, life.selfName]);
+
+  useLayoutEffect(() => {
+    if (!HOME_SETTLE_ENABLED || !homeSettle || !life.selfName) return;
+    const person = villagers.find((v) => v.name === life.selfName);
+    if (!person) return;
+    const toZoom = 2;
+    const roof = roofFocus(person);
+    const focus = clampCamera(roof.x - WORLD_W / toZoom / 2, roof.y - WORLD_H / toZoom / 2, toZoom);
+    const from = { x: camRef.current.x, y: camRef.current.y, zoom: zoomRef.current };
+    const to = { x: focus.x, y: focus.y, zoom: toZoom };
+    const started = performance.now();
+    let raf = 0;
+    const step = (now: number) => {
+      const frame = homeSettleFrame({ elapsedMs: now - started, durationMs: HOME_SETTLE_MS, from, to });
+      zoomRef.current = frame.done ? to.zoom : frame.zoom;
+      camRef.current = clampCamera(frame.done ? to.x : frame.x, frame.done ? to.y : frame.y, zoomRef.current);
+      aimHoldRef.current = Date.now() + 400;
+      kickRef.current?.();
+      if (!frame.done) {
+        raf = requestAnimationFrame(step);
+        return;
+      }
+      setZoom(to.zoom);
+      setCamMark({ x: camRef.current.x, y: camRef.current.y, zoom: to.zoom });
+      aimHoldRef.current = Date.now() + HOME_SETTLE_MS;
+      kickRef.current?.();
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [homeSettle, life.selfName, villagers]);
 
   useLayoutEffect(() => {
     if (!IDENTITY_LAND_ENABLED || !identityPulse || !life.selfName) return;
