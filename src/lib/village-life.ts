@@ -112,6 +112,15 @@ export type SceneLife = {
   waitingCue?: { kind: "lake" | "lamp"; x: number; y: number } | null;
   /** PV-PM-040. Warm rim for this session only. */
   ritualRim?: boolean;
+  /** PV-PM-062. World point and epoch ms when 找我 settled. */
+  findPrints?: { x: number; y: number; at: number } | null;
+  /** PV-PM-066. Epoch ms of the latest 回家 flash. */
+  homeFlashAt?: number | null;
+  /** PV-PM-067. October leaves, or the settings override. */
+  wispOn?: boolean;
+  /** PV-PM-064. Paint-loop only. Not stored. */
+  plazaSit?: "sit" | "still" | "off";
+  plazaSitter?: string | null;
 };
 
 export const DEFAULT_COMFORT: Comfort = {

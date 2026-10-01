@@ -39,7 +39,11 @@ test("清晨有一句门廊，点一下就收起", async ({ page }) => {
 test("出村时有一句送别，随后离开", async ({ page }) => {
   await login(page);
   await page.getByTestId("exit-village").click();
-  await expect(page.getByTestId("exit-soft-bye")).toHaveText("慢慢走。村口还在。");
+  const hold = page.getByTestId("night-hold");
+  const bye = page.getByTestId("exit-soft-bye");
+  await expect(hold.or(bye)).toBeVisible();
+  if (await hold.isVisible()) await page.getByTestId("night-hold-skip").click();
+  await expect(bye).toHaveText("慢慢走。村口还在。");
   await page.waitForURL("**/login", { timeout: 8_000 });
 });
 

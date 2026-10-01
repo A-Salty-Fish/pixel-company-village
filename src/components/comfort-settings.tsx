@@ -4,6 +4,7 @@ import type { Comfort, StatusId } from "@/lib/village-life";
 import { STATUS_PRESETS } from "@/lib/village-life";
 import { SettingsDiscover } from "@/features/compact-settings-discover/discover-badge";
 import { LIGHT_SFX_ENABLED } from "@/features/light-sfx/light-sfx";
+import { OCTOBER_WISP_ENABLED } from "@/features/october-wisp/october-wisp";
 
 type Props = {
   comfort: Comfort;
@@ -13,6 +14,8 @@ type Props = {
   motionReduced: boolean;
   onComfort: (next: Comfort) => void;
   onSelf: (name: string | null, preset: StatusId | null) => void;
+  wispOn?: boolean;
+  onWisp?: (on: boolean) => void;
 };
 
 export function ComfortSettings({
@@ -23,6 +26,8 @@ export function ComfortSettings({
   motionReduced,
   onComfort,
   onSelf,
+  wispOn = false,
+  onWisp,
 }: Props) {
   return (
     <>
@@ -86,6 +91,17 @@ export function ComfortSettings({
               />
               <span>先收起别人的分数：仍能看名字、挥手和关照。自己的卡保持完整。</span>
             </label>
+            {OCTOBER_WISP_ENABLED && onWisp ? (
+              <label className="flex items-start gap-2 text-sm text-[#2a1a10]">
+                <input
+                  type="checkbox"
+                  data-testid="october-wisp-toggle"
+                  checked={wispOn}
+                  onChange={(event) => onWisp(event.target.checked)}
+                />
+                <span>秋意一撇：十月有几片很轻的叶子。勾上就飘，去掉就停。别的月份勾上也会留着。</span>
+              </label>
+            ) : null}
             <label className="flex items-start gap-2 text-sm text-[#2a1a10]">
               <input
                 type="checkbox"

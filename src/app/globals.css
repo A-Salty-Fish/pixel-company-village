@@ -1455,6 +1455,68 @@ a:focus-visible,
   animation: none;
 }
 
+.again-today-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.4rem;
+  background: rgb(255 246 216 / 92%);
+  color: #6a3d18;
+  border: 2px solid #e7b14a;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.again-today-chip[data-motion="fade"] {
+  animation: again-today-fade 2s ease forwards;
+}
+
+.again-today-chip[data-motion="still"] {
+  animation: none;
+}
+
+@keyframes again-today-fade {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.today-touch-strip {
+  margin: 0.2rem 0 0;
+  padding: 0.15rem 0.45rem;
+  background: rgb(255 246 216 / 88%);
+  color: #6a3d18;
+  border: 2px solid #e7d7b0;
+  font-size: 12px;
+}
+
+.today-touch-strip[data-state="done"] {
+  border-color: #6aaa3a;
+  color: #2f4a16;
+}
+
+.night-hold-bubble {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0.15rem 0.35rem;
+  background: #2a1a10;
+  color: #fff6d8;
+  border: 2px solid #e7b14a;
+  font-size: 12px;
+}
+
+.night-hold-bubble[data-motion="fade"],
+.night-hold-bubble[data-motion="still"] {
+  animation: none;
+}
+
 .village-map-slot[data-today-pulse="1"]::after {
   content: "";
   position: absolute;

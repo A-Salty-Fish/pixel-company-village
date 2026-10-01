@@ -42,6 +42,10 @@ import { NAMEPLATE_CLEAR_ENABLED, NEAR_PLATE_CAP } from "@/features/nameplate-cl
 import { toyPulseMark } from "@/features/yard-toy-focus/yard-toy-focus";
 import { GestureChrome } from "@/features/gesture-sfx/gesture-chrome";
 import { autumnLeafCount, leafDriftMark } from "@/features/autumn-leaf-drift/autumn-leaf-drift";
+import { findFootprintCount, findFootprintMark } from "@/features/find-footprints/find-footprints";
+import { homeBreathMark } from "@/features/home-breath/home-breath";
+import { octoberWispMark } from "@/features/october-wisp/october-wisp";
+import { pickPlazaSitter, plazaSitPlan, pointNearPlaza, villagerCanSit } from "@/features/plaza-sit/plaza-sit";
 import { waitingCueMark } from "@/features/waiting-cue/waiting-cue";
 import { MAP_HUD_FOLD_ENABLED, hitToy } from "@/features/map-hud-fold/map-hud-fold";
 import type { ToyId } from "@/features/yard-toy-focus/yard-toy-focus";
@@ -66,7 +70,7 @@ type Props = {
   onEmote?: (kind: "stretch" | "sit" | "clap" | "wave") => void;
   homePulse?: number;
   onEmpty?: (x: number, y: number) => void;
-  onFindMe?: () => void;
+  onFindMe?: (at?: { x: number; y: number }) => void;
   mapAim?: { token: number; x: number; y: number } | null;
   ambientOn?: boolean;
   onSfxMute?: (muted: boolean) => void;
@@ -145,6 +149,8 @@ export function VillageScene({
   const wheelAt = useRef(0);
   const glowUntilRef = useRef(0);
   const aimHoldRef = useRef(0);
+  const plazaIdleRef = useRef(0);
+  const plazaCamRef = useRef({ x: Number.NaN, y: Number.NaN, z: Number.NaN });
   const onMapReadyRef = useRef(onMapReady);
 
   useEffect(() => {
@@ -367,6 +373,45 @@ export function VillageScene({
         camRef.current.y += (target.y - camRef.current.y) * EASING.camera;
       }
       camRef.current = clampCamera(camRef.current.x, camRef.current.y, zoomRef.current);
+      const lifeNowEarly = lifeRef.current;
+      if (lifeNowEarly) {
+        const cam = camRef.current;
+        const z = zoomRef.current;
+        const prev = plazaCamRef.current;
+        const jumped = Math.abs(cam.x - prev.x) + Math.abs(cam.y - prev.y) > 12 || prev.z !== z;
+        if (!Number.isFinite(prev.x) || jumped || drag.current) plazaIdleRef.current = now;
+        prev.x = cam.x;
+        prev.y = cam.y;
+        prev.z = z;
+        const span = viewSpan(z);
+        const center = { x: cam.x + span.w / 2, y: cam.y + span.h / 2 };
+        const self = lifeNowEarly.selfName ? list.find((person) => person.name === lifeNowEarly.selfName) : undefined;
+        const near =
+          pointNearPlaza(center) ||
+          Boolean(self && pointNearPlaza(self)) ||
+          Boolean(selected && pointNearPlaza(selected));
+        const plan = plazaSitPlan({
+          near,
+          idleMs: now - plazaIdleRef.current,
+          reduced: Boolean(lifeNowEarly.reduceMotion),
+        });
+        const sitter = pickPlazaSitter({
+          plan,
+          selfName: lifeNowEarly.selfName,
+          selectedName: selected?.name ?? null,
+          people: list.map((person) => ({
+            name: person.name,
+            x: person.x,
+            y: person.y,
+            idle: villagerCanSit(person.state),
+          })),
+        });
+        lifeNowEarly.plazaSit = plan;
+        lifeNowEarly.plazaSitter = sitter;
+        host.dataset.plazaSit = plan;
+        host.dataset.plazaSitter = sitter ?? "";
+        canvas.dataset.plazaSit = plan;
+      }
       const emphasize = new Set<string>();
       if (selectedRef.current) emphasize.add(selectedRef.current);
       if (hoverRef.current) emphasize.add(hoverRef.current);
@@ -419,6 +464,14 @@ export function VillageScene({
       const readMark = nightReadMark(Boolean(NIGHT_WASH_V2_ENABLED && lifeNow?.sessionNight));
       canvas.dataset.nightRead = readMark;
       canvas.dataset.nightAutumn = autumnDotsOn(lifeNow?.decor?.seasonId ?? "", Boolean(lifeNow?.sessionNight)) ? "1" : "0";
+      const prints = lifeNow?.findPrints;
+      const printElapsed = prints ? Date.now() - prints.at : -1;
+      const printMark = prints ? findFootprintMark(printElapsed, Boolean(lifeNow?.reduceMotion)) : "off";
+      canvas.dataset.findPrints = printMark;
+      host.dataset.findPrints = printMark;
+      canvas.dataset.findPrintCount = String(
+        printMark === "show" ? findFootprintCount(Boolean(lifeNow?.reduceMotion)) : 0,
+      );
     };
 
     const toWorld = (clientX: number, clientY: number) => {
@@ -673,6 +726,12 @@ export function VillageScene({
       data-toy-pulse={toyPulse}
       data-leaf-drift={leafDriftMark(life.decor?.seasonId ?? "", life.reduceMotion)}
       data-leaf-count={String(autumnLeafCount(life.decor?.seasonId ?? ""))}
+      data-home-breath={homeBreathMark({
+        hasSelf: Boolean(life.selfName),
+        flashAt: life.homeFlashAt ?? null,
+        now: Date.now(),
+      })}
+      data-october-wisp={octoberWispMark(Boolean(life.wispOn), life.reduceMotion)}
       data-waiting-cue={waitingCueMark(life.waitingCue ?? null)}
       data-ritual-rim={life.ritualRim ? "warm" : "off"}
     >
@@ -779,7 +838,8 @@ export function VillageScene({
           disabled={!life.selfName}
           onClick={() => {
             glowUntilRef.current = Date.now() + FIND_ME_HOLD_MS;
-            onFindMe?.();
+            const person = life.selfName ? villagersRef.current.find((v) => v.name === life.selfName) : undefined;
+            onFindMe?.(person ? { x: person.x, y: person.y } : undefined);
           }}
         >
           {FIND_ME_LABEL}

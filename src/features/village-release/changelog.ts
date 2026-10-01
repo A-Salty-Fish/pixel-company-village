@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.6.1";
+export const APP_VERSION = "1.7.0";
 
 export const RELEASE_BOARD_TITLE = "更新日志";
 
@@ -31,6 +31,21 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.7.0",
+    date: "2026-10-01",
+    title: "还想点一下",
+    notes: [
+      "同一天再进村，页头轻轻写一句「又见面了」，两秒里淡掉。",
+      "点「找我」之后，脚下留几枚淡脚印，一会儿就不见。减少动作时只留一枚。",
+      "选定自己之后，页头有「今日摸一下村里」。找我、回家，或做完今日仪式，打个勾就收起。",
+      "在广场附近停一会儿，小人会轻轻坐下。减少动作时就站着。",
+      "夜里第一次出村，会说「路上慢点」。可以接着走，也可以再待。这一夜只说一次。",
+      "自家屋檐的小钉会轻轻呼吸。点「回家」时亮一下。",
+      "十月里有几片很轻的落叶。体贴设置里可以关掉。减少动作时叶子停住。",
+      "不写说过的话。",
+    ],
+  },
   {
     version: "1.6.1",
     date: "2026-10-01",
