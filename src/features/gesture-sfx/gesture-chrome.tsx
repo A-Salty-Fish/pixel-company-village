@@ -25,7 +25,7 @@ export function GestureChrome({ muted, ambient, onMute, onAmbient }: Props) {
       </button>
       <button
         type="button"
-        className="hud-icon hud-icon-wide"
+        className="hud-icon hud-icon-wide map-more-item"
         data-testid="gesture-ambient"
         aria-pressed={ambient}
         onClick={() => onAmbient(!ambient)}

@@ -107,6 +107,9 @@ import { waitingCueFor } from "@/features/waiting-cue/waiting-cue";
 import { VillageDrawer } from "@/features/village-drawer/drawer-view";
 import { SOFT_AMBIENT_ENABLED, softAmbientOn, syncSoftAmbient } from "@/features/soft-ambient/soft-ambient";
 import { RITUAL_RIM_MS, RITUAL_RIM_TOAST, ritualRimOffer } from "@/features/ritual-rim/ritual-rim";
+import { NARROW_CHROME_ENABLED, todayEntryLabel } from "@/features/narrow-chrome/narrow-chrome";
+import { MAP_HUD_FOLD_ENABLED, toyTapCopy } from "@/features/map-hud-fold/map-hud-fold";
+import { THUMB_IDENTITY_ENABLED, thumbShowsHome } from "@/features/thumb-identity/thumb-identity";
 import { POST_WEEK_PRESENCE_ENABLED, loadGlance, presencePhase, storeGlance, type GlanceSave } from "@/features/post-week-presence/presence";
 import { PostWeekPresence } from "@/features/post-week-presence/presence-view";
 import {
@@ -294,6 +297,10 @@ export function VillagePage({ initial }: Props) {
   const kindnessAt = useRef(0);
   const [dismissedBroadcast, setDismissedBroadcast] = useState<string | null>(null);
   const [parchment, setParchment] = useState<null | "ritual" | "week" | "season">(null);
+  const [headerFold, setHeaderFold] = useState(false);
+  const [todayOpen, setTodayOpen] = useState(false);
+  const [mapMore, setMapMore] = useState(false);
+  const [yardOpen, setYardOpen] = useState(false);
   const [mapAim, setMapAim] = useState<{ token: number; kind: string; x: number; y: number; at: number } | null>(null);
   const [ambientOn, setAmbientOn] = useState(false);
   const [gestureMark, setGestureMark] = useState<{ id: GestureId; audio: "played" | "silent" } | null>(null);
@@ -1301,6 +1308,8 @@ export function VillagePage({ initial }: Props) {
   }
 
   const dayMark = scoreDayMark(dateCopy.fresh, comfort.quiet);
+  const visitorLine = visitorCopy(selfName, waveState.toggles.visitor);
+  const yardShown = yardOpen || Boolean(mapAim && isToyId(mapAim.kind));
   const ritualShown = ritualMark ? RITUAL_BEATS[ritualMark.beat] : ritualBeat(clock.hour);
   const openParchment = (id: "ritual" | "week" | "season") => {
     setParchment((current) => (current === id ? null : id));
@@ -1329,6 +1338,9 @@ export function VillagePage({ initial }: Props) {
       data-today-hint={hintPhase}
       data-soft-ambient={softAmbientOn({ muted: comfort.sfxMuted, reduceMotion: motion.reduced }) ? "live" : "off"}
       data-ritual-rim={ritualRimOn ? "warm" : "off"}
+      data-narrow-chrome={NARROW_CHROME_ENABLED ? "1" : "0"}
+      data-map-hud={MAP_HUD_FOLD_ENABLED ? "fold" : "open"}
+      data-thumb-identity={THUMB_IDENTITY_ENABLED ? "1" : "0"}
     >
       <LightSfxBridge muted={comfort.sfxMuted} reduceMotion={motion.reduced} />
       <div className="village-hero" data-testid="village-hero">
@@ -1356,12 +1368,35 @@ export function VillagePage({ initial }: Props) {
               </p>
             ) : null}
           </div>
-          <div className="flex flex-wrap gap-2">
+          {NARROW_CHROME_ENABLED ? (
+            <button
+              type="button"
+              className="header-fold-toggle hud-icon"
+              data-testid="header-fold"
+              aria-expanded={headerFold}
+              aria-label="页头更多"
+              onClick={() => setHeaderFold((open) => !open)}
+            >
+              ⋯
+            </button>
+          ) : null}
+          <div className={`header-actions flex flex-wrap gap-2${headerFold ? " is-open" : ""}`}>
             <button type="button" className="hud-btn" onClick={refresh} disabled={loading} data-testid="refresh-scores" data-loading={loading ? "1" : "0"}>
               {loading ? "正在刷新…" : dateCopy.refresh}
             </button>
             <button type="button" className="hud-btn hud-btn-ghost" onClick={logout}>
               出村
+            </button>
+            {visitorLine ? <p className="header-fold-visitor">{visitorLine}</p> : null}
+            <button
+              type="button"
+              className="hud-btn hud-btn-ghost header-fold-score"
+              onClick={() => {
+                const node = document.querySelector<HTMLDetailsElement>("[data-testid='score-meta']");
+                if (node) node.open = !node.open;
+              }}
+            >
+              分数从哪来
             </button>
           </div>
         </div>
@@ -1380,12 +1415,30 @@ export function VillagePage({ initial }: Props) {
           </p>
         </details>
       </header>
-      {visitorCopy(selfName, waveState.toggles.visitor) ? (
+      {error ? <p className="px-1 text-xs text-[#8a2020]">{error}</p> : null}
+      <div
+        className="narrow-today"
+        data-testid="narrow-today"
+        data-open={todayOpen ? "1" : "0"}
+        data-module="narrow-chrome"
+      >
+        {NARROW_CHROME_ENABLED ? (
+          <button
+            type="button"
+            className="narrow-today-summary"
+            data-testid="today-entry"
+            aria-expanded={todayOpen}
+            onClick={() => setTodayOpen((open) => !open)}
+          >
+            {todayEntryLabel(tally.done, tally.total, waveState.toggles.weekBoard)}
+          </button>
+        ) : null}
+        <div className="narrow-today-body">
+      {visitorLine ? (
         <p className="visitor-line" data-testid="visitor-banner">
-          {visitorCopy(selfName, waveState.toggles.visitor)}
+          {visitorLine}
         </p>
       ) : null}
-      {error ? <p className="px-1 text-xs text-[#8a2020]">{error}</p> : null}
       <div className="parchment-bar" data-testid="parchment-bar">
         <button
           type="button"
@@ -1541,6 +1594,8 @@ export function VillagePage({ initial }: Props) {
           onNotice={() => rememberChore("season")}
         />
       </div>
+        </div>
+      </div>
       </div>
 
       <div
@@ -1549,7 +1604,12 @@ export function VillagePage({ initial }: Props) {
         data-split={split.toFixed(2)}
         style={{ ["--map-fr" as string]: String(split), ["--dock-fr" as string]: String(1 - split) }}
       >
-        <div className="village-map-slot" data-testid="village-map-slot">
+        <div
+          className="village-map-slot"
+          data-testid="village-map-slot"
+          data-map-more={mapMore ? "1" : "0"}
+          data-yard={yardShown ? "open" : "shut"}
+        >
           {people.length === 0 ? (
             <div className="empty-yard" data-testid="empty-yard">
               <div className="empty-yard-art" aria-hidden>
@@ -1596,6 +1656,18 @@ export function VillagePage({ initial }: Props) {
             onSfxMute={(muted) => saveComfort({ ...comfort, sfxMuted: muted })}
             onAmbient={setAmbientOn}
             onMapReady={() => setMapReady(true)}
+            mapMore={mapMore}
+            onMapMore={setMapMore}
+            onToyTap={(id) => {
+              setYardOpen(true);
+              const spot = toyAnchor(id);
+              const copy = toyTapCopy(id, {
+                lantern: loopBlob.lanternGlow,
+                scare: loopBlob.scareTips,
+                pebbles: loopPebbles,
+              });
+              noteFeedback({ toast: copy.toast, targetId: id, state: copy.state, x: spot.x, y: spot.y });
+            }}
             onEmpty={(x, y) => {
               if (!selfName) return;
               updateWave((current) => {
@@ -1608,10 +1680,36 @@ export function VillagePage({ initial }: Props) {
                 };
               });
             }}
-          />
+          >
+            <TodayHint phase={hintPhase} />
+          </VillageScene>
           <FeedbackStrip beat={feedback} />
-          <TodayHint phase={hintPhase} />
           <div className="map-corner" data-testid="map-corner">
+            {MAP_HUD_FOLD_ENABLED ? (
+              <button
+                type="button"
+                className="hud-btn hud-btn-ghost map-more-item yard-entry"
+                data-testid="yard-entry"
+                aria-pressed={yardOpen}
+                onClick={() => {
+                  const next = !yardOpen;
+                  setYardOpen(next);
+                  if (!next) {
+                    setMapAim(null);
+                    return;
+                  }
+                  const spot = toyAnchor("lantern");
+                  const copy = toyTapCopy("lantern", {
+                    lantern: loopBlob.lanternGlow,
+                    scare: loopBlob.scareTips,
+                    pebbles: loopPebbles,
+                  });
+                  noteFeedback({ toast: "院子在这边。", targetId: "lantern", state: copy.state, x: spot.x, y: spot.y });
+                }}
+              >
+                院子
+              </button>
+            ) : null}
             {stayOn ? <StayCorner note={STAY_NOTE} slots={staySlots} onPick={runStay} /> : null}
             {TOY_DOCK_ENABLED ? (
               <ToyDock
@@ -1937,13 +2035,20 @@ export function VillagePage({ initial }: Props) {
       />
       </VillageDrawer>
 
-      <div className="thumb-bar" data-testid="thumb-bar">
-        <button type="button" className="hud-btn" data-testid="thumb-home" disabled={!selfName} onClick={() => {
-          visitOwnGate("镜头回到自己的小屋。");
-        }}>
+      <div className="thumb-bar" data-testid="thumb-bar" data-guest={selfName ? "0" : "1"}>
+        <button
+          type="button"
+          className="hud-btn"
+          data-testid="thumb-home"
+          hidden={!thumbShowsHome(Boolean(selfName))}
+          disabled={!selfName}
+          onClick={() => {
+            visitOwnGate("镜头回到自己的小屋。");
+          }}
+        >
           回家
         </button>
-        <button type="button" className="hud-btn hud-btn-ghost" onClick={() => {
+        <button type="button" className="hud-btn hud-btn-ghost thumb-who" data-testid="thumb-who" onClick={() => {
           document.querySelector<HTMLElement>("[data-testid='comfort-settings']")?.setAttribute("open", "");
           document.querySelector<HTMLElement>("[data-testid='self-picker']")?.focus();
         }}>

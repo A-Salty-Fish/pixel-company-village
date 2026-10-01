@@ -149,6 +149,7 @@ test("a bad record stays isolated and an empty roster shows the yard", async ({ 
 test("narrow split can open the map or the card", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page);
+  await page.getByTestId("header-fold").click();
   const refresh = await page.getByTestId("refresh-scores").boundingBox();
   expect(refresh && refresh.height >= 44 && refresh.width >= 44).toBeTruthy();
   await page.getByTestId("split-map").click();
@@ -185,6 +186,7 @@ test("slow score load shows the boot shell without a retry button", async ({ pag
 test("narrow sheet keeps the title, close, undo, and leave button usable", async ({ page }) => {
   await page.setViewportSize({ width: 420, height: 800 });
   await login(page);
+  await page.getByTestId("header-fold").click();
   const body = await roster(page);
   const self = body.people[0]?.name;
   const target = body.people.find((person) => person.scored && person.name !== self)?.name;

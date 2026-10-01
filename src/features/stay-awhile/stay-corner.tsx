@@ -12,7 +12,7 @@ type Props = {
 export function StayCorner(props: Props) {
   if (props.slots.length < 2) return null;
   return (
-    <div className="stay-slots" data-testid="stay-slots" data-stay-count={props.slots.length}>
+    <div className="stay-slots map-more-item" data-testid="stay-slots" data-stay-count={props.slots.length}>
       <p className="stay-note">{props.note}</p>
       {props.slots.map((slot) => (
         <button
