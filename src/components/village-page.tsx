@@ -116,6 +116,7 @@ import { THUMB_IDENTITY_ENABLED, thumbShowsHome } from "@/features/thumb-identit
 import { softChromeMark } from "@/features/soft-chrome/soft-chrome";
 import { pressFeelMark } from "@/features/press-feel/press-feel";
 import { woodPlaqueMark } from "@/features/wood-plaque/wood-plaque";
+import { warmPlaqueMark } from "@/features/warm-plaque/warm-plaque";
 import { focalVillageMark } from "@/features/focal-village/focal-village";
 import { DUSK_LANTERN_ENABLED, DUSK_LANTERN_LINE, duskLanternOffer } from "@/features/dusk-lantern/dusk-lantern";
 import { dawnPanTarget, dawnPorchOffer, pickDawnSpot, type DawnSpot } from "@/features/dawn-porch/dawn-porch";
@@ -1698,6 +1699,7 @@ export function VillagePage({ initial }: Props) {
       data-soft-chrome={softChromeMark()}
       data-press-feel={pressFeelMark()}
       data-wood-plaque={woodPlaqueMark()}
+      data-warm-plaque={warmPlaqueMark()}
       data-focal-village={focalVillageMark()}
     >
       <LightSfxBridge muted={comfort.sfxMuted} reduceMotion={motion.reduced} />

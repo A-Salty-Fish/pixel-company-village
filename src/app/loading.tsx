@@ -1,4 +1,5 @@
 import { focalVillageMark } from "@/features/focal-village/focal-village";
+import { warmPlaqueMark } from "@/features/warm-plaque/warm-plaque";
 import { woodPlaqueMark } from "@/features/wood-plaque/wood-plaque";
 
 export default function Loading() {
@@ -7,6 +8,7 @@ export default function Loading() {
       className="farm-page mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-3 py-4"
       data-testid="village-boot"
       data-wood-plaque={woodPlaqueMark()}
+      data-warm-plaque={warmPlaqueMark()}
       data-focal-village={focalVillageMark()}
     >
       <header className="hud-panel">

@@ -38,6 +38,11 @@ import { nameplateGap } from "@/features/nameplate-air/nameplate-air";
 import { meadowBreathFrame } from "@/features/meadow-breath/meadow-breath";
 import { mapDepthGround, mapDepthRoofLayers } from "@/features/map-depth/map-depth";
 import { villagerIdleBob, villagerReadOn, villagerShadowPixels } from "@/features/villager-read/villager-read";
+import { pathMeadowPixels } from "@/features/path-meadow/path-meadow";
+import { buildingVolumeLayers } from "@/features/building-volume/building-volume";
+import { villagerGroundOn, villagerGroundPixels } from "@/features/villager-ground/villager-ground";
+import { paintNightHearth } from "@/features/night-hearth/night-hearth";
+import { pathFocusPixels } from "@/features/path-focus/path-focus";
 import { feedbackPulsePixels } from "@/features/village-feedback/village-feedback";
 import { autumnLeafFrame } from "@/features/autumn-leaf-drift/autumn-leaf-drift";
 import { autumnHintFrame } from "@/features/autumn-hint/autumn-hint";
@@ -668,7 +673,10 @@ function drawVillager(
   }
   const color = person.scored ? CAT_COLORS[person.identity.palette] : "lgrey";
   const stood = villagerReadOn();
-  if (stood) {
+  const softGround = villagerGroundOn();
+  if (softGround) {
+    paintPixels(ctx, villagerGroundPixels(x, y));
+  } else if (stood) {
     paintPixels(ctx, villagerShadowPixels(x, y));
   } else {
     ctx.fillStyle = "rgba(20, 16, 8, 0.45)";
@@ -677,7 +685,7 @@ function drawVillager(
     ctx.fillRect(Math.round(x - 8), Math.round(y - 2), 16, 3);
   }
   drawSprite(ctx, catFrame(color, person.dir, anim, frame), x, y);
-  if (!stood && zoom < 2) {
+  if (!stood && !softGround && zoom < 2) {
     ctx.strokeStyle = "#2a1a10";
     ctx.lineWidth = 2;
     ctx.strokeRect(Math.round(x - 11), Math.round(y - 32), 22, 30);
@@ -705,13 +713,13 @@ function drawVillager(
     ctx.fillRect(Math.round(x - 18), Math.round(y - 42), 4, 4);
   }
   if (onActor && fx?.kind === "clap") drawClap(ctx, x + 8, y - 30);
-  if (!stood && !person.scored) {
+  if (!stood && !softGround && !person.scored) {
     ctx.save();
     ctx.strokeStyle = "#8a8478";
     ctx.setLineDash([2, 2]);
     ctx.strokeRect(Math.round(x - 11), Math.round(y - 30), 22, 28);
     ctx.restore();
-  } else if (!stood && !selected) {
+  } else if (!stood && !softGround && !selected) {
     ctx.strokeStyle = "rgba(20, 12, 8, 0.55)";
     ctx.strokeRect(Math.round(x - 10), Math.round(y - 30), 20, 28);
   }
@@ -1381,6 +1389,27 @@ function drawActors(
         draw: () => paintPixels(ctx, pixels),
       });
     }
+    const meadow = pathMeadowPixels();
+    if (meadow.length > 0) {
+      queue.push({
+        sort: 4,
+        draw: () => paintPixels(ctx, meadow),
+      });
+    }
+    for (const layer of buildingVolumeLayers()) {
+      const pixels = layer.pixels;
+      queue.push({
+        sort: layer.sort,
+        draw: () => paintPixels(ctx, pixels),
+      });
+    }
+    const focus = pathFocusPixels(life.pathFocus ?? "off", t);
+    if (focus.length > 0) {
+      queue.push({
+        sort: 5,
+        draw: () => paintPixels(ctx, focus),
+      });
+    }
     const breath = meadowBreathFrame(Boolean(life.reduceMotion), t);
     if (breath.grass.length > 0) {
       queue.push({
@@ -1601,6 +1630,16 @@ export function paintVillage(
     seasonId: life?.decor?.seasonId ?? "",
     houses: HOUSE_FACES,
     walkers: villagers.map((person) => ({ x: person.x, y: person.y })),
+    reduced: Boolean(life?.reduceMotion),
+  });
+  paintNightHearth(ctx, {
+    viewW,
+    viewH,
+    camX,
+    camY,
+    worldW: span.w,
+    worldH: span.h,
+    night: Boolean(NIGHT_WASH_V2_ENABLED && life?.sessionNight),
     reduced: Boolean(life?.reduceMotion),
   });
   const aimRing = life?.mapAim

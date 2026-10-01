@@ -45,6 +45,11 @@ import { autumnLeafCount, leafDriftMark } from "@/features/autumn-leaf-drift/aut
 import { mapDepthMark } from "@/features/map-depth/map-depth";
 import { meadowBreathCount, meadowBreathMark } from "@/features/meadow-breath/meadow-breath";
 import { villagerReadMark } from "@/features/villager-read/villager-read";
+import { pathMeadowMark } from "@/features/path-meadow/path-meadow";
+import { buildingVolumeMark } from "@/features/building-volume/building-volume";
+import { villagerGroundMark } from "@/features/villager-ground/villager-ground";
+import { nightHearthMark } from "@/features/night-hearth/night-hearth";
+import { pathFocusMark } from "@/features/path-focus/path-focus";
 import { nameplateAirMark } from "@/features/nameplate-air/nameplate-air";
 import { narrowFillCamera, narrowMapFillMark } from "@/features/narrow-map-fill/narrow-map-fill";
 import { autumnHintMark } from "@/features/autumn-hint/autumn-hint";
@@ -449,6 +454,16 @@ export function VillageScene({
           quiet: Boolean(lifeNowEarly.quiet),
           reduced: Boolean(lifeNowEarly.reduceMotion),
         });
+        if (!focusStarted) {
+          focusStarted = now;
+          focusTimer = window.setTimeout(() => kick(), 30_000);
+        }
+        const focus = pathFocusMark({
+          elapsedMs: now - focusStarted,
+          reduced: Boolean(lifeNowEarly.reduceMotion),
+        });
+        lifeNowEarly.pathFocus = focus;
+        host.dataset.pathFocus = focus;
       }
       host.dataset.waveReply =
         activeFx && activeFx.kind === "wave" && nowMs - activeFx.startedAt < activeFx.duration ? "1" : "0";
@@ -590,6 +605,8 @@ export function VillageScene({
 
     let frame = 0;
     const start = performance.now();
+    let focusStarted = 0;
+    let focusTimer = 0;
     const decorative = () => lifeRef.current.reduceMotion || document.hidden;
     const paintSafe = (now: number) => {
       try {
@@ -626,6 +643,7 @@ export function VillageScene({
     window.addEventListener("pageshow", onPageShow);
 
     return () => {
+      window.clearTimeout(focusTimer);
       cancelAnimationFrame(frame);
       window.clearInterval(stageTimer);
       document.removeEventListener("visibilitychange", kick);
@@ -760,6 +778,11 @@ export function VillageScene({
       data-meadow-breath={meadowBreathMark(life.reduceMotion)}
       data-meadow-count={String(meadowBreathCount(life.reduceMotion))}
       data-map-depth={mapDepthMark()}
+      data-path-meadow={pathMeadowMark()}
+      data-building-volume={buildingVolumeMark()}
+      data-villager-ground={villagerGroundMark()}
+      data-night-hearth={nightHearthMark(Boolean(NIGHT_WASH_V2_ENABLED && life.sessionNight))}
+      data-path-focus="off"
       data-villager-read={villagerReadMark()}
       data-nameplate-air={nameplateAirMark()}
       data-waiting-cue={waitingCueMark(life.waitingCue ?? null)}
