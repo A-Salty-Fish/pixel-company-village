@@ -1172,6 +1172,7 @@ a:focus-visible,
   }
 
   .map-more-cue[data-more-cue="pulse"],
+  .map-more-toggle:has([data-more-cue="pulse"]),
   .dusk-lantern-chip[data-motion="pulse"],
   .village-map-slot[data-today-pulse="1"]::after {
     animation: none;
@@ -1179,6 +1180,7 @@ a:focus-visible,
 }
 
 .farm-page[data-reduce-motion="1"] .map-more-cue[data-more-cue="pulse"],
+.farm-page[data-reduce-motion="1"] .map-more-toggle:has([data-more-cue="pulse"]),
 .farm-page[data-reduce-motion="1"] .dusk-lantern-chip[data-motion="pulse"],
 .farm-page[data-reduce-motion="1"] .village-map-slot[data-today-pulse="1"]::after {
   animation: none;
@@ -1259,6 +1261,11 @@ a:focus-visible,
 
 .map-more-cue {
   position: absolute;
+  pointer-events: none;
+}
+
+/* Reduced motion: a still corner mark. The pulse below is the first-run highlight. */
+.map-more-cue[data-more-cue="dot"] {
   top: 2px;
   right: 2px;
   width: 8px;
@@ -1266,22 +1273,42 @@ a:focus-visible,
   border-radius: 99px;
   background: #f2d15c;
   box-shadow: 0 0 0 2px #6a3d18;
-  pointer-events: none;
 }
 
+/* PV-D-012: an 8px speck on the cream button did not read as a cue. Pulse fills 更多. */
 .map-more-cue[data-more-cue="pulse"] {
+  inset: 0;
+  background: transparent;
+  box-shadow: inset 0 0 0 4px #e7b14a;
   animation: more-cue-pulse 1.1s ease-in-out infinite;
+}
+
+.map-more-toggle:has([data-more-cue="pulse"]) {
+  background: #ffe56a;
+  animation: more-cue-btn 1.1s ease-in-out infinite;
 }
 
 @keyframes more-cue-pulse {
   0%,
   100% {
-    transform: scale(1);
+    box-shadow: inset 0 0 0 3px #e7b14a;
     opacity: 1;
   }
   50% {
-    transform: scale(1.6);
-    opacity: 0.45;
+    box-shadow: inset 0 0 0 7px #fff1a0;
+    opacity: 1;
+  }
+}
+
+@keyframes more-cue-btn {
+  0%,
+  100% {
+    background-color: #ffe56a;
+    box-shadow: 2px 2px 0 #3d2a1c, 0 0 0 2px #6a3d18;
+  }
+  50% {
+    background-color: #ffd24a;
+    box-shadow: 2px 2px 0 #3d2a1c, 0 0 0 4px #f2b000;
   }
 }
 

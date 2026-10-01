@@ -33,9 +33,33 @@ test("更多 shows one cue, then stays quiet after it is opened", async ({ page 
   });
   await login(page);
   const cue = page.getByTestId("more-discover");
+  const more = page.getByTestId("map-more");
   await expect(cue).toBeVisible();
-  await expect(cue).toHaveAttribute("data-more-cue", /pulse|dot/);
-  await page.getByTestId("map-more").click();
+  await expect(cue).toHaveAttribute("data-more-cue", "pulse");
+  // PV-D-012: an 8px corner dot was visible to Playwright and invisible to people.
+  const metrics = await more.evaluate((btn) => {
+    const mark = btn.querySelector("[data-testid='more-discover']");
+    const markBox = mark?.getBoundingClientRect();
+    const btnBox = btn.getBoundingClientRect();
+    const bg = getComputedStyle(btn).backgroundColor;
+    const [red, green, blue] = bg.match(/\d+/g)?.map(Number) ?? [0, 0, 0];
+    return {
+      cueW: markBox?.width ?? 0,
+      cueH: markBox?.height ?? 0,
+      btnW: btnBox.width,
+      btnH: btnBox.height,
+      blue,
+      red,
+      green,
+      anim: getComputedStyle(btn).animationName,
+    };
+  });
+  expect(metrics.cueW).toBeGreaterThanOrEqual(metrics.btnW * 0.7);
+  expect(metrics.cueH).toBeGreaterThanOrEqual(metrics.btnH * 0.7);
+  expect(metrics.red).toBeGreaterThan(220);
+  expect(metrics.blue).toBeLessThan(150);
+  expect(metrics.anim).toContain("more-cue-btn");
+  await more.click();
   await expect(page.getByTestId("name-legend")).toBeVisible();
   await expect(page.getByTestId("co-presence-toggle")).toBeVisible();
   await expect(cue).toBeHidden();
@@ -43,6 +67,37 @@ test("更多 shows one cue, then stays quiet after it is opened", async ({ page 
   await page.reload();
   await page.waitForSelector("canvas[data-village-ready='1']");
   await expect(page.getByTestId("more-discover")).toHaveCount(0);
+});
+
+test("减少动作 keeps a still dot on 更多", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.addInitScript(() => {
+    window.localStorage.removeItem("village:more-discover-v1");
+  });
+  await login(page);
+  const cue = page.getByTestId("more-discover");
+  await expect(cue).toBeVisible();
+  await expect(cue).toHaveAttribute("data-more-cue", "dot");
+  const metrics = await page.getByTestId("map-more").evaluate((btn) => {
+    const mark = btn.querySelector("[data-testid='more-discover']");
+    const box = mark?.getBoundingClientRect();
+    const bg = getComputedStyle(btn).backgroundColor;
+    const blue = Number(bg.match(/\d+/g)?.[2] ?? 0);
+    return {
+      w: box?.width ?? 0,
+      h: box?.height ?? 0,
+      blue,
+      anim: getComputedStyle(btn).animationName,
+      cueAnim: mark ? getComputedStyle(mark).animationName : "",
+    };
+  });
+  expect(metrics.w).toBeLessThanOrEqual(16);
+  expect(metrics.h).toBeLessThanOrEqual(16);
+  expect(metrics.w).toBeGreaterThanOrEqual(8);
+  expect(metrics.anim).toBe("none");
+  expect(metrics.cueAnim).toBe("none");
+  expect(metrics.blue).toBeGreaterThan(180);
 });
 
 test("choosing a name focuses self and shows 回家", async ({ page }) => {

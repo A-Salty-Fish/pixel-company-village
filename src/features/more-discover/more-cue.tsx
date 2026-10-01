@@ -27,7 +27,7 @@ function writeStored() {
   }
 }
 
-/** Dot on 更多. The parent button is the hit target. */
+/** Cue on 更多. Pulse paints the whole button; reduced motion is a still dot. The parent button is the hit target. */
 export function MoreDiscoverDot({
   ready,
   opened,
