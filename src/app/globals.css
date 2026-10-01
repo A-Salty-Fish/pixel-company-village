@@ -1180,6 +1180,8 @@ a:focus-visible,
   .dusk-lantern-chip[data-motion="pulse"],
   .soft-line-chip[data-motion="pulse"],
   .soft-line-chip[data-motion="fade"],
+  .same-day-chip[data-motion="fade"],
+  .night-leave[data-motion="fade"],
   .drawer-discover-cue[data-drawer-cue="pulse"],
   .village-drawer:has([data-drawer-cue="pulse"]) > summary,
   .village-map-slot[data-today-pulse="1"]::after {
@@ -1192,6 +1194,8 @@ a:focus-visible,
 .farm-page[data-reduce-motion="1"] .dusk-lantern-chip[data-motion="pulse"],
 .farm-page[data-reduce-motion="1"] .soft-line-chip[data-motion="pulse"],
 .farm-page[data-reduce-motion="1"] .soft-line-chip[data-motion="fade"],
+.farm-page[data-reduce-motion="1"] .same-day-chip[data-motion="fade"],
+.farm-page[data-reduce-motion="1"] .night-leave[data-motion="fade"],
 .farm-page[data-reduce-motion="1"] .drawer-discover-cue[data-drawer-cue="pulse"],
 .farm-page[data-reduce-motion="1"] .village-drawer:has([data-drawer-cue="pulse"]) > summary,
 .farm-page[data-reduce-motion="1"] .village-map-slot[data-today-pulse="1"]::after {
@@ -1440,6 +1444,63 @@ a:focus-visible,
   color: #2a1a10;
   background: #ffe9a0;
   box-shadow: inset 0 0 0 4px #e7b14a;
+}
+
+.same-day-chip {
+  margin: 0;
+  padding: 0.05rem 0.4rem;
+  background: #fff6d8;
+  color: #6a3d18;
+  border: 2px solid #e7b14a;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.same-day-chip[data-motion="fade"] {
+  animation: same-day-fade 1.8s ease forwards;
+}
+
+.same-day-chip[data-motion="still"] {
+  animation: none;
+}
+
+@keyframes same-day-fade {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  65% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.today-touch {
+  width: fit-content;
+  margin: 0.15rem 0 0;
+  padding: 0.1rem 0.45rem;
+  background: #fff6d8;
+  color: #6a3d18;
+  border: 2px solid #e7c56a;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.today-touch[data-today-touch="done"] {
+  border-color: #6aaa3a;
+}
+
+.night-leave {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0.15rem 0.35rem;
+  background: #fff6d8;
+  color: #6a3d18;
+  border: 2px solid #e7b14a;
+  font-size: 12px;
+}
+
+.night-leave[data-motion="fade"] {
+  animation: same-day-fade 2.2s ease forwards;
 }
 
 .exit-soft-bye {

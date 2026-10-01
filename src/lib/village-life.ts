@@ -112,6 +112,14 @@ export type SceneLife = {
   waitingCue?: { kind: "lake" | "lamp"; x: number; y: number } | null;
   /** PV-PM-040. Warm rim for this session only. */
   ritualRim?: boolean;
+  /** PV-PM-062. Epoch ms when 找我 settled. Absent until then. */
+  findPrintAt?: number | null;
+  /** PV-PM-064. Painted each frame from idle time. */
+  plazaSit?: "sit" | "stand" | "off";
+  /** PV-PM-066. Epoch ms of the latest 回家 flash. */
+  eaveFlashAt?: number | null;
+  /** PV-PM-067. Calendar month 1–12 from the local clock. */
+  calendarMonth?: number;
 };
 
 export const DEFAULT_COMFORT: Comfort = {
