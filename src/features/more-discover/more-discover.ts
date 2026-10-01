@@ -1,6 +1,7 @@
 /**
- * PV-PM-048 — one soft cue on 更多 after the map is ready.
- * A pulse, or a still dot when motion is reduced. Opening 更多 or ~8s clears it.
+ * PV-PM-048 — one cue on 更多 after the map is ready.
+ * Pulse lights the whole button. Reduced motion keeps a still dot.
+ * Opening 更多 or ~8s clears it.
  * The mark is the single character "1" on this browser, so the next visit stays quiet.
  * Set MORE_DISCOVER_ENABLED to false to leave 更多 unmarked.
  */

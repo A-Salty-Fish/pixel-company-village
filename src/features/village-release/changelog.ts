@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.5.0";
+export const APP_VERSION = "1.5.1";
 
 export const RELEASE_BOARD_TITLE = "更新日志";
 
@@ -31,6 +31,16 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.5.1",
+    date: "2026-10-01",
+    title: "再来一趟",
+    notes: [
+      "第一次来，地图上的「更多」整颗按钮会亮一会儿。",
+      "点开它，或过一会儿，就不再亮。",
+      "减少动作时只留一个静止的点。",
+    ],
+  },
   {
     version: "1.5.0",
     date: "2026-10-01",

@@ -16,19 +16,20 @@ import {
   versionLabel,
 } from "@/features/village-release/changelog";
 
-test("1.5.0 is the displayed ship and stays newest-first", () => {
+test("1.5.1 is the displayed ship and stays newest-first", () => {
   assert.equal(RELEASE_NOTES_ENABLED, true);
-  assert.equal(APP_VERSION, "1.5.0");
-  assert.equal(versionLabel(), "v1.5.0");
+  assert.equal(APP_VERSION, "1.5.1");
+  assert.equal(versionLabel(), "v1.5.1");
   assert.equal(releaseUiVisible(), true);
   assert.equal(releaseUiVisible(false), false);
   assert.equal(RELEASES[0]?.version, APP_VERSION);
-  assert.equal(RELEASES[1]?.version, "1.4.0");
-  assert.equal(RELEASES[2]?.version, "1.3.1");
-  assert.equal(RELEASES[3]?.version, "1.3.0");
-  assert.equal(RELEASES[4]?.version, "1.2.0");
-  assert.equal(RELEASES[5]?.version, "1.1.0");
-  assert.equal(RELEASES[6]?.version, "1.0.0");
+  assert.equal(RELEASES[1]?.version, "1.5.0");
+  assert.equal(RELEASES[2]?.version, "1.4.0");
+  assert.equal(RELEASES[3]?.version, "1.3.1");
+  assert.equal(RELEASES[4]?.version, "1.3.0");
+  assert.equal(RELEASES[5]?.version, "1.2.0");
+  assert.equal(RELEASES[6]?.version, "1.1.0");
+  assert.equal(RELEASES[7]?.version, "1.0.0");
   assert.equal(releasesAreNewestFirst(RELEASES), true);
   assert.equal(releasesAreNewestFirst([]), false);
   assert.equal(releasesAreNewestFirst([{ ...RELEASES[0], version: "nope" }]), false);
@@ -36,12 +37,13 @@ test("1.5.0 is the displayed ship and stays newest-first", () => {
   assert.equal(shipTitle(), "再来一趟");
   assert.equal(documentTitle(), "像素公司村 · 再来一趟");
   assert.equal(documentTitle(RELEASES, APP_VERSION).startsWith("像素公司村"), true);
-  assert.equal(RELEASES[1]?.title, "手机也想多待");
-  assert.equal(RELEASES[2]?.title, "还想回村");
+  assert.equal(RELEASES[1]?.title, "再来一趟");
+  assert.equal(RELEASES[2]?.title, "手机也想多待");
   assert.equal(RELEASES[3]?.title, "还想回村");
-  assert.equal(RELEASES[4]?.title, "再待一会儿");
-  assert.equal(RELEASES[5]?.title, "夜里还能认路");
-  assert.equal(RELEASES[6]?.title, "村里开张");
+  assert.equal(RELEASES[4]?.title, "还想回村");
+  assert.equal(RELEASES[5]?.title, "再待一会儿");
+  assert.equal(RELEASES[6]?.title, "夜里还能认路");
+  assert.equal(RELEASES[7]?.title, "村里开张");
   assert.equal(releaseDateLabel("2026-09-30"), "2026年9月30日");
   assert.equal(releaseDateLabel("soon"), "soon");
 
@@ -83,6 +85,7 @@ test("1.5.0 is the displayed ship and stays newest-first", () => {
   assert.match(blob, /再来一趟/);
   assert.match(blob, /灯笼该亮了/);
   assert.match(blob, /轻轻亮一下/);
+  assert.match(blob, /整颗按钮会亮一会儿/);
   assert.match(blob, /轻勾/);
   assert.match(blob, /站一会儿/);
   assert.match(blob, /更新日志就在眼前/);
