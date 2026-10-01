@@ -20,21 +20,10 @@ export function openReleaseNotes() {
   panel.scrollIntoView({ block: "start" });
 }
 
-/** Current ship name, beside the brand. The brand itself stays 「像素公司村」. */
-export function ShipTitle() {
-  if (!releaseUiVisible()) return null;
-  const title = shipTitle();
-  if (!title) return null;
-  return (
-    <p className={`${styles.ship} pixel-label`} data-testid="ship-title" data-module="village-release">
-      {title}
-    </p>
-  );
-}
-
-/** Header plaque. Stays off the map. */
+/** Header plaque. Brand stays 「像素公司村」; the ship name shares this 44px chip. */
 export function ReleaseChip() {
   if (!releaseUiVisible()) return null;
+  const title = shipTitle();
   return (
     <button
       type="button"
@@ -45,7 +34,12 @@ export function ReleaseChip() {
       aria-controls="release-notes"
       onClick={openReleaseNotes}
     >
-      {versionLabel()}
+      <span className={styles.chipVersion}>{versionLabel()}</span>
+      {title ? (
+        <span className={styles.chipTitle} data-testid="ship-title">
+          {title}
+        </span>
+      ) : null}
     </button>
   );
 }

@@ -41,7 +41,7 @@ import { SCORE_DAY_LINE, scoreDayMark } from "@/features/score-day-immersion/sco
 import scoreDayStyles from "@/features/score-day-immersion/score-day-immersion.module.css";
 import { sfxMark } from "@/features/light-sfx/light-sfx";
 import { LightSfxBridge } from "@/features/light-sfx/sfx-bridge";
-import { ReleaseChip, ReleaseNotes, ShipTitle } from "@/features/village-release/release-notes";
+import { ReleaseChip, ReleaseNotes } from "@/features/village-release/release-notes";
 import { nightReadMark } from "@/features/night-readability/night-readability";
 import {
   nextBeatLabel,
@@ -1336,11 +1336,10 @@ export function VillagePage({ initial }: Props) {
       <header ref={headerRef} className="hud-panel village-header" data-testid="village-header">
         <div className="village-header-row">
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="brand-cluster">
               <p className="pixel-label text-[#2a1a10]" data-testid="village-brand">
                 像素公司村
               </p>
-              <ShipTitle />
               <ReleaseChip />
             </div>
             <p className="glance-line text-xs text-[#2a1a10]" data-testid="village-glance">

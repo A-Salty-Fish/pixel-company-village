@@ -957,6 +957,14 @@ a:focus-visible,
   padding: 0.35rem 0.6rem 0.2rem;
 }
 
+.brand-cluster {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
 .glance-line,
 .visitor-line {
   overflow: hidden;
@@ -1046,6 +1054,11 @@ a:focus-visible,
     left: 0.75rem;
     right: 0.75rem;
     z-index: 80;
+  }
+
+  .village-header-row {
+    padding-top: 0.2rem;
+    padding-bottom: 0;
   }
 }
 
