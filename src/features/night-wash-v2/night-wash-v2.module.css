@@ -6,11 +6,11 @@
 */
 
 :global(.night-wash-active) {
-  background: #081018 !important;
+  background: #142033 !important;
   animation: none !important;
 }
 
 .frame {
-  background: #081018 !important;
+  background: #142033 !important;
   animation: none !important;
 }

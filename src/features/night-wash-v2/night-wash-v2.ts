@@ -2,6 +2,9 @@
  * PV-PM-016 — night follows the same clock as the glance line.
  * Quiet villages and the dusk toggle used to leave the map bright green
  * while the top bar already said 夜里. This wash does not.
+ * PV-D-014 — a multiply fill plus a near-opaque veil blanked the farm,
+ * especially on a tall phone. Night stays cool and darker than day, and
+ * the grass, roofs, and people stay readable. Same paint on every width.
  * Set NIGHT_WASH_V2_ENABLED to false to restore PV-PM-014.
  * 减少动作 keeps the same still pixels.
  */
@@ -11,14 +14,29 @@ import { contrastRatio, type Rgb } from "@/features/night-wash/night-wash";
 
 export const NIGHT_WASH_V2_ENABLED = true;
 
-export const NIGHT_FRAME = "#081018";
+/** Source-over. Multiply crushed tile contrast into a black void. */
+export const WASH_COMPOSITE = "source-over" as const;
+
+export const NIGHT_FRAME = "#142033";
 export const DAY_GRASS: Rgb = { r: 60, g: 110, b: 50 };
 export const MULTIPLY_INK: Rgb = { r: 28, g: 40, b: 96 };
-export const VEIL_INK = { r: 6, g: 14, b: 42, a: 0.78 };
-export const VIGNETTE_INK = "rgba(2, 6, 16, 0.78)";
+/** Moonlit cool tint. Alpha stays under the blanking line. */
+export const VEIL_INK = { r: 10, g: 22, b: 78, a: 0.62 };
+export const VIGNETTE_ALPHA = 0.2;
+export const VIGNETTE_INK = "rgba(8, 18, 40, 0.2)";
 export const LAMP_CORE: Rgb = { r: 255, g: 246, b: 216 };
 export const LAMP_GLOW = "#f2d15c";
 export const LAMP_HALO = "#c48a2a";
+
+/** A veil this strong flattens the farm. The live wash stays under it. */
+export function nightWashBlanks(alpha = VEIL_INK.a) {
+  return alpha >= 0.75;
+}
+
+/** Grass channel still has something to see. A void fails this. */
+export function farmStillReads(field: Rgb) {
+  return field.g >= 36 && field.r >= 12 && field.b > field.g;
+}
 
 export type NightLookV2 = {
   frame: string;
@@ -83,9 +101,9 @@ export function veilOver(base: Rgb, ink: { r: number; g: number; b: number; a: n
   };
 }
 
-/** Cool dark field a bright green tile becomes under the v2 wash. */
+/** Cool field a day tile becomes under the v2 wash. Source-over only, so texture survives. */
 export function nightField(day: Rgb = DAY_GRASS) {
-  return veilOver(multiplyRgb(day, MULTIPLY_INK), VEIL_INK);
+  return veilOver(day, VEIL_INK);
 }
 
 type House = { x: number; y: number };
@@ -116,19 +134,18 @@ export function paintNightWashV2(ctx: CanvasRenderingContext2D, input: PaintInpu
   if (!NIGHT_WASH_V2_ENABLED) return { mode: "off" as const, lamps: 0 };
   ctx.save();
   ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = "multiply";
-  ctx.fillStyle = look.multiply;
-  ctx.fillRect(0, 0, input.viewW, input.viewH);
-  ctx.globalCompositeOperation = "source-over";
+  ctx.globalCompositeOperation = WASH_COMPOSITE;
   ctx.fillStyle = look.veil;
   ctx.fillRect(0, 0, input.viewW, input.viewH);
   const cx = input.viewW / 2;
   const cy = input.viewH / 2;
-  const inner = Math.min(input.viewW, input.viewH) * 0.34;
-  const outer = Math.max(input.viewW, input.viewH) * 0.72;
+  const short = Math.min(input.viewW, input.viewH);
+  const long = Math.max(input.viewW, input.viewH);
+  const inner = short * 0.55;
+  const outer = long * 0.98;
   const vignette = ctx.createRadialGradient(cx, cy, inner, cx, cy, outer);
-  vignette.addColorStop(0, "rgba(2, 6, 16, 0)");
-  vignette.addColorStop(1, look.vignette);
+  vignette.addColorStop(0, "rgba(8, 18, 40, 0)");
+  vignette.addColorStop(1, `rgba(8, 18, 40, ${VIGNETTE_ALPHA})`);
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, input.viewW, input.viewH);
 

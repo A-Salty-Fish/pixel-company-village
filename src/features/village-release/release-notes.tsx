@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import {
   APP_VERSION,
   RELEASE_BOARD_INTRO,
@@ -8,7 +8,10 @@ import {
   RELEASES,
   currentRelease,
   releaseDateLabel,
+  releaseNotesScrollable,
+  releaseScrollDelta,
   releaseUiVisible,
+  releaseWheelShouldCapture,
   shipTitle,
   versionLabel,
 } from "@/features/village-release/changelog";
@@ -67,6 +70,63 @@ export function ReleaseChip() {
 /** Wooden board of player-facing ships. A tap on the version chip opens it as a sheet. */
 export function ReleaseNotes() {
   const open = useSyncExternalStore(subscribe, sheetSnapshot, () => false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollOn = open && releaseNotesScrollable();
+
+  useEffect(() => {
+    if (!scrollOn) return;
+    const node = scrollRef.current;
+    node?.focus({ preventScroll: true });
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onWheel = (event: WheelEvent) => {
+      if (!releaseWheelShouldCapture(true)) return;
+      const scroller = scrollRef.current;
+      if (!scroller) return;
+      const target = event.target;
+      if (target instanceof Node && scroller.contains(target)) return;
+      event.preventDefault();
+      scroller.scrollTop += event.deltaY;
+    };
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const scroller = scrollRef.current;
+      if (!scroller) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement
+      ) {
+        return;
+      }
+      const delta = releaseScrollDelta(event.key, scroller.clientHeight || 320);
+      if (!delta) return;
+      event.preventDefault();
+      scroller.scrollTop += delta;
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      const scroller = scrollRef.current;
+      if (!scroller) return;
+      const target = event.target;
+      if (target instanceof Node && scroller.contains(target)) return;
+      event.preventDefault();
+    };
+
+    window.addEventListener("wheel", onWheel, { capture: true, passive: false });
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("touchmove", onTouchMove, { capture: true, passive: false });
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("wheel", onWheel, { capture: true });
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("touchmove", onTouchMove, { capture: true });
+    };
+  }, [scrollOn]);
+
   if (!releaseUiVisible()) return null;
   return (
     <>
@@ -92,7 +152,13 @@ export function ReleaseNotes() {
           {RELEASE_BOARD_TITLE} · {versionLabel()}
           {currentRelease()?.title ? ` · ${currentRelease()?.title}` : ""}
         </summary>
-        <div className="space-y-3 px-3 py-3 text-sm text-[#2a1a10]">
+        <div
+          ref={scrollRef}
+          className={scrollOn ? `${styles.scroll} space-y-3 px-3 py-3 text-sm text-[#2a1a10]` : "space-y-3 px-3 py-3 text-sm text-[#2a1a10]"}
+          data-testid="release-notes-scroll"
+          data-release-scroll={scrollOn ? "1" : "0"}
+          tabIndex={scrollOn ? 0 : undefined}
+        >
           <p className="text-xs leading-5 text-[#6a3d18]">{RELEASE_BOARD_INTRO}</p>
           <ol className={styles.board}>
             {RELEASES.map((release) => (
