@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, openWeekBoard, roster } from "./login";
+import { login, openWeekBoard, roster, openVillageDrawer } from "./login";
 
 test("PV-PM-023 night keeps path-scale structure and autumn dots while the wash stays on", async ({ page }) => {
   await login(page);
@@ -66,6 +66,7 @@ test("PV-PM-027 lantern, scarecrow, and path stone land on the map", async ({ pa
   const self = body.people[0]?.name ?? "";
   await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(self);
+  await openVillageDrawer(page);
   await page.getByTestId("village-loops").locator("> summary").click();
   const host = page.locator("[data-village-host='ready']");
 
@@ -116,6 +117,7 @@ test("PV-PM-025 mute stays default and lamp, wave, and find-me can sound", async
   await expect(pageRoot).toHaveAttribute("data-gesture", "wave");
   await expect(pageRoot).toHaveAttribute("data-gesture-audio", "played");
 
+  await openVillageDrawer(page);
   await page.getByTestId("wave-d-panel").locator("> summary").click();
   await page.getByRole("button", { name: "点门灯" }).click();
   await expect(pageRoot).toHaveAttribute("data-gesture", "lamp");

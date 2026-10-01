@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, roster } from "./login";
+import { login, roster, openVillageDrawer } from "./login";
 
 test("visitor banner is visible before identity is chosen", async ({ page }) => {
   await login(page);
@@ -18,6 +18,7 @@ test("wave d actions stay local and canned", async ({ page }) => {
   const self = body.people[0]?.name ?? "";
   await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(self);
+  await openVillageDrawer(page);
   await page.getByTestId("wave-d-panel").locator("summary").click();
   await expect(page.getByTestId("week-board")).toContainText("不公示");
   await page.getByTestId("water-crop").click();

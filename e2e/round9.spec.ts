@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { login, roster } from "./login";
+import { login, roster, openVillageDrawer } from "./login";
 
 const PLANTED = "PRIVACY_PROBE_CHAT_ALPHA";
 
@@ -25,6 +25,7 @@ test("ten yard-edge loops stay with that viewer", async ({ page }) => {
 
   await pickSelf(page, first ?? "");
   const panel = page.getByTestId("yard-nook");
+  await openVillageDrawer(page);
   await panel.locator("> summary").click();
   await expect(panel).toHaveAttribute("data-nook-count", "10");
   await expect(panel).toHaveAttribute("data-viewer", first ?? "");
@@ -97,6 +98,7 @@ test("ten yard-edge loops stay with that viewer", async ({ page }) => {
   await page.reload();
   await page.waitForSelector("canvas[data-village-ready='1']");
   await pickSelf(page, first ?? "");
+  await openVillageDrawer(page);
   await page.getByTestId("yard-nook").locator("> summary").click();
   await expect(page.getByTestId("nook-kettle")).toHaveAttribute("data-pressed", "1");
   await expect(page.getByTestId("nook-pond")).toHaveAttribute("data-count", "2");
@@ -113,6 +115,7 @@ test("laundry and shutters hold still when motion is reduced", async ({ page }) 
   const body = await roster(page);
   const name = body.people[0]?.name ?? "";
   await pickSelf(page, name);
+  await openVillageDrawer(page);
   await page.getByTestId("yard-nook").locator("> summary").click();
   await page.getByTestId("nook-laundry").click();
   await page.getByTestId("nook-shutter").click();
@@ -146,6 +149,7 @@ test("planted chat text is dropped from yard-edge storage", async ({ page }) => 
   await page.reload();
   await page.waitForSelector("canvas[data-village-ready='1']");
   await pickSelf(page, name);
+  await openVillageDrawer(page);
   await page.getByTestId("yard-nook").locator("> summary").click();
   await expect(page.locator("body")).not.toContainText(PLANTED);
   const dump = await page.evaluate((viewer) => {

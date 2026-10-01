@@ -14,21 +14,23 @@ import {
   versionLabel,
 } from "@/features/village-release/changelog";
 
-test("1.2.0 is the displayed ship and stays newest-first", () => {
+test("1.3.0 is the displayed ship and stays newest-first", () => {
   assert.equal(RELEASE_NOTES_ENABLED, true);
-  assert.equal(APP_VERSION, "1.2.0");
-  assert.equal(versionLabel(), "v1.2.0");
+  assert.equal(APP_VERSION, "1.3.0");
+  assert.equal(versionLabel(), "v1.3.0");
   assert.equal(releaseUiVisible(), true);
   assert.equal(releaseUiVisible(false), false);
   assert.equal(RELEASES[0]?.version, APP_VERSION);
-  assert.equal(RELEASES[1]?.version, "1.1.0");
-  assert.equal(RELEASES[2]?.version, "1.0.0");
+  assert.equal(RELEASES[1]?.version, "1.2.0");
+  assert.equal(RELEASES[2]?.version, "1.1.0");
+  assert.equal(RELEASES[3]?.version, "1.0.0");
   assert.equal(releasesAreNewestFirst(RELEASES), true);
   assert.equal(releasesAreNewestFirst([]), false);
   assert.equal(releasesAreNewestFirst([{ ...RELEASES[0], version: "nope" }]), false);
-  assert.equal(currentRelease()?.title, "再待一会儿");
-  assert.equal(RELEASES[1]?.title, "夜里还能认路");
-  assert.equal(RELEASES[2]?.title, "村里开张");
+  assert.equal(currentRelease()?.title, "还想回村");
+  assert.equal(RELEASES[1]?.title, "再待一会儿");
+  assert.equal(RELEASES[2]?.title, "夜里还能认路");
+  assert.equal(RELEASES[3]?.title, "村里开张");
   assert.equal(releaseDateLabel("2026-09-30"), "2026年9月30日");
   assert.equal(releaseDateLabel("soon"), "soon");
 
@@ -57,6 +59,14 @@ test("1.2.0 is the displayed ship and stays newest-first", () => {
   assert.match(blob, /两三件小事/);
   assert.match(blob, /最多八张/);
   assert.match(blob, /短回执/);
+  assert.match(blob, /还想回村/);
+  assert.match(blob, /今日可做/);
+  assert.match(blob, /人影/);
+  assert.match(blob, /上次关照/);
+  assert.match(blob, /风声/);
+  assert.match(blob, /叶子/);
+  assert.match(blob, /默认合上/);
+  assert.match(blob, /暖光/);
 
   const pkg = JSON.parse(readFileSync("package.json", "utf8")) as { version: string };
   assert.equal(pkg.version, APP_VERSION);

@@ -10,6 +10,8 @@ import type { PersonWithState } from "@/lib/types";
 import { messageSparkCount, RING_CLOSE, ringClosure, type Availability } from "@/lib/village-life";
 import { RELATION_FIRST_ENABLED } from "@/features/signal-card-relation-first/relation-first";
 import { RelationFirstLead, ScoreRingsDisclosure } from "@/features/signal-card-relation-first/relation-first-view";
+import { SIGNAL_CARE_ENABLED } from "@/features/signal-care/signal-care";
+import { SignalCareNote } from "@/features/signal-care/signal-care-view";
 
 type Props = {
   person: PersonWithState;
@@ -37,6 +39,8 @@ type Props = {
   canSticker: boolean;
   anonNote: string | null;
   gardenCrop: string | null;
+  careDays?: string[];
+  bondCount?: number;
   onClose: () => void;
   onKindness: (action: KindnessMenuId) => void;
   onWave: () => void;
@@ -123,6 +127,7 @@ export function SignalCard(props: Props) {
             <span>{props.person.scored ? props.availability.label : "人在村里"}</span>
           </p>
         )}
+        {SIGNAL_CARE_ENABLED ? <SignalCareNote days={props.careDays ?? []} bondCount={props.bondCount ?? 0} /> : null}
         <p className="pixel-label text-[#6a3d18]" data-testid="data-date">
           {props.dataDateLabel}。{props.dataDateDetail}
         </p>

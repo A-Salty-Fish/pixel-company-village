@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, roster } from "./login";
+import { login, roster, openVillageDrawer } from "./login";
 
 test("weekly chores check off from a local action and diary shows the canned line", async ({ page }) => {
   await login(page);
@@ -11,6 +11,7 @@ test("weekly chores check off from a local action and diary shows the canned lin
   const chores = page.getByTestId("today-chores");
   await expect(chores.locator("[data-chore]")).toHaveCount(3);
   await expect(chores).toContainText("不公示");
+  await openVillageDrawer(page);
   await page.getByTestId("wave-d-panel").locator("summary").click();
   await expect(page.getByTestId("diary-0")).toContainText("今天先看自己的那一块田");
 

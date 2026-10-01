@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, roster } from "./login";
+import { login, roster, openVillageDrawer } from "./login";
 
 const ALLOWED_KEYS = new Set([
   "date",
@@ -70,6 +70,7 @@ test("storage and test state never hold chat text", async ({ page }) => {
   await page.getByTestId("comfort-settings").locator("> summary").click();
   const body = await roster(page);
   await page.getByTestId("self-picker").selectOption(body.people[0].name);
+  await openVillageDrawer(page);
   await page.getByTestId("wave-d-panel").locator("summary").click();
   await page.getByTestId("diary-2").click();
   await page.getByTestId("village-help").locator("summary").click();

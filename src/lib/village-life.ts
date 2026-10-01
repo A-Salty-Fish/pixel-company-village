@@ -108,6 +108,10 @@ export type SceneLife = {
   sfxMuted?: boolean;
   /** PV-PM-033 shared map pulse. World pixels, not a sentence. */
   feedbackPulse?: { x: number; y: number } | null;
+  /** PV-PM-035. World point for a waiting silhouette. Not a sentence. */
+  waitingCue?: { kind: "lake" | "lamp"; x: number; y: number } | null;
+  /** PV-PM-040. Warm rim for this session only. */
+  ritualRim?: boolean;
 };
 
 export const DEFAULT_COMFORT: Comfort = {
@@ -490,6 +494,16 @@ export function kindnessDayCounts(viewer = viewerName()) {
   if (!viewer) return {} as Record<string, number>;
   const book = loadKindness(viewer);
   return Object.fromEntries(Object.entries(book).map(([name, entry]) => [name, entry.days.length]));
+}
+
+const CARE_YMD = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Calendar days only. Sentences stored by mistake are dropped. */
+export function kindnessDays(name: string, viewer = viewerName()): string[] {
+  if (!viewer || !name) return [];
+  const days = loadKindness(viewer)[name]?.days;
+  if (!Array.isArray(days)) return [];
+  return days.filter((day): day is string => typeof day === "string" && CARE_YMD.test(day));
 }
 
 export function kindnessOnDay(ymd: string, viewer = viewerName()) {

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, roster } from "./login";
+import { login, roster, openVillageDrawer } from "./login";
 
 const PLANTED = "PRIVACY_PROBE_CHAT_ALPHA";
 
@@ -25,6 +25,7 @@ test("ten yard loops stay with that viewer and keep quiet village on", async ({ 
 
   await pickSelf(page, first ?? "");
   const panel = page.getByTestId("village-loops");
+  await openVillageDrawer(page);
   await panel.locator("> summary").click();
   await expect(panel).toHaveAttribute("data-loop-count", "10");
   await expect(panel).toHaveAttribute("data-viewer", first ?? "");
@@ -99,6 +100,7 @@ test("ten yard loops stay with that viewer and keep quiet village on", async ({ 
   await page.reload();
   await page.waitForSelector("canvas[data-village-ready='1']");
   await pickSelf(page, first ?? "");
+  await openVillageDrawer(page);
   await page.getByTestId("village-loops").locator("> summary").click();
   await expect(page.getByTestId("loop-mailbox")).toHaveAttribute("data-pressed", "1");
   await expect(page.getByTestId("loop-scarecrow")).toHaveAttribute("data-count", "1");
@@ -115,16 +117,19 @@ test("减动开关 is visible under 村里新事 and holds the lantern still", a
   const name = body.people[0]?.name ?? "";
   await pickSelf(page, name);
   const wave = page.getByTestId("wave-d-panel");
+  await openVillageDrawer(page);
   await wave.locator("> summary").click();
   const toggles = page.getByTestId("wave-toggles");
   await expect(toggles.getByText("减动开关", { exact: true })).toBeVisible();
   await expect(page.getByTestId("comfort-decor")).not.toHaveAttribute("open", "");
+  await openVillageDrawer(page);
   await page.getByTestId("village-loops").locator("> summary").click();
   await page.getByTestId("loop-lantern").click();
   await expect(page.getByTestId("loop-lantern")).toHaveAttribute("data-glow", "pulse");
   await page.getByTestId("reduce-motion-toggle").check();
   await expect(page.getByTestId("loop-yard")).toHaveAttribute("data-motion", "reduced");
   await expect(page.getByTestId("loop-lantern")).toHaveAttribute("data-glow", "still");
+  await openVillageDrawer(page);
   await page.getByTestId("yard-nook").locator("> summary").click();
   await page.getByTestId("nook-laundry").click();
   await page.getByTestId("nook-shutter").click();
@@ -138,6 +143,7 @@ test("lantern dusk glow stays still when motion is reduced", async ({ page }) =>
   const body = await roster(page);
   const name = body.people[0]?.name ?? "";
   await pickSelf(page, name);
+  await openVillageDrawer(page);
   await page.getByTestId("village-loops").locator("> summary").click();
   await page.getByTestId("loop-lantern").click();
   await expect(page.getByTestId("loop-lantern")).toHaveAttribute("data-glow", "pulse");
@@ -167,6 +173,7 @@ test("planted chat text is dropped from yard loop storage", async ({ page }) => 
   await page.reload();
   await page.waitForSelector("canvas[data-village-ready='1']");
   await pickSelf(page, name);
+  await openVillageDrawer(page);
   await page.getByTestId("village-loops").locator("> summary").click();
   await expect(page.locator("body")).not.toContainText(PLANTED);
   const dump = await page.evaluate((viewer) => {

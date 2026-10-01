@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, roster } from "./login";
+import { login, roster, openVillageDrawer } from "./login";
 
 test("lane errands stay with the viewer who walked them", async ({ page }) => {
   await login(page);
@@ -8,6 +8,7 @@ test("lane errands stay with the viewer who walked them", async ({ page }) => {
   expect(first && second && first !== second).toBeTruthy();
   await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(first ?? "");
+  await openVillageDrawer(page);
   await page.getByTestId("wave-d-panel").locator("> summary").click();
 
   const host = page.locator("[data-village-host='ready']");

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, roster } from "./login";
+import { login, roster, openVillageDrawer } from "./login";
 
 test("quiet off shows butterflies by day, dusk and fireflies later, and the bench toggles", async ({ page }) => {
   await login(page);
@@ -15,6 +15,7 @@ test("quiet off shows butterflies by day, dusk and fireflies later, and the benc
   await page.evaluate(() => window.__VILLAGE_TEST__?.setClock("2026-09-30T11:00:00.000Z"));
   await expect(host).toHaveAttribute("data-dusk", "1");
   await expect(host).toHaveAttribute("data-critters", "firefly");
+  await openVillageDrawer(page);
   await page.getByTestId("wave-d-panel").locator("summary").click();
   await page.getByTestId("sit-bench").click();
   await expect(host).toHaveAttribute("data-sitting", "1");

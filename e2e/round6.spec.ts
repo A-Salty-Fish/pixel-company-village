@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, openWeekBoard, roster } from "./login";
+import { login, openWeekBoard, roster, openVillageDrawer } from "./login";
 
 test("finishing the three weekly chores hangs a ribbon that stays after the card closes", async ({ page }) => {
   await login(page);
@@ -40,6 +40,7 @@ test("finishing the three weekly chores hangs a ribbon that stays after the card
   await page.getByTestId("self-picker").selectOption(self ?? "");
   await expect(strip).toHaveAttribute("data-week-done", "1");
   await expect(page.locator("[data-village-host='ready']")).toHaveAttribute("data-week-ribbon", "1");
+  await openVillageDrawer(page);
   await page.getByTestId("wave-d-panel").locator("summary").click();
   await page.locator("[data-wave-toggle='weekBoard']").uncheck();
   await expect(strip).toHaveCount(0);
