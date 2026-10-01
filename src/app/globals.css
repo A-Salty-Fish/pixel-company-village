@@ -608,6 +608,10 @@ a:focus-visible,
   font-size: 0.85rem;
 }
 
+.map-home {
+  flex: 0 0 auto;
+}
+
 .history-axis {
   display: flex;
   justify-content: space-between;

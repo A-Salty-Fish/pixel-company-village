@@ -1,6 +1,8 @@
 /**
  * PV-PM-057 — the bottom 「回家」 eases the camera onto the caller's roof pin.
  * Choosing a name still uses identity land. This path is only the later home button.
+ * The thumb bar is hidden from 900px up, so the same control also sits beside 找我
+ * in the map tool row once a name is chosen.
  * Reduced motion eases the camera and skips the warm wash.
  * Set HOME_SETTLE_ENABLED to false to snap home the old way.
  */

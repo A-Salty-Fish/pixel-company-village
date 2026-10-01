@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.6.0";
+export const APP_VERSION = "1.6.1";
 
 export const RELEASE_BOARD_TITLE = "更新日志";
 
@@ -31,6 +31,14 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.6.1",
+    date: "2026-10-01",
+    title: "回家在底栏",
+    notes: [
+      "选定「我是谁」之后，底下「找我」旁边也有「回家」。点一下，镜头慢慢送到屋顶。减少动作时只移动镜头。",
+    ],
+  },
   {
     version: "1.6.0",
     date: "2026-10-01",
