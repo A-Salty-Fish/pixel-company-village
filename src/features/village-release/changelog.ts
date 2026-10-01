@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.6.3";
+export const APP_VERSION = "1.6.4";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,14 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.6.4",
+    date: "2026-10-02",
+    title: "窄屏先看见田",
+    notes: [
+      "手机上的地图下半截不再空着一块深蓝色。先看见的是田、路和屋子。",
+    ],
+  },
   {
     version: "1.6.3",
     date: "2026-10-01",

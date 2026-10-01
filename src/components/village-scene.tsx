@@ -46,6 +46,7 @@ import { mapDepthMark } from "@/features/map-depth/map-depth";
 import { meadowBreathCount, meadowBreathMark } from "@/features/meadow-breath/meadow-breath";
 import { villagerReadMark } from "@/features/villager-read/villager-read";
 import { nameplateAirMark } from "@/features/nameplate-air/nameplate-air";
+import { narrowFillCamera, narrowMapFillMark } from "@/features/narrow-map-fill/narrow-map-fill";
 import { waitingCueMark } from "@/features/waiting-cue/waiting-cue";
 import { MAP_HUD_FOLD_ENABLED, hitToy } from "@/features/map-hud-fold/map-hud-fold";
 import type { ToyId } from "@/features/yard-toy-focus/yard-toy-focus";
@@ -144,6 +145,9 @@ export function VillageScene({
   });
   const zoomRef = useRef(startCam.zoom);
   const camRef = useRef({ x: startCam.x, y: startCam.y });
+  const userCam = useRef(false);
+  const fitted = useRef(false);
+  const [mapFill, setMapFill] = useState<"village" | "world">("world");
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const kickRef = useRef<(() => void) | null>(null);
   const wheelAt = useRef(0);
@@ -182,6 +186,7 @@ export function VillageScene({
 
   useEffect(() => {
     if (!mapAim?.token) return;
+    userCam.current = true;
     const nextZoom = 3;
     zoomRef.current = nextZoom;
     setZoom(nextZoom);
@@ -194,6 +199,7 @@ export function VillageScene({
 
   useEffect(() => {
     if (!homePulse || !life.selfName) return;
+    userCam.current = true;
     const person = villagersRef.current.find((v) => v.name === life.selfName);
     if (!person) return;
     const nextZoom = 2;
@@ -209,6 +215,7 @@ export function VillageScene({
     if (!HOME_SETTLE_ENABLED || !homeSettle || !life.selfName) return;
     const person = villagers.find((v) => v.name === life.selfName);
     if (!person) return;
+    userCam.current = true;
     const toZoom = 2;
     const roof = roofFocus(person);
     const focus = clampCamera(roof.x - WORLD_W / toZoom / 2, roof.y - WORLD_H / toZoom / 2, toZoom);
@@ -239,6 +246,7 @@ export function VillageScene({
     if (!IDENTITY_LAND_ENABLED || !identityPulse || !life.selfName) return;
     const person = villagersRef.current.find((v) => v.name === life.selfName);
     if (!person) return;
+    userCam.current = true;
     const nextZoom = zoomRef.current;
     const focus = cameraFocus(person, nextZoom);
     camRef.current = focus;
@@ -269,6 +277,7 @@ export function VillageScene({
   useEffect(() => {
     selectedRef.current = selectedName;
     if (!selectedName) return;
+    userCam.current = true;
     const person = villagersRef.current.find((v) => v.name === selectedName);
     if (!person) return;
     const nextZoom = Math.max(Math.round(zoomRef.current), 2);
@@ -321,6 +330,19 @@ export function VillageScene({
       if (canvas.width !== nextW || canvas.height !== nextH) {
         canvas.width = nextW;
         canvas.height = nextH;
+      }
+      const rawW = Math.floor(host.clientWidth);
+      const rawH = Math.floor(host.clientHeight);
+      if (!fitted.current && !userCam.current && rawW > 0 && rawH > 0) {
+        const next = narrowFillCamera({ people: villagersRef.current, cssW: rawW, cssH: rawH });
+        if (next) {
+          fitted.current = true;
+          zoomRef.current = next.zoom;
+          camRef.current = { x: next.x, y: next.y };
+          setZoom(next.zoom);
+          setCamMark({ x: next.x, y: next.y, zoom: next.zoom });
+          setMapFill(narrowMapFillMark(next.zoom));
+        }
       }
       return dpr;
     };
@@ -463,7 +485,10 @@ export function VillageScene({
       if (!drag.current) return;
       const dx = e.clientX - drag.current.x;
       const dy = e.clientY - drag.current.y;
-      if (Math.abs(dx) + Math.abs(dy) > 6) drag.current.moved = true;
+      if (Math.abs(dx) + Math.abs(dy) > 6) {
+        drag.current.moved = true;
+        userCam.current = true;
+      }
       const rect = canvas.getBoundingClientRect();
       const span = viewSpan(zoomRef.current);
       camRef.current.x -= (dx * span.w) / Math.max(1, rect.width);
@@ -501,6 +526,7 @@ export function VillageScene({
       const now = performance.now();
       if (now - wheelAt.current < 220) return;
       wheelAt.current = now;
+      userCam.current = true;
       const z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(zoomRef.current) + (e.deltaY > 0 ? -1 : 1)));
       zoomRef.current = z;
       setZoom(z);
@@ -567,6 +593,7 @@ export function VillageScene({
   }, [people, bootAttempt]);
 
   const applyZoom = (next: number) => {
+    userCam.current = true;
     const z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(next)));
     zoomRef.current = z;
     setZoom(z);
@@ -611,6 +638,7 @@ export function VillageScene({
       data-camera-x={camMark.x}
       data-camera-y={camMark.y}
       data-camera-zoom={camMark.zoom}
+      data-map-fill={mapFill}
       data-critters={life.decor?.critters ?? "none"}
       data-dusk={life.decor?.dusk ? "1" : "0"}
       data-night={life.decor?.night ? "1" : "0"}
