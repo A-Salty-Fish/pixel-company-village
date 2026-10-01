@@ -1980,8 +1980,6 @@ export function VillagePage({ initial }: Props) {
           if (!identityLandDue({ previous, next: name })) return;
           setIdentityPulse((value) => value + 1);
           advanceLoop("who");
-          const panel = document.querySelector<HTMLDetailsElement>("[data-testid='comfort-settings']");
-          if (panel) panel.open = false;
           document.querySelector("[data-testid='village-hero']")?.scrollIntoView({ block: "start" });
         }}
         motionReduced={motion.reduced}
