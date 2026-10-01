@@ -15,7 +15,33 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.6.1";
+export const APP_VERSION = "1.6.2";
+
+/** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
+export const RELEASE_SCROLL_ENABLED = true;
+
+export function releaseNotesScrollable(enabled = RELEASE_SCROLL_ENABLED) {
+  return enabled;
+}
+
+/** While the plaque is open, wheel and touch stay on the log. */
+export function releaseWheelShouldCapture(open: boolean, enabled = RELEASE_SCROLL_ENABLED) {
+  return enabled && open;
+}
+
+/**
+ * PageDown / PageUp / arrows move the log by a viewport chunk.
+ * Returns 0 for keys that should stay with buttons and fields.
+ */
+export function releaseScrollDelta(key: string, viewportPx: number, enabled = RELEASE_SCROLL_ENABLED) {
+  if (!enabled) return 0;
+  const view = Math.max(1, Math.round(viewportPx));
+  if (key === "PageDown") return Math.round(view * 0.85);
+  if (key === "PageUp") return -Math.round(view * 0.85);
+  if (key === "ArrowDown") return 48;
+  if (key === "ArrowUp") return -48;
+  return 0;
+}
 
 export const RELEASE_BOARD_TITLE = "更新日志";
 
@@ -31,6 +57,16 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.6.2",
+    date: "2026-10-01",
+    title: "夜里认得出村子",
+    notes: [
+      "夜里在手机上也能看见田、屋子和人。冷色还在，不再是一整块黑。",
+      "地图左上角不再多出一块蓝色方块。",
+      "更新日志可以自己滑动。后面的名册不会跟着卷走。",
+    ],
+  },
   {
     version: "1.6.1",
     date: "2026-10-01",

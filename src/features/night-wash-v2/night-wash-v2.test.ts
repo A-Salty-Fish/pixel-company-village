@@ -5,9 +5,13 @@ import {
   DAY_GRASS,
   LAMP_CORE,
   NIGHT_WASH_V2_ENABLED,
+  VEIL_INK,
+  WASH_COMPOSITE,
   contrastRatio,
+  farmStillReads,
   nightField,
   nightLookV2,
+  nightWashBlanks,
   nightWashV2Mark,
   nightWashV2ShouldPaint,
   sessionIsNight,
@@ -27,6 +31,11 @@ test("PV-PM-016 night wash follows the glance clock and stays dark, cool, and st
   }
 
   const night = nightField(DAY_GRASS);
+  assert.equal(WASH_COMPOSITE, "source-over");
+  assert.equal(nightWashBlanks(), false);
+  assert.equal(nightWashBlanks(0.78), true);
+  assert.equal(VEIL_INK.a < 0.75, true);
+  assert.equal(farmStillReads(night), true);
   assert.equal(night.b > night.g, true);
   assert.equal(night.g < DAY_GRASS.g - 40, true);
   assert.equal(night.r < DAY_GRASS.r - 20, true);

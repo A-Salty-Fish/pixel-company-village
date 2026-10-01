@@ -73,5 +73,5 @@ test("desktop still shows the ritual trio and the map legend", async ({ page }) 
   await expect(page.getByTestId("header-fold")).toBeHidden();
   await expect(page.getByTestId("map-more")).toBeHidden();
   await expect(page.getByTestId("refresh-scores")).toBeVisible();
-  await expect(page.getByRole("button", { name: "出村" })).toBeVisible();
+  await expect(page.getByTestId("exit-village")).toBeVisible();
 });

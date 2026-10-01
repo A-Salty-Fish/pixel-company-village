@@ -91,14 +91,36 @@
   padding: 0;
   background: rgb(42 26 16 / 35%);
   border: 0;
+  touch-action: none;
 }
 
-.sheet {
+/* details.hud-panel sets overflow:visible and wins over a single class. */
+:global(details.hud-panel).sheet {
   position: fixed;
   z-index: 90;
   left: max(0.75rem, env(safe-area-inset-left));
   right: max(0.75rem, env(safe-area-inset-right));
   bottom: max(0.75rem, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
   max-height: min(72dvh, 36rem);
-  overflow: auto;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: min(62dvh, 32rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll {
+    scroll-behavior: auto;
+  }
 }

@@ -1174,10 +1174,11 @@ export function paintBootField(ctx: CanvasRenderingContext2D, viewW: number, vie
   }
   ctx.fillStyle = "#c4a060";
   ctx.fillRect(0, Math.round(viewH * 0.42), viewW, 18);
-  ctx.fillStyle = "#3a8fbc";
-  ctx.fillRect(28, 28, Math.min(180, viewW * 0.2), 48);
+  const plaqueW = Math.min(280, Math.max(44, viewW - 32));
   ctx.fillStyle = "#5a3214";
-  ctx.fillRect(16, 16, Math.min(280, viewW - 32), 36);
+  ctx.fillRect(16, 16, plaqueW, 36);
+  ctx.fillStyle = "#c4a060";
+  ctx.fillRect(16, 16, plaqueW, 4);
   ctx.fillStyle = "#fff6d8";
   ctx.font = "16px sans-serif";
   ctx.fillText(label, 28, 40);

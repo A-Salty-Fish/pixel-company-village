@@ -30,7 +30,7 @@ test("production read-only smoke @prod", async ({ page }) => {
     await expect(page.getByTestId("signal-card")).toContainText("未评分");
   }
   await page.screenshot({ path: "tmp/prod-smoke/05-unscored-or-empty.png", fullPage: true });
-  await page.getByRole("button", { name: "出村" }).click();
+  await page.getByTestId("exit-village").click();
   await expect(page.getByTestId("login-form")).toBeVisible();
   await page.screenshot({ path: "tmp/prod-smoke/06-left-village.png", fullPage: true });
   expect(writes.filter((url) => /\/api\/(kindness|wave|ingest|feed)/.test(url))).toEqual([]);

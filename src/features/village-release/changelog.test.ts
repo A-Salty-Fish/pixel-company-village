@@ -10,44 +10,49 @@ import {
   documentTitle,
   playerFacingLines,
   releaseDateLabel,
+  releaseNotesScrollable,
+  releaseScrollDelta,
   releaseUiVisible,
+  releaseWheelShouldCapture,
   releasesAreNewestFirst,
   shipTitle,
   versionLabel,
 } from "@/features/village-release/changelog";
 
-test("1.6.1 is the displayed ship and stays newest-first", () => {
+test("1.6.2 is the displayed ship and stays newest-first", () => {
   assert.equal(RELEASE_NOTES_ENABLED, true);
-  assert.equal(APP_VERSION, "1.6.1");
-  assert.equal(versionLabel(), "v1.6.1");
+  assert.equal(APP_VERSION, "1.6.2");
+  assert.equal(versionLabel(), "v1.6.2");
   assert.equal(releaseUiVisible(), true);
   assert.equal(releaseUiVisible(false), false);
   assert.equal(RELEASES[0]?.version, APP_VERSION);
-  assert.equal(RELEASES[1]?.version, "1.6.0");
-  assert.equal(RELEASES[2]?.version, "1.5.1");
-  assert.equal(RELEASES[3]?.version, "1.5.0");
-  assert.equal(RELEASES[4]?.version, "1.4.0");
-  assert.equal(RELEASES[5]?.version, "1.3.1");
-  assert.equal(RELEASES[6]?.version, "1.3.0");
-  assert.equal(RELEASES[7]?.version, "1.2.0");
-  assert.equal(RELEASES[8]?.version, "1.1.0");
-  assert.equal(RELEASES[9]?.version, "1.0.0");
+  assert.equal(RELEASES[1]?.version, "1.6.1");
+  assert.equal(RELEASES[2]?.version, "1.6.0");
+  assert.equal(RELEASES[3]?.version, "1.5.1");
+  assert.equal(RELEASES[4]?.version, "1.5.0");
+  assert.equal(RELEASES[5]?.version, "1.4.0");
+  assert.equal(RELEASES[6]?.version, "1.3.1");
+  assert.equal(RELEASES[7]?.version, "1.3.0");
+  assert.equal(RELEASES[8]?.version, "1.2.0");
+  assert.equal(RELEASES[9]?.version, "1.1.0");
+  assert.equal(RELEASES[10]?.version, "1.0.0");
   assert.equal(releasesAreNewestFirst(RELEASES), true);
   assert.equal(releasesAreNewestFirst([]), false);
   assert.equal(releasesAreNewestFirst([{ ...RELEASES[0], version: "nope" }]), false);
-  assert.equal(currentRelease()?.title, "回家在底栏");
-  assert.equal(shipTitle(), "回家在底栏");
-  assert.equal(documentTitle(), "像素公司村 · 回家在底栏");
+  assert.equal(currentRelease()?.title, "夜里认得出村子");
+  assert.equal(shipTitle(), "夜里认得出村子");
+  assert.equal(documentTitle(), "像素公司村 · 夜里认得出村子");
   assert.equal(documentTitle(RELEASES, APP_VERSION).startsWith("像素公司村"), true);
-  assert.equal(RELEASES[1]?.title, "慢慢住下");
-  assert.equal(RELEASES[2]?.title, "再来一趟");
+  assert.equal(RELEASES[1]?.title, "回家在底栏");
+  assert.equal(RELEASES[2]?.title, "慢慢住下");
   assert.equal(RELEASES[3]?.title, "再来一趟");
-  assert.equal(RELEASES[4]?.title, "手机也想多待");
-  assert.equal(RELEASES[5]?.title, "还想回村");
+  assert.equal(RELEASES[4]?.title, "再来一趟");
+  assert.equal(RELEASES[5]?.title, "手机也想多待");
   assert.equal(RELEASES[6]?.title, "还想回村");
-  assert.equal(RELEASES[7]?.title, "再待一会儿");
-  assert.equal(RELEASES[8]?.title, "夜里还能认路");
-  assert.equal(RELEASES[9]?.title, "村里开张");
+  assert.equal(RELEASES[7]?.title, "还想回村");
+  assert.equal(RELEASES[8]?.title, "再待一会儿");
+  assert.equal(RELEASES[9]?.title, "夜里还能认路");
+  assert.equal(RELEASES[10]?.title, "村里开张");
   assert.equal(releaseDateLabel("2026-09-30"), "2026年9月30日");
   assert.equal(releaseDateLabel("soon"), "soon");
 
@@ -107,6 +112,24 @@ test("1.6.1 is the displayed ship and stays newest-first", () => {
   assert.match(blob, /木牌会亮一会儿/);
   assert.match(blob, /湖上的星/);
   assert.match(blob, /送别/);
+  assert.match(blob, /夜里认得出村子/);
+  assert.match(blob, /田、屋子和人/);
+  assert.match(blob, /蓝色方块/);
+  assert.match(blob, /更新日志可以自己滑动/);
+  assert.match(blob, /名册不会跟着卷走/);
+
+  assert.equal(releaseNotesScrollable(), true);
+  assert.equal(releaseNotesScrollable(false), false);
+  assert.equal(releaseWheelShouldCapture(true), true);
+  assert.equal(releaseWheelShouldCapture(false), false);
+  assert.equal(releaseWheelShouldCapture(true, false), false);
+  const page = releaseScrollDelta("PageDown", 400);
+  assert.equal(page > 300, true);
+  assert.equal(releaseScrollDelta("PageUp", 400), -page);
+  assert.equal(releaseScrollDelta("ArrowDown", 400), 48);
+  assert.equal(releaseScrollDelta("ArrowUp", 400), -48);
+  assert.equal(releaseScrollDelta(" ", 400), 0);
+  assert.equal(releaseScrollDelta("PageDown", 400, false), 0);
 
   const pkg = JSON.parse(readFileSync("package.json", "utf8")) as { version: string };
   assert.equal(pkg.version, APP_VERSION);
