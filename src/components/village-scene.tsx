@@ -42,6 +42,10 @@ import { NAMEPLATE_CLEAR_ENABLED, NEAR_PLATE_CAP } from "@/features/nameplate-cl
 import { toyPulseMark } from "@/features/yard-toy-focus/yard-toy-focus";
 import { GestureChrome } from "@/features/gesture-sfx/gesture-chrome";
 import { autumnLeafCount, leafDriftMark } from "@/features/autumn-leaf-drift/autumn-leaf-drift";
+import { mapDepthMark } from "@/features/map-depth/map-depth";
+import { meadowBreathCount, meadowBreathMark } from "@/features/meadow-breath/meadow-breath";
+import { villagerReadMark } from "@/features/villager-read/villager-read";
+import { nameplateAirMark } from "@/features/nameplate-air/nameplate-air";
 import { waitingCueMark } from "@/features/waiting-cue/waiting-cue";
 import { MAP_HUD_FOLD_ENABLED, hitToy } from "@/features/map-hud-fold/map-hud-fold";
 import type { ToyId } from "@/features/yard-toy-focus/yard-toy-focus";
@@ -673,6 +677,11 @@ export function VillageScene({
       data-toy-pulse={toyPulse}
       data-leaf-drift={leafDriftMark(life.decor?.seasonId ?? "", life.reduceMotion)}
       data-leaf-count={String(autumnLeafCount(life.decor?.seasonId ?? ""))}
+      data-meadow-breath={meadowBreathMark(life.reduceMotion)}
+      data-meadow-count={String(meadowBreathCount(life.reduceMotion))}
+      data-map-depth={mapDepthMark()}
+      data-villager-read={villagerReadMark()}
+      data-nameplate-air={nameplateAirMark()}
       data-waiting-cue={waitingCueMark(life.waitingCue ?? null)}
       data-ritual-rim={life.ritualRim ? "warm" : "off"}
     >

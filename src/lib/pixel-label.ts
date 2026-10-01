@@ -1,5 +1,7 @@
 /** Fusion Pixel nameplates. Glyphs are rasterized at 12px, then nearest-neighbor scaled. */
 
+import { nameplateTracking, glyphOffsets, trackedSpan } from "@/features/nameplate-air/nameplate-air";
+
 export type LabelMode = "hot" | "scored" | "muted";
 
 const labelCache = new Map<string, { canvas: HTMLCanvasElement; w: number; h: number }>();
@@ -20,11 +22,15 @@ function crisp(canvas: HTMLCanvasElement, read = false) {
 
 function rasterText(text: string, color: string) {
   const fontPx = 12;
+  const tracking = nameplateTracking();
   const probe = crisp(makeCanvas(4, 4));
   const font = `${fontPx}px FusionPixel`;
   if (!probe) return null;
   probe.font = font;
-  const measured = Math.ceil(probe.measureText(text).width);
+  const chars = [...text];
+  const useTrack = tracking > 0 && chars.length > 1;
+  const widths = useTrack ? chars.map((ch) => Math.max(1, Math.ceil(probe.measureText(ch).width))) : [];
+  const measured = useTrack ? trackedSpan(widths, tracking) : Math.ceil(probe.measureText(text).width);
   const tw = Math.max(fontPx, measured);
   const th = fontPx + 2;
   const canvas = makeCanvas(tw + 2, th);
@@ -34,7 +40,14 @@ function rasterText(text: string, color: string) {
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
   ctx.fillStyle = "#ffffff";
-  ctx.fillText(text, 1, 0);
+  if (useTrack) {
+    const offsets = glyphOffsets(widths, tracking);
+    chars.forEach((ch, index) => {
+      ctx.fillText(ch, 1 + (offsets[index] ?? 0), 0);
+    });
+  } else {
+    ctx.fillText(text, 1, 0);
+  }
   const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = image.data;
   const [r, g, b] = hexRgb(color);
@@ -59,7 +72,8 @@ export function clearLabelCache() {
 }
 
 export function getLabelSprite(name: string, mode: LabelMode) {
-  const key = `fusion|${mode}|${name}`;
+  const tracking = nameplateTracking();
+  const key = `fusion|${tracking}|${mode}|${name}`;
   const hit = labelCache.get(key);
   if (hit) return hit;
 
@@ -67,7 +81,7 @@ export function getLabelSprite(name: string, mode: LabelMode) {
   const text = rasterText(name, ink);
   if (!text) return null;
 
-  const padX = 4;
+  const padX = tracking > 0 ? 5 : 4;
   const padY = 3;
   const w = text.w + padX * 2;
   const h = text.h + padY * 2;

@@ -5,20 +5,23 @@ test("version chip opens the player changelog", async ({ page }) => {
   await login(page);
   const chip = page.getByTestId("village-version");
   await expect(chip).toBeVisible();
-  await expect(chip).toHaveAttribute("data-version", "1.6.2");
-  await expect(chip).toContainText("v1.6.2");
+  await expect(chip).toHaveAttribute("data-version", "1.6.3");
+  await expect(chip).toContainText("v1.6.3");
   const onMap = await chip.evaluate((el) => Boolean(el.closest("[data-village-host], canvas")));
   expect(onMap).toBe(false);
-  await expect(page).toHaveTitle("像素公司村 · 夜里认得出村子");
+  await expect(page).toHaveTitle("像素公司村 · 告别廉价");
   const header = page.getByTestId("village-header");
   await expect(header.getByTestId("village-brand")).toHaveText("像素公司村");
-  await expect(header.getByTestId("ship-title")).toHaveText("夜里认得出村子");
+  await expect(header.getByTestId("ship-title")).toHaveText("告别廉价");
 
   await chip.click();
   const notes = page.getByTestId("release-notes");
   await expect(notes).toHaveJSProperty("open", true);
   await expect(notes).toBeVisible();
   await expect(notes).toContainText("更新日志");
+  await expect(notes).toContainText("v1.6.3 · 告别廉价");
+  await expect(notes).toContainText("不再像贴上去的纸片");
+  await expect(notes).toContainText("眼睛先落在田上");
   await expect(notes).toContainText("v1.6.2 · 夜里认得出村子");
   await expect(notes).toContainText("田、屋子和人");
   await expect(notes).toContainText("蓝色方块");

@@ -1,8 +1,15 @@
 "use client";
 
+import { focalVillageMark } from "@/features/focal-village/focal-village";
+import { woodPlaqueMark } from "@/features/wood-plaque/wood-plaque";
+
 export default function VillageError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <div className="farm-page flex flex-1 items-center justify-center px-4 py-10">
+    <div
+      className="farm-page flex flex-1 items-center justify-center px-4 py-10"
+      data-wood-plaque={woodPlaqueMark()}
+      data-focal-village={focalVillageMark()}
+    >
       <div className="hud-panel max-w-md overflow-hidden" data-testid="village-boundary">
         <div className="hud-title">村子还在</div>
         <div className="space-y-3 px-4 py-4 text-sm text-[#2a1a10]">

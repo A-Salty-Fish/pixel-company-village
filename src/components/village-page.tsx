@@ -113,6 +113,10 @@ import { RITUAL_RIM_MS, RITUAL_RIM_TOAST, ritualRimOffer } from "@/features/ritu
 import { NARROW_CHROME_ENABLED, todayEntryLabel } from "@/features/narrow-chrome/narrow-chrome";
 import { MAP_HUD_FOLD_ENABLED, toyTapCopy } from "@/features/map-hud-fold/map-hud-fold";
 import { THUMB_IDENTITY_ENABLED, thumbShowsHome } from "@/features/thumb-identity/thumb-identity";
+import { softChromeMark } from "@/features/soft-chrome/soft-chrome";
+import { pressFeelMark } from "@/features/press-feel/press-feel";
+import { woodPlaqueMark } from "@/features/wood-plaque/wood-plaque";
+import { focalVillageMark } from "@/features/focal-village/focal-village";
 import { DUSK_LANTERN_ENABLED, DUSK_LANTERN_LINE, duskLanternOffer } from "@/features/dusk-lantern/dusk-lantern";
 import { dawnPanTarget, dawnPorchOffer, pickDawnSpot, type DawnSpot } from "@/features/dawn-porch/dawn-porch";
 import { EXIT_SOFT_BYE_ENABLED, exitByePlan } from "@/features/exit-soft-bye/exit-soft-bye";
@@ -1579,6 +1583,10 @@ export function VillagePage({ initial }: Props) {
       data-identity-land={identityPulse > 0 ? "1" : "0"}
       data-map-hud={MAP_HUD_FOLD_ENABLED ? "fold" : "open"}
       data-thumb-identity={THUMB_IDENTITY_ENABLED ? "1" : "0"}
+      data-soft-chrome={softChromeMark()}
+      data-press-feel={pressFeelMark()}
+      data-wood-plaque={woodPlaqueMark()}
+      data-focal-village={focalVillageMark()}
     >
       <LightSfxBridge muted={comfort.sfxMuted} reduceMotion={motion.reduced} />
       <div className="village-hero" data-testid="village-hero">
