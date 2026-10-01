@@ -1079,28 +1079,48 @@ a:focus-visible,
 }
 
 .today-hint {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  z-index: 20;
   pointer-events: none;
-  max-width: 11.5rem;
-  padding: 0.35rem 0.5rem 0.4rem;
-  background: rgb(255 246 216 / 90%);
+  max-width: min(12rem, 48vw);
+  padding: 0.4rem 0.55rem 0.45rem;
+  background: rgb(255 246 216 / 96%);
   color: #4a3a28;
-  border: 2px solid rgb(106 61 24 / 28%);
-  font-size: 11px;
+  border: 2px solid #6a3d18;
+  box-shadow: 3px 3px 0 rgb(61 42 28 / 45%);
+  font-size: 12px;
   line-height: 1.45;
+}
+
+.village-map-slot:has([data-testid="today-can-do"]) .name-legend,
+.village-map-slot:has([data-testid="today-can-do"]) .emote-bar {
+  max-width: min(16rem, calc(100% - 13rem));
+}
+
+.village-map-slot:has([data-testid="today-can-do"]) .weather-chip {
+  top: 7.4rem;
 }
 
 .today-hint-title {
   margin: 0;
   color: #6a3d18;
+  font-weight: 700;
 }
 
 .today-hint-list {
-  margin: 0.15rem 0 0;
-  padding-left: 1rem;
+  margin: 0.2rem 0 0;
+  padding-left: 1.05rem;
+  list-style: disc;
+}
+
+.today-hint-list li {
+  color: #4a3a28;
 }
 
 .today-hint[data-today-hint="fade"] {
-  opacity: 0.38;
+  opacity: 0.55;
   transition: opacity 1.1s linear;
 }
 

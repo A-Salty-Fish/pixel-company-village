@@ -1,5 +1,10 @@
 /* village-release. Set RELEASE_NOTES_ENABLED to false and drop the imports to hide. */
 
+.ship {
+  margin: 0;
+  color: #6a3d18;
+}
+
 .chip {
   display: inline-flex;
   flex: 0 0 auto;

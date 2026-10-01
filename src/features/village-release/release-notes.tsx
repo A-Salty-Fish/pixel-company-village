@@ -5,8 +5,10 @@ import {
   RELEASE_BOARD_INTRO,
   RELEASE_BOARD_TITLE,
   RELEASES,
+  currentRelease,
   releaseDateLabel,
   releaseUiVisible,
+  shipTitle,
   versionLabel,
 } from "@/features/village-release/changelog";
 import styles from "@/features/village-release/release-notes.module.css";
@@ -16,6 +18,18 @@ export function openReleaseNotes() {
   if (!(panel instanceof HTMLDetailsElement)) return;
   panel.open = true;
   panel.scrollIntoView({ block: "start" });
+}
+
+/** Current ship name, beside the brand. The brand itself stays 「像素公司村」. */
+export function ShipTitle() {
+  if (!releaseUiVisible()) return null;
+  const title = shipTitle();
+  if (!title) return null;
+  return (
+    <p className={`${styles.ship} pixel-label`} data-testid="ship-title" data-module="village-release">
+      {title}
+    </p>
+  );
 }
 
 /** Header plaque. Stays off the map. */
@@ -49,6 +63,7 @@ export function ReleaseNotes() {
     >
       <summary className="hud-title cursor-pointer">
         {RELEASE_BOARD_TITLE} · {versionLabel()}
+        {currentRelease()?.title ? ` · ${currentRelease()?.title}` : ""}
       </summary>
       <div className="space-y-3 px-3 py-3 text-sm text-[#2a1a10]">
         <p className="text-xs leading-5 text-[#6a3d18]">{RELEASE_BOARD_INTRO}</p>

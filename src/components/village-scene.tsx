@@ -65,6 +65,7 @@ type Props = {
   ambientOn?: boolean;
   onSfxMute?: (muted: boolean) => void;
   onAmbient?: (on: boolean) => void;
+  onMapReady?: () => void;
 };
 
 const MIN_ZOOM = 1;
@@ -89,6 +90,7 @@ export function VillageScene({
   ambientOn = false,
   onSfxMute,
   onAmbient,
+  onMapReady,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -122,6 +124,16 @@ export function VillageScene({
   const wheelAt = useRef(0);
   const glowUntilRef = useRef(0);
   const aimHoldRef = useRef(0);
+  const onMapReadyRef = useRef(onMapReady);
+
+  useEffect(() => {
+    onMapReadyRef.current = onMapReady;
+  }, [onMapReady]);
+
+  useEffect(() => {
+    if (!ready) return;
+    onMapReadyRef.current?.();
+  }, [ready]);
 
   useEffect(() => {
     villagersRef.current = villagers;
