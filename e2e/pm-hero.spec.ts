@@ -48,6 +48,13 @@ test("a narrow fresh session still fits the map above the fold", async ({ page }
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page);
   expectHero(await heroBox(page));
+  const host = page.locator("[data-village-host='ready']");
+  await expect(host).toHaveAttribute("data-map-fill", "village");
+  await expect(host).toHaveAttribute("data-camera-zoom", /2|3/);
+  const camY = Number(await host.getAttribute("data-camera-y"));
+  const zoom = Number(await host.getAttribute("data-camera-zoom"));
+  const spanH = Math.floor(1120 / zoom);
+  expect(camY + spanH).toBeLessThan(980);
   const today = page.getByTestId("today-entry");
   await expect(today).toBeVisible();
   await expect(today).toContainText("今日");
@@ -65,6 +72,7 @@ test("default panorama plates stay at eight until 全显名牌", async ({ page }
   await login(page);
   const host = page.locator("[data-village-host='ready']");
   await expect(host).toHaveAttribute("data-camera-zoom", "1");
+  await expect(host).toHaveAttribute("data-map-fill", "world");
   await expect(host).toHaveAttribute("data-quiet", "1");
   await expect(host).toHaveAttribute("data-plate-cap", "4");
   await expect.poll(async () => Number(await host.getAttribute("data-plate-count"))).toBeLessThanOrEqual(8);
