@@ -5,8 +5,10 @@ import {
   RELEASE_BOARD_INTRO,
   RELEASE_BOARD_TITLE,
   RELEASES,
+  currentRelease,
   releaseDateLabel,
   releaseUiVisible,
+  shipTitle,
   versionLabel,
 } from "@/features/village-release/changelog";
 import styles from "@/features/village-release/release-notes.module.css";
@@ -18,9 +20,10 @@ export function openReleaseNotes() {
   panel.scrollIntoView({ block: "start" });
 }
 
-/** Header plaque. Stays off the map. */
+/** Header plaque. Brand stays 「像素公司村」; the ship name shares this 44px chip. */
 export function ReleaseChip() {
   if (!releaseUiVisible()) return null;
+  const title = shipTitle();
   return (
     <button
       type="button"
@@ -31,7 +34,12 @@ export function ReleaseChip() {
       aria-controls="release-notes"
       onClick={openReleaseNotes}
     >
-      {versionLabel()}
+      <span className={styles.chipVersion}>{versionLabel()}</span>
+      {title ? (
+        <span className={styles.chipTitle} data-testid="ship-title">
+          {title}
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -49,6 +57,7 @@ export function ReleaseNotes() {
     >
       <summary className="hud-title cursor-pointer">
         {RELEASE_BOARD_TITLE} · {versionLabel()}
+        {currentRelease()?.title ? ` · ${currentRelease()?.title}` : ""}
       </summary>
       <div className="space-y-3 px-3 py-3 text-sm text-[#2a1a10]">
         <p className="text-xs leading-5 text-[#6a3d18]">{RELEASE_BOARD_INTRO}</p>

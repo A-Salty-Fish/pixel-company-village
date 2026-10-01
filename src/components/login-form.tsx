@@ -1,3 +1,5 @@
+import { ClearHintOnGate } from "@/features/today-can-do/clear-hint-on-gate";
+
 const DISCLAIMER = "代理信号≠绩效；摸鱼分是趣味雷达";
 
 const ERRORS: Record<string, string> = {
@@ -15,6 +17,13 @@ export function LoginForm({ errorCode }: Props) {
 
   return (
     <div className="farm-page flex flex-1 items-center justify-center px-4 py-10">
+      <script
+        dangerouslySetInnerHTML={{
+          __html:
+            "try{sessionStorage.removeItem('village:today-hint-start-v1');sessionStorage.removeItem('village:today-hint-dismiss-v1');}catch(e){}",
+        }}
+      />
+      <ClearHintOnGate />
       <div className="hud-panel w-full max-w-md overflow-hidden">
         <div className="hud-title">门禁</div>
         <div className="space-y-3 px-4 py-4">

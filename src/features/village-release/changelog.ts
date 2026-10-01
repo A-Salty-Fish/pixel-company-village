@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.3.0";
+export const APP_VERSION = "1.3.1";
 
 export const RELEASE_BOARD_TITLE = "更新日志";
 
@@ -31,6 +31,16 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.3.1",
+    date: "2026-10-01",
+    title: "还想回村",
+    notes: [
+      "进村头半分钟，地图上角写着今日可做，三行都在。",
+      "点门灯、做一件小事，或找一个人，提示就收起。",
+      "页头版本旁边写着这一版的名字。打开木牌也能看见。",
+    ],
+  },
   {
     version: "1.3.0",
     date: "2026-10-01",
@@ -116,6 +126,18 @@ export function releaseDateLabel(iso: string) {
 
 export function currentRelease(releases = RELEASES, version = APP_VERSION) {
   return releases.find((item) => item.version === version) ?? null;
+}
+
+/** Player-facing name of the current ship. Brand stays 「像素公司村」. */
+export function shipTitle(releases = RELEASES, version = APP_VERSION) {
+  return currentRelease(releases, version)?.title ?? "";
+}
+
+/** Document title. Brand stays, and the current ship name follows it. */
+export function documentTitle(releases = RELEASES, version = APP_VERSION) {
+  const title = shipTitle(releases, version);
+  if (!RELEASE_NOTES_ENABLED || !title) return "像素公司村";
+  return `像素公司村 · ${title}`;
 }
 
 export function releaseUiVisible(enabled = RELEASE_NOTES_ENABLED) {

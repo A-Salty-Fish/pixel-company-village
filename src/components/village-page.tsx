@@ -94,6 +94,7 @@ import {
 import { FeedbackStrip } from "@/features/village-feedback/feedback-strip";
 import {
   TODAY_CAN_DO_ENABLED,
+  clearHintClock,
   loadHintClock,
   storeHintDismiss,
   todayHintDismisses,
@@ -261,6 +262,7 @@ export function VillagePage({ initial }: Props) {
   const [ritualGlowAt, setRitualGlowAt] = useState<number | null>(null);
   const [ritualPhase, setRitualPhase] = useState<AfterglowPhase>("off");
   const [hintPhase, setHintPhase] = useState<TodayHintPhase>("off");
+  const [mapReady, setMapReady] = useState(false);
   const [hintDismissed, setHintDismissed] = useState(false);
   const hintDismissedRef = useRef(false);
   const [ritualRimOn, setRitualRimOn] = useState(false);
@@ -380,6 +382,7 @@ export function VillagePage({ initial }: Props) {
   }
 
   async function logout() {
+    clearHintClock();
     await fetch("/api/logout", { method: "POST", cache: "no-store" });
     // Full document load. A client-router return to "/" was reusing the shell
     // from before the cookie clear, so the header and roster stayed blank
@@ -533,11 +536,18 @@ export function VillagePage({ initial }: Props) {
   }, [ritualGlowAt, motion.reduced]);
 
   useEffect(() => {
-    if (!TODAY_CAN_DO_ENABLED) return;
+    if (mapReady || people.length === 0) return;
+    const ready = document.querySelector("[data-village-host='ready'], canvas[data-village-ready='1']");
+    if (ready) setMapReady(true);
+  }, [people.length, mapReady]);
+
+  useLayoutEffect(() => {
+    if (!TODAY_CAN_DO_ENABLED || !mapReady) return;
     const started = loadHintClock(Date.now());
     if (started.dismissed) {
       hintDismissedRef.current = true;
       setHintDismissed(true);
+      setHintPhase("off");
       return;
     }
     const tick = () => {
@@ -546,9 +556,9 @@ export function VillagePage({ initial }: Props) {
       );
     };
     tick();
-    const id = window.setInterval(tick, 1000);
+    const id = window.setInterval(tick, 500);
     return () => window.clearInterval(id);
-  }, []);
+  }, [mapReady]);
 
   useEffect(() => {
     if (!hintDismissed) return;
@@ -1326,8 +1336,10 @@ export function VillagePage({ initial }: Props) {
       <header ref={headerRef} className="hud-panel village-header" data-testid="village-header">
         <div className="village-header-row">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="pixel-label text-[#2a1a10]">像素公司村</p>
+            <div className="brand-cluster">
+              <p className="pixel-label text-[#2a1a10]" data-testid="village-brand">
+                像素公司村
+              </p>
               <ReleaseChip />
             </div>
             <p className="glance-line text-xs text-[#2a1a10]" data-testid="village-glance">
@@ -1583,6 +1595,7 @@ export function VillagePage({ initial }: Props) {
             ambientOn={ambientOn}
             onSfxMute={(muted) => saveComfort({ ...comfort, sfxMuted: muted })}
             onAmbient={setAmbientOn}
+            onMapReady={() => setMapReady(true)}
             onEmpty={(x, y) => {
               if (!selfName) return;
               updateWave((current) => {
@@ -1597,8 +1610,8 @@ export function VillagePage({ initial }: Props) {
             }}
           />
           <FeedbackStrip beat={feedback} />
+          <TodayHint phase={hintPhase} />
           <div className="map-corner" data-testid="map-corner">
-            <TodayHint phase={hintPhase} />
             {stayOn ? <StayCorner note={STAY_NOTE} slots={staySlots} onPick={runStay} /> : null}
             {TOY_DOCK_ENABLED ? (
               <ToyDock
