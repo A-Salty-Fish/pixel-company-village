@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, roster } from "./login";
+import { login, roster, openVillageDrawer } from "./login";
 
 test("show-all nameplates flip a host flag", async ({ page }) => {
   await login(page);
@@ -37,6 +37,7 @@ test("viewer switch keeps pins and kindness apart", async ({ page }) => {
   const [first, second, third, fourth] = body.people.map((person) => person.name);
   await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(first);
+  await openVillageDrawer(page);
   await page.getByTestId("wave-d-panel").locator("summary").click();
   for (const name of [first, second, third]) {
     await page.locator(`[data-pin="${name}"]`).click();
@@ -45,6 +46,7 @@ test("viewer switch keeps pins and kindness apart", async ({ page }) => {
   await expect(page.getByTestId("pin-hint")).toContainText("最多钉三枚");
   await page.reload();
   await page.waitForSelector("canvas[data-village-ready='1']");
+  await openVillageDrawer(page);
   await page.getByTestId("wave-d-panel").locator("summary").click();
   await expect(page.locator(`[data-pin="${first}"]`)).toHaveAttribute("aria-pressed", "true");
   await page.getByTestId("comfort-settings").locator("> summary").click();
@@ -78,6 +80,7 @@ test("home camera moves when self is set", async ({ page }) => {
   const self = body.people[0].name;
   await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(self);
+  await openVillageDrawer(page);
   await page.getByTestId("wave-d-panel").locator("summary").click();
   await page.getByTestId("go-home").click();
   await expect(page.locator("[data-village-host]")).toHaveAttribute("data-camera-zoom", "2");
@@ -88,6 +91,7 @@ test("visitor copy blocks home until a name is chosen", async ({ page }) => {
   await login(page);
   await expect(page.getByTestId("visitor-banner")).toBeVisible();
   await expect(page.getByTestId("thumb-home")).toBeDisabled();
+  await openVillageDrawer(page);
   await page.getByTestId("wave-d-panel").locator("summary").click();
   await expect(page.getByTestId("go-home")).toBeDisabled();
 });
@@ -98,6 +102,7 @@ test("crop water blocks a second pour the same day", async ({ page }) => {
   await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(body.people[0].name);
   await page.evaluate(() => window.__VILLAGE_TEST__?.setClock("2026-09-30T02:00:00.000Z"));
+  await openVillageDrawer(page);
   await page.getByTestId("wave-d-panel").locator("summary").click();
   await page.getByTestId("water-crop").click();
   await expect(page.getByTestId("wave-line")).toContainText("浇");
@@ -114,6 +119,7 @@ test("postcard export does not upload", async ({ page }) => {
   page.on("request", (request) => {
     if (request.method() === "POST") posts.push(request.url());
   });
+  await openVillageDrawer(page);
   await page.getByTestId("wave-d-panel").locator("summary").click();
   await page.getByTestId("save-postcard").click();
   await expect(page.getByTestId("wave-line")).toContainText("已存");

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, openWeekBoard, roster } from "./login";
+import { login, openWeekBoard, roster, openVillageDrawer } from "./login";
 
 const WORLD: Record<string, string> = {
   浇自己的田: "water",
@@ -75,6 +75,8 @@ test("a wave gets a canned reply from the other person", async ({ page }) => {
 
 test("closed yard panels show how many loops were touched", async ({ page }) => {
   await login(page);
+  await openVillageDrawer(page);
+  await expect(page.getByTestId("village-drawer")).toHaveAttribute("open", "");
   await expect(page.getByTestId("loop-summary-tally")).toHaveText("0/10");
   await expect(page.getByTestId("nook-summary-tally")).toHaveText("0/10");
   await expect(page.getByTestId("village-loops")).not.toHaveAttribute("open", "");

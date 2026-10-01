@@ -92,6 +92,20 @@ import {
   type VillageFeedback,
 } from "@/features/village-feedback/village-feedback";
 import { FeedbackStrip } from "@/features/village-feedback/feedback-strip";
+import {
+  TODAY_CAN_DO_ENABLED,
+  loadHintClock,
+  storeHintDismiss,
+  todayHintDismisses,
+  todayHintPhase,
+  type TodayAction,
+  type TodayHintPhase,
+} from "@/features/today-can-do/today-can-do";
+import { TodayHint } from "@/features/today-can-do/today-hint";
+import { waitingCueFor } from "@/features/waiting-cue/waiting-cue";
+import { VillageDrawer } from "@/features/village-drawer/drawer-view";
+import { SOFT_AMBIENT_ENABLED, softAmbientOn, syncSoftAmbient } from "@/features/soft-ambient/soft-ambient";
+import { RITUAL_RIM_MS, RITUAL_RIM_TOAST, ritualRimOffer } from "@/features/ritual-rim/ritual-rim";
 import { POST_WEEK_PRESENCE_ENABLED, loadGlance, presencePhase, storeGlance, type GlanceSave } from "@/features/post-week-presence/presence";
 import { PostWeekPresence } from "@/features/post-week-presence/presence-view";
 import {
@@ -197,6 +211,7 @@ import {
   getServerPrefSnapshot,
   hydratePrefs,
   kindnessDayCounts,
+  kindnessDays,
   kindnessOnDay,
   kindnessStatus,
   localScoreHistory,
@@ -245,6 +260,11 @@ export function VillagePage({ initial }: Props) {
   const [ritualMark, setRitualMark] = useState<RitualSave | null>(null);
   const [ritualGlowAt, setRitualGlowAt] = useState<number | null>(null);
   const [ritualPhase, setRitualPhase] = useState<AfterglowPhase>("off");
+  const [hintPhase, setHintPhase] = useState<TodayHintPhase>("off");
+  const [hintDismissed, setHintDismissed] = useState(false);
+  const hintDismissedRef = useRef(false);
+  const [ritualRimOn, setRitualRimOn] = useState(false);
+  const rimShown = useRef(false);
   const [glanceMark, setGlanceMark] = useState<GlanceSave | null>(null);
   const [, setFreezeTick] = useState(0);
   const [forceTimeout, setForceTimeout] = useState(false);
@@ -511,6 +531,35 @@ export function VillagePage({ initial }: Props) {
       window.clearTimeout(clear);
     };
   }, [ritualGlowAt, motion.reduced]);
+
+  useEffect(() => {
+    if (!TODAY_CAN_DO_ENABLED) return;
+    const started = loadHintClock(Date.now());
+    if (started.dismissed) {
+      hintDismissedRef.current = true;
+      setHintDismissed(true);
+      return;
+    }
+    const tick = () => {
+      setHintPhase(
+        todayHintPhase({ elapsedMs: Date.now() - started.startedAt, dismissed: hintDismissedRef.current }),
+      );
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!hintDismissed) return;
+    setHintPhase("off");
+  }, [hintDismissed]);
+
+  useEffect(() => {
+    if (!ritualRimOn) return;
+    const id = window.setTimeout(() => setRitualRimOn(false), RITUAL_RIM_MS);
+    return () => window.clearTimeout(id);
+  }, [ritualRimOn]);
   const insights = useMemo(() => (prefs.rev > 0 ? scoreInsights(clock.weekKey) : {}), [prefs.rev, clock.weekKey]);
   const familiarity = useMemo(() => {
     const counts = prefs.rev > 0 ? kindnessDayCounts() : {};
@@ -645,6 +694,7 @@ export function VillagePage({ initial }: Props) {
       ribbon: tally.complete,
     },
     ritual: ritualMark ? { beat: ritualMark.beat, done: true } : null,
+    ritualRim: ritualRimOn,
     ritualGlowAt,
     ritualPhase,
     scoreFresh: dateCopy.fresh,
@@ -678,6 +728,14 @@ export function VillagePage({ initial }: Props) {
       syncAmbientBed(false);
     };
   }, [ambientOn, comfort.sfxMuted, motion.reduced]);
+
+  useEffect(() => {
+    if (!SOFT_AMBIENT_ENABLED) return;
+    syncSoftAmbient(softAmbientOn({ muted: comfort.sfxMuted, reduceMotion: motion.reduced }));
+    return () => {
+      syncSoftAmbient(false);
+    };
+  }, [comfort.sfxMuted, motion.reduced]);
 
   useEffect(() => {
     if (!mapAim) return;
@@ -736,6 +794,13 @@ export function VillagePage({ initial }: Props) {
     return { ok: true as const, line: "", sundayBonus: spent.sundayBonus };
   }
 
+  function noteToday(action: TodayAction) {
+    if (!todayHintDismisses(action) || hintDismissedRef.current) return;
+    hintDismissedRef.current = true;
+    storeHintDismiss();
+    setHintDismissed(true);
+  }
+
   function selectOnly(name: string | null) {
     setSelectedName(name);
   }
@@ -745,6 +810,7 @@ export function VillagePage({ initial }: Props) {
       setSelectedName(null);
       return;
     }
+    noteToday("person");
     const now = nowMs();
     if (name === lastTap.current.name && !acceptTap(lastTap.current.at, now)) return;
     lastTap.current = { name, at: now };
@@ -1027,6 +1093,7 @@ export function VillagePage({ initial }: Props) {
       return;
     }
     if (chores.find((item) => item.label === label)?.done) return;
+    noteToday(action === "porch" ? "lamp" : "chore");
     setVisitFlags((current) => (current && !current.yard ? { ...current, yard: true } : current));
     if (action === "water") {
       const result = waterOnce(waveState, clock.ymd);
@@ -1249,6 +1316,9 @@ export function VillagePage({ initial }: Props) {
       data-co-presence-on={coOn ? "1" : "0"}
       data-feedback-target={feedback?.targetId ?? ""}
       data-feedback-state={feedback?.state ?? ""}
+      data-today-hint={hintPhase}
+      data-soft-ambient={softAmbientOn({ muted: comfort.sfxMuted, reduceMotion: motion.reduced }) ? "live" : "off"}
+      data-ritual-rim={ritualRimOn ? "warm" : "off"}
     >
       <LightSfxBridge muted={comfort.sfxMuted} reduceMotion={motion.reduced} />
       <div className="village-hero" data-testid="village-hero">
@@ -1381,6 +1451,11 @@ export function VillagePage({ initial }: Props) {
           {AFTERGLOW_LINE}
         </p>
       ) : null}
+      {ritualRimOn ? (
+        <p className="ritual-rim-toast" data-testid="ritual-rim" data-ritual-rim="warm">
+          {RITUAL_RIM_TOAST}
+        </p>
+      ) : null}
       <div className="parchment-panel" hidden={parchment !== "ritual"}>
         <HeaderRitual
           viewer={selfName}
@@ -1389,9 +1464,15 @@ export function VillagePage({ initial }: Props) {
           saved={ritualMark}
           onComplete={() => {
             if (!selfName) return;
+            const beat = ritualBeat(clock.hour);
             setRitualMark(storeRitual(selfName, clock.ymd, clock.hour));
             setRitualGlowAt(Date.now());
             setRitualPhase(afterglowPhase(0, motion.reduced));
+            if (beat.id === "dawn") noteToday("lamp");
+            if (ritualRimOffer({ justCompleted: true, alreadyShown: rimShown.current })) {
+              rimShown.current = true;
+              setRitualRimOn(true);
+            }
           }}
         />
       </div>
@@ -1472,7 +1553,7 @@ export function VillagePage({ initial }: Props) {
             people={people}
             selectedName={selectedName}
             fx={fx}
-            life={life}
+            life={{ ...life, waitingCue: waitingCueFor(stayOn ? staySlots : []) }}
             forceTimeout={forceTimeout}
             bootAttempt={bootAttempt}
             onSelect={pick}
@@ -1485,6 +1566,7 @@ export function VillagePage({ initial }: Props) {
             onEmote={selfName ? emote : undefined}
             homePulse={homePulse}
             onFindMe={() => {
+              noteToday("person");
               markGesture("find");
               visitOwnGate();
               const home = selfName ? placeVillagers(people).find((person) => person.name === selfName) : null;
@@ -1516,6 +1598,7 @@ export function VillagePage({ initial }: Props) {
           />
           <FeedbackStrip beat={feedback} />
           <div className="map-corner" data-testid="map-corner">
+            <TodayHint phase={hintPhase} />
             {stayOn ? <StayCorner note={STAY_NOTE} slots={staySlots} onPick={runStay} /> : null}
             {TOY_DOCK_ENABLED ? (
               <ToyDock
@@ -1636,6 +1719,8 @@ export function VillagePage({ initial }: Props) {
               canSticker={Boolean(selfName) && play.stickerDay !== clock.ymd && play.stickers.length < STICKERS.length}
               anonNote={anonLine(anon, clock.ymd, selected.name)}
               gardenCrop={play.garden2[selected.name] ?? null}
+              careDays={prefs.rev > 0 ? kindnessDays(selected.name) : []}
+              bondCount={play.bonds[selected.name] ?? 0}
               onClose={() => {
                 const name = selected.name;
                 setSelectedName(null);
@@ -1679,6 +1764,8 @@ export function VillagePage({ initial }: Props) {
         <FirstRunGuide
           flags={visitFlags}
           onShowMotion={() => {
+            const drawer = document.querySelector<HTMLDetailsElement>("[data-testid='village-drawer']");
+            if (drawer) drawer.open = true;
             const panel = document.querySelector<HTMLDetailsElement>("[data-testid='wave-d-panel']");
             if (panel) panel.open = true;
             document.querySelector<HTMLInputElement>("[data-testid='reduce-motion-toggle']")?.focus();
@@ -1697,6 +1784,7 @@ export function VillagePage({ initial }: Props) {
       <ReleaseNotes />
       <VillageHelp />
 
+      <VillageDrawer>
       <WaveDPanel
         selfName={selfName}
         wave={waveState}
@@ -1718,6 +1806,7 @@ export function VillagePage({ initial }: Props) {
           if (result.ok) updateWave(() => result.blob);
         }}
         onPorch={() => {
+          noteToday("lamp");
           const nextOn = !waveState.porch;
           updateWave((current) => togglePorch(current));
           markGesture("lamp");
@@ -1808,20 +1897,6 @@ export function VillagePage({ initial }: Props) {
         onAct={runNook}
       />
 
-      <div className="thumb-bar" data-testid="thumb-bar">
-        <button type="button" className="hud-btn" data-testid="thumb-home" disabled={!selfName} onClick={() => {
-          visitOwnGate("镜头回到自己的小屋。");
-        }}>
-          回家
-        </button>
-        <button type="button" className="hud-btn hud-btn-ghost" onClick={() => {
-          document.querySelector<HTMLElement>("[data-testid='comfort-settings']")?.setAttribute("open", "");
-          document.querySelector<HTMLElement>("[data-testid='self-picker']")?.focus();
-        }}>
-          我是谁
-        </button>
-      </div>
-
       <PlayShelf
         selfName={selfName}
         play={play}
@@ -1847,6 +1922,21 @@ export function VillagePage({ initial }: Props) {
           });
         }}
       />
+      </VillageDrawer>
+
+      <div className="thumb-bar" data-testid="thumb-bar">
+        <button type="button" className="hud-btn" data-testid="thumb-home" disabled={!selfName} onClick={() => {
+          visitOwnGate("镜头回到自己的小屋。");
+        }}>
+          回家
+        </button>
+        <button type="button" className="hud-btn hud-btn-ghost" onClick={() => {
+          document.querySelector<HTMLElement>("[data-testid='comfort-settings']")?.setAttribute("open", "");
+          document.querySelector<HTMLElement>("[data-testid='self-picker']")?.focus();
+        }}>
+          我是谁
+        </button>
+      </div>
 
       <section className="hud-panel overflow-hidden">
         <div className="hud-title">田亩名册</div>

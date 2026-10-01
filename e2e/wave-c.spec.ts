@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, roster } from "./login";
+import { login, roster, openVillageDrawer } from "./login";
 
 test("password wall rejects a wrong password and accepts Enter", async ({ page }) => {
   await page.goto("/login");
@@ -75,6 +75,7 @@ test("logout returns to the password wall", async ({ page }) => {
 test("festival field is visual and has no ranking", async ({ page }) => {
   await login(page);
   await page.evaluate(() => window.__VILLAGE_TEST__?.setClock("2026-02-04T02:00:00.000Z"));
+  await openVillageDrawer(page);
   await page.getByTestId("play-shelf").locator("summary").click();
   const field = page.getByTestId("festival-field");
   await expect(field).toContainText("没有名次");

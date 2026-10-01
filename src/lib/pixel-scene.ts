@@ -35,6 +35,8 @@ import { isToyId, toyFocusPixels, toyWorldPixels } from "@/features/yard-toy-foc
 import { plateViewport } from "@/features/nameplate-viewport/nameplate-viewport";
 import { NAMEPLATE_CLEAR_ENABLED, NEAR_PLATE_CAP, layoutClearPlates } from "@/features/nameplate-clear/nameplate-clear";
 import { feedbackPulsePixels } from "@/features/village-feedback/village-feedback";
+import { autumnLeafFrame } from "@/features/autumn-leaf-drift/autumn-leaf-drift";
+import { waitingCuePixels } from "@/features/waiting-cue/waiting-cue";
 
 export const WORLD_W = 1216;
 export const WORLD_H = 1120;
@@ -1338,6 +1340,20 @@ function drawActors(
       queue.push({
         sort: 2,
         draw: () => paintPixels(ctx, clutter),
+      });
+    }
+    const leaves = autumnLeafFrame(life.decor?.seasonId ?? "", Boolean(life.reduceMotion), t);
+    if (leaves.length > 0) {
+      queue.push({
+        sort: 6,
+        draw: () => paintPixels(ctx, leaves),
+      });
+    }
+    if (life.waitingCue) {
+      const cue = life.waitingCue;
+      queue.push({
+        sort: cue.y,
+        draw: () => paintPixels(ctx, waitingCuePixels(cue.x, cue.y, t, Boolean(life.reduceMotion))),
       });
     }
   }

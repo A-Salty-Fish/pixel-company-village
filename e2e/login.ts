@@ -14,6 +14,15 @@ export async function login(page: Page) {
   await page.waitForFunction(() => window.__VILLAGE_TEST__?.ready());
 }
 
+/** Secondary panels live inside 「村里」, which starts closed. */
+export async function openVillageDrawer(page: Page) {
+  const drawer = page.getByTestId("village-drawer");
+  if ((await drawer.count()) === 0) return;
+  if ((await drawer.getAttribute("open")) === null) {
+    await drawer.locator(":scope > summary").click();
+  }
+}
+
 export async function openWeekBoard(page: Page) {
   const badge = page.getByTestId("week-badge");
   if ((await badge.getAttribute("aria-expanded")) !== "true") await badge.click();

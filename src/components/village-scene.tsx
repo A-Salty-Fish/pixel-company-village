@@ -41,6 +41,8 @@ import { viewportMode } from "@/features/nameplate-viewport/nameplate-viewport";
 import { NAMEPLATE_CLEAR_ENABLED, NEAR_PLATE_CAP } from "@/features/nameplate-clear/nameplate-clear";
 import { toyPulseMark } from "@/features/yard-toy-focus/yard-toy-focus";
 import { GestureChrome } from "@/features/gesture-sfx/gesture-chrome";
+import { autumnLeafCount, leafDriftMark } from "@/features/autumn-leaf-drift/autumn-leaf-drift";
+import { waitingCueMark } from "@/features/waiting-cue/waiting-cue";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
 
@@ -505,7 +507,9 @@ export function VillageScene({
         glowPhase === "fade" ? ` ${afterglowStyles.fade}` : ""
       }${glowPhase === "still" ? ` ${afterglowStyles.still}` : ""}${
         scoreMark === "soft" ? ` ${scoreDayStyles.soft}` : ""
-      }${scoreMark === "quiet" ? ` ${scoreDayStyles.quiet}` : ""}`}
+      }${scoreMark === "quiet" ? ` ${scoreDayStyles.quiet}` : ""}${
+        life.ritualRim ? " ritual-rim-warm" : ""
+      }`}
       data-village-host={ready ? "ready" : "boot"}
       data-load-stage={shownStage}
       data-bell={life.bell ? "1" : "0"}
@@ -580,6 +584,10 @@ export function VillageScene({
       data-toy-scare={String(life.toyLook?.scare ?? 0)}
       data-toy-pebbles={String(life.toyLook?.pebbles ?? 0)}
       data-toy-pulse={toyPulse}
+      data-leaf-drift={leafDriftMark(life.decor?.seasonId ?? "", life.reduceMotion)}
+      data-leaf-count={String(autumnLeafCount(life.decor?.seasonId ?? ""))}
+      data-waiting-cue={waitingCueMark(life.waitingCue ?? null)}
+      data-ritual-rim={life.ritualRim ? "warm" : "off"}
     >
       {shownStage === "timeout" || shownStage === "failed" ? (
         <div className="load-recovery" data-testid="load-recovery">

@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.2.0";
+export const APP_VERSION = "1.3.0";
 
 export const RELEASE_BOARD_TITLE = "更新日志";
 
@@ -31,6 +31,24 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.3.0",
+    date: "2026-10-01",
+    title: "还想回村",
+    notes: [
+      "进村头半分钟，地图角写着今日可做：门灯、本周小事、找一个人。",
+      "做了一件，或者过了那一会儿，提示就淡掉。没有整页弹窗。",
+      "再待一会儿时，湖边或门灯旁有一个轻轻的人影。",
+      "点原来的小事，回执不变。",
+      "信号卡写出关照次数、熟识次数，和上次关照的日期。",
+      "不写说过的话。",
+      "关掉静音之后，有很轻的风声和水声，垫在原来的短音下面。",
+      "静音仍然默认开着。",
+      "秋日的小路上，有几片叶子慢慢飘过。",
+      "村里新事、小玩和屋边收进「村里」，默认合上。先看见地图。",
+      "今日仪式做完，地图边上一圈暖光，只亮一次，不再提醒。",
+    ],
+  },
   {
     version: "1.2.0",
     date: "2026-09-30",
