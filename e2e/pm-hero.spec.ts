@@ -6,7 +6,7 @@ async function heroBox(page: Page) {
     const parchment = document.querySelector("[data-testid='parchment-stack']")?.getBoundingClientRect();
     const map = document.querySelector("[data-testid='village-map-slot']")?.getBoundingClientRect();
     const refresh = document.querySelector("[data-testid='refresh-scores']")?.getBoundingClientRect();
-    const leave = Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("出村"))?.getBoundingClientRect();
+    const leave = document.querySelector("[data-testid='exit-village']")?.getBoundingClientRect();
     return {
       scroll: window.scrollY,
       vh: window.innerHeight,

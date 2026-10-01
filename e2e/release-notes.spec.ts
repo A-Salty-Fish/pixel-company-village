@@ -12,7 +12,7 @@ test("version chip opens the player changelog", async ({ page }) => {
   await expect(page).toHaveTitle("像素公司村 · 夜里认得出村子");
   const header = page.getByTestId("village-header");
   await expect(header.getByTestId("village-brand")).toHaveText("像素公司村");
-  await expect(header.getByTestId("ship-title")).toHaveText("回家在底栏");
+  await expect(header.getByTestId("ship-title")).toHaveText("夜里认得出村子");
 
   await chip.click();
   const notes = page.getByTestId("release-notes");

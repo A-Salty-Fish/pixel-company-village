@@ -6,7 +6,7 @@ test("re-login restores header and roster without opening 村里的事", async (
   await login(page);
   await expect(page.getByTestId("village-header")).toContainText("像素公司村");
 
-  await page.getByRole("button", { name: "出村" }).click();
+  await page.getByTestId("exit-village").click();
   await expect(page.getByTestId("login-form")).toBeVisible();
 
   await page.getByTestId("login-password").fill(password);

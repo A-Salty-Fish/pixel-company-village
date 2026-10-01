@@ -197,7 +197,7 @@ test("narrow sheet keeps the title, close, undo, and leave button usable", async
   const close = page.getByRole("button", { name: "关闭信号卡" });
   await expect(head).toBeVisible();
   await expect(close).toBeVisible();
-  const leave = await page.getByRole("button", { name: "出村" }).boundingBox();
+  const leave = await page.getByTestId("exit-village").boundingBox();
   expect(leave).toBeTruthy();
   const hit = await page.evaluate(({ x, y }) => {
     const el = document.elementFromPoint(x, y);

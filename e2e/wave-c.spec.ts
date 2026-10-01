@@ -66,7 +66,7 @@ test("wave copy asks for identity and then counts the hour", async ({ page }) =>
 
 test("logout returns to the password wall", async ({ page }) => {
   await login(page);
-  await page.getByRole("button", { name: "出村" }).click();
+  await page.getByTestId("exit-village").click();
   await expect(page.getByTestId("login-form")).toBeVisible();
   await page.goto("/");
   await expect(page.getByTestId("login-form")).toBeVisible();
