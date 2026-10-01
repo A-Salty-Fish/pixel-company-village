@@ -50,8 +50,64 @@ test("回家落到屋檐，并留下一句回执", async ({ page }) => {
   const name = body.people[0]?.name ?? "";
   await page.getByTestId("comfort-settings").locator(":scope > summary").click();
   await page.getByTestId("self-picker").selectOption(name);
-  await page.getByTestId("thumb-home").evaluate((button: HTMLButtonElement) => button.click());
+  const tools = page.getByTestId("map-tools");
+  await expect(tools.getByTestId("find-me")).toBeVisible();
+  await expect(tools.getByTestId("map-home")).toBeVisible();
+  await expect(tools.getByTestId("map-home")).toHaveText("回家");
+  await expect(page.getByTestId("thumb-home")).toBeVisible();
+  const warm = page.waitForFunction(
+    () => document.querySelector("[data-testid='village-map-slot']")?.getAttribute("data-home-warm") === "1",
+  );
+  const settle = page.waitForFunction(
+    () => document.querySelector(".farm-page")?.getAttribute("data-home-settle") === "1",
+  );
+  await tools.getByTestId("map-home").click();
+  await warm;
+  await settle;
   await expect(page.getByTestId("village-feedback")).toHaveText("回到屋檐下了。");
   await expect(page.locator(".farm-page")).toHaveAttribute("data-feedback-target", "roof");
   await expect(page.locator(".farm-page")).toHaveAttribute("data-feedback-state", "home");
+});
+
+test("宽屏选定身份后，底栏同时有找我和回家", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await login(page);
+  const tools = page.getByTestId("map-tools");
+  await expect(tools.getByTestId("find-me")).toBeVisible();
+  await expect(tools.getByTestId("map-home")).toHaveCount(0);
+
+  const body = await roster(page);
+  const name = body.people[0]?.name ?? "";
+  await page.getByTestId("comfort-settings").locator(":scope > summary").click();
+  await page.getByTestId("self-picker").selectOption(name);
+
+  const home = tools.getByTestId("map-home");
+  await expect(tools.getByTestId("find-me")).toBeVisible();
+  await expect(home).toBeVisible();
+  await expect(home).toHaveText("回家");
+  const warm = page.waitForFunction(
+    () => document.querySelector("[data-testid='village-map-slot']")?.getAttribute("data-home-warm") === "1",
+  );
+  await home.click();
+  await warm;
+  await expect(page.getByTestId("village-feedback")).toHaveText("回到屋檐下了。");
+  await expect(page.locator(".farm-page")).toHaveAttribute("data-feedback-state", "home");
+});
+
+test("减少动作时回家只移动镜头", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await login(page);
+  const body = await roster(page);
+  const name = body.people[0]?.name ?? "";
+  await page.getByTestId("comfort-settings").locator(":scope > summary").click();
+  await page.getByTestId("self-picker").selectOption(name);
+  await expect(page.locator(".farm-page")).toHaveAttribute("data-reduce-motion", "1");
+  const settle = page.waitForFunction(
+    () => document.querySelector(".farm-page")?.getAttribute("data-home-settle") === "1",
+  );
+  await page.getByTestId("map-tools").getByTestId("map-home").click();
+  await settle;
+  await expect(page.locator(".village-map-slot")).toHaveAttribute("data-home-warm", "0");
+  await expect(page.getByTestId("village-feedback")).toHaveText("回到屋檐下了。");
 });

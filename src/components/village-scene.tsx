@@ -47,6 +47,7 @@ import { MAP_HUD_FOLD_ENABLED, hitToy } from "@/features/map-hud-fold/map-hud-fo
 import type { ToyId } from "@/features/yard-toy-focus/yard-toy-focus";
 import { IDENTITY_LAND_ENABLED, IDENTITY_LAND_MS } from "@/features/identity-land/identity-land";
 import { HOME_SETTLE_ENABLED, HOME_SETTLE_MS, homeSettleFrame, roofFocus } from "@/features/home-settle/home-settle";
+import { thumbShowsHome } from "@/features/thumb-identity/thumb-identity";
 import { MoreDiscoverDot } from "@/features/more-discover/more-cue";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
@@ -76,6 +77,7 @@ type Props = {
   onToyTap?: (id: ToyId) => void;
   identityPulse?: number;
   homeSettle?: number;
+  onHome?: () => void;
   children?: ReactNode;
 };
 
@@ -107,6 +109,7 @@ export function VillageScene({
   onToyTap,
   identityPulse = 0,
   homeSettle = 0,
+  onHome,
   children,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -781,6 +784,17 @@ export function VillageScene({
         >
           {FIND_ME_LABEL}
         </button>
+        {thumbShowsHome(Boolean(life.selfName)) ? (
+          <button
+            type="button"
+            className="hud-icon hud-icon-find map-home"
+            data-testid="map-home"
+            disabled={!life.selfName}
+            onClick={() => onHome?.()}
+          >
+            回家
+          </button>
+        ) : null}
         {MAP_HUD_FOLD_ENABLED ? (
           <button
             type="button"

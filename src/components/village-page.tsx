@@ -1196,6 +1196,29 @@ export function VillagePage({ initial }: Props) {
     if (line) setWaveLine(line);
   }
 
+  function settleHome() {
+    if (!HOME_SETTLE_ENABLED) {
+      visitOwnGate("镜头回到自己的小屋。");
+      return;
+    }
+    if (!selfName) return;
+    rememberChore("gate");
+    setHomeSettle((value) => value + 1);
+    setHomeSettling(true);
+    if (!motion.reduced) setHomeWarm(true);
+    const home = placeVillagers(people).find((person) => person.name === selfName);
+    const spot = home ? roofFocus(home) : null;
+    const sent = noteFeedback({
+      toast: HOME_SETTLE_TOAST,
+      targetId: "roof",
+      state: "home",
+      x: spot?.x,
+      y: spot?.y,
+      aim: false,
+    });
+    if (!sent && spot) aimMap("roof", spot.x, spot.y);
+  }
+
   function runChore(label: string) {
     const action = choreAction(label);
     if (!action || !selfName) {
@@ -1886,6 +1909,7 @@ export function VillagePage({ initial }: Props) {
             onMapMore={setMapMore}
             identityPulse={identityPulse}
             homeSettle={homeSettle}
+            onHome={settleHome}
             onToyTap={(id) => {
               setYardOpen(true);
               const spot = toyAnchor(id);
@@ -2377,28 +2401,7 @@ export function VillagePage({ initial }: Props) {
           data-testid="thumb-home"
           hidden={!thumbShowsHome(Boolean(selfName))}
           disabled={!selfName}
-          onClick={() => {
-            if (!HOME_SETTLE_ENABLED) {
-              visitOwnGate("镜头回到自己的小屋。");
-              return;
-            }
-            if (!selfName) return;
-            rememberChore("gate");
-            setHomeSettle((value) => value + 1);
-            setHomeSettling(true);
-            if (!motion.reduced) setHomeWarm(true);
-            const home = placeVillagers(people).find((person) => person.name === selfName);
-            const spot = home ? roofFocus(home) : null;
-            const sent = noteFeedback({
-              toast: HOME_SETTLE_TOAST,
-              targetId: "roof",
-              state: "home",
-              x: spot?.x,
-              y: spot?.y,
-              aim: false,
-            });
-            if (!sent && spot) aimMap("roof", spot.x, spot.y);
-          }}
+          onClick={settleHome}
         >
           回家
         </button>

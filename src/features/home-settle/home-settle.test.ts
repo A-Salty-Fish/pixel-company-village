@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { copyIsClean } from "@/lib/wave-d";
 import {
@@ -34,4 +35,14 @@ test("PV-PM-057 eases home onto the roof and keeps the warm wash brief", () => {
   assert.equal(homeWarmOn({ elapsedMs: 100, reduceMotion: false, enabled: false }), false);
   assert.equal(copyIsClean(homeSettleCopy()), true);
   assert.equal(HOME_SETTLE_TOAST.length <= 24, true);
+});
+
+test("PV-D-013 shows 回家 beside 找我 after an identity is chosen", () => {
+  const scene = readFileSync(new URL("../../components/village-scene.tsx", import.meta.url), "utf8");
+  const findAt = scene.indexOf('data-testid="find-me"');
+  const homeAt = scene.indexOf('data-testid="map-home"');
+  assert.equal(findAt > 0, true);
+  assert.equal(homeAt > findAt, true);
+  assert.match(scene, /thumbShowsHome\(Boolean\(life\.selfName\)\)/);
+  assert.match(scene, />\s*回家\s*</);
 });

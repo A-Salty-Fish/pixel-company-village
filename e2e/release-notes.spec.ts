@@ -5,20 +5,23 @@ test("version chip opens the player changelog", async ({ page }) => {
   await login(page);
   const chip = page.getByTestId("village-version");
   await expect(chip).toBeVisible();
-  await expect(chip).toHaveAttribute("data-version", "1.6.0");
-  await expect(chip).toContainText("v1.6.0");
+  await expect(chip).toHaveAttribute("data-version", "1.6.1");
+  await expect(chip).toContainText("v1.6.1");
   const onMap = await chip.evaluate((el) => Boolean(el.closest("[data-village-host], canvas")));
   expect(onMap).toBe(false);
-  await expect(page).toHaveTitle("像素公司村 · 慢慢住下");
+  await expect(page).toHaveTitle("像素公司村 · 回家在底栏");
   const header = page.getByTestId("village-header");
   await expect(header.getByTestId("village-brand")).toHaveText("像素公司村");
-  await expect(header.getByTestId("ship-title")).toHaveText("慢慢住下");
+  await expect(header.getByTestId("ship-title")).toHaveText("回家在底栏");
 
   await chip.click();
   const notes = page.getByTestId("release-notes");
   await expect(notes).toHaveJSProperty("open", true);
   await expect(notes).toBeVisible();
   await expect(notes).toContainText("更新日志");
+  await expect(notes).toContainText("v1.6.1 · 回家在底栏");
+  await expect(notes).toContainText("找我");
+  await expect(notes).toContainText("旁边也有");
   await expect(notes).toContainText("v1.6.0 · 慢慢住下");
   await expect(notes).toContainText("隔天再来");
   await expect(notes).toContainText("v1.5.1 · 再来一趟");
