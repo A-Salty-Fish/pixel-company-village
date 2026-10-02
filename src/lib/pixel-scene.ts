@@ -39,6 +39,10 @@ import { mapDepthGround, mapDepthRoofLayers } from "@/features/map-depth/map-dep
 import { villagerIdleBob, villagerReadOn, villagerShadowPixels } from "@/features/villager-read/villager-read";
 import { pathMeadowPixels } from "@/features/path-meadow/path-meadow";
 import { cornerMeadowPixels } from "@/features/corner-meadow/corner-meadow";
+import { cornerPropPixels } from "@/features/corner-props/corner-props";
+import { duskNightGradeFor, paintDuskNightGrade } from "@/features/dusk-night-grade/dusk-night-grade";
+import { pathStoneGrit, pathStoneGritLit, pathStoneWarmOn, pathStoneWash } from "@/features/path-stone-warm/path-stone-warm";
+import { villagerSilhouetteOn, villagerSilhouettePixels } from "@/features/villager-silhouette/villager-silhouette";
 import { buildingVolumeLayers } from "@/features/building-volume/building-volume";
 import { villagerGroundOn, villagerGroundPixels } from "@/features/villager-ground/villager-ground";
 import { paintNightHearth } from "@/features/night-hearth/night-hearth";
@@ -252,6 +256,16 @@ function ensureGround() {
       blitTopLeft(ctx, `path_${tileIndex(c, r) % 8}`, c * TILE, r * TILE);
     }
   }
+  const wash = pathStoneWash();
+  if (wash) {
+    ctx.fillStyle = `rgba(${wash.r}, ${wash.g}, ${wash.b}, ${wash.a})`;
+    for (let r = 0; r < ROWS; r += 1) {
+      for (let c = 0; c < COLS; c += 1) {
+        if (!path[r][c]) continue;
+        ctx.fillRect(c * TILE, r * TILE, TILE, TILE);
+      }
+    }
+  }
   ctx.fillStyle = "rgba(42, 24, 10, 0.82)";
   for (let r = 0; r < ROWS; r += 1) {
     for (let c = 0; c < COLS; c += 1) {
@@ -261,8 +275,13 @@ function ensureGround() {
       if (edge(0, 1)) ctx.fillRect(c * TILE, r * TILE + TILE - 3, TILE, 3);
       if (edge(-1, 0)) ctx.fillRect(c * TILE, r * TILE, 3, TILE);
       if (edge(1, 0)) ctx.fillRect(c * TILE + TILE - 3, r * TILE, 3, TILE);
-      ctx.fillStyle = "rgba(92, 58, 28, 0.45)";
+      ctx.fillStyle = pathStoneWarmOn() ? pathStoneGrit() : "rgba(92, 58, 28, 0.45)";
       ctx.fillRect(c * TILE + 6, r * TILE + 7, 4, 2);
+      const lit = pathStoneGritLit();
+      if (lit) {
+        ctx.fillStyle = lit;
+        ctx.fillRect(c * TILE + 7, r * TILE + 7, 2, 1);
+      }
       ctx.fillStyle = "rgba(42, 24, 10, 0.82)";
     }
   }
@@ -700,6 +719,7 @@ function drawVillager(
   const dust = tapDustPixels(x, y, tapElapsed, Boolean(life?.reduceMotion));
   if (dust.length > 0) paintPixels(ctx, dust);
   drawSprite(ctx, catFrame(color, person.dir, anim, frame), x, y - hop);
+  if (villagerSilhouetteOn()) paintPixels(ctx, villagerSilhouettePixels(x, y - hop));
   if (life?.waveTarget === person.name) paintPixels(ctx, waveCuePixels(x, y));
   if (!stood && !softGround && zoom < 2) {
     ctx.strokeStyle = "#2a1a10";
@@ -1419,6 +1439,13 @@ function drawActors(
         draw: () => paintPixels(ctx, corners),
       });
     }
+    const cornerProps = cornerPropPixels();
+    if (cornerProps.length > 0) {
+      queue.push({
+        sort: 4,
+        draw: () => paintPixels(ctx, cornerProps),
+      });
+    }
     for (const layer of buildingVolumeLayers()) {
       const pixels = layer.pixels;
       queue.push({
@@ -1652,6 +1679,15 @@ export function paintVillage(
       reduced: Boolean(life.reduceMotion),
     });
   }
+  paintDuskNightGrade(
+    ctx,
+    viewW,
+    viewH,
+    duskNightGradeFor({
+      hour: shanghaiClock().hour,
+      night: Boolean((NIGHT_WASH_V2_ENABLED && life?.sessionNight) || (!NIGHT_WASH_V2_ENABLED && life?.decor?.night)),
+    }),
+  );
   // PV-PM-023 checkpoint: path, water, and silhouettes after the dark wash
   const nightRead = paintNightReadability(ctx, {
     viewW,

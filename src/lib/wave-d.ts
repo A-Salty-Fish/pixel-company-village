@@ -3,6 +3,7 @@
  * No chat text, no rankings, no server quota.
  */
 
+import { duskSystemOn } from "@/features/quiet-dusk-hearth/quiet-dusk-hearth";
 import { emptyLane, laneCopyLines, laneLook, readLane, type LaneState } from "./lane";
 import { CHORE_STEPS, FIND_ME_LABEL, PLATE_LOUD_LINE, PLATE_QUIET_LINE } from "./worldcraft";
 import { emptyYard, readYard, yardCopyLines, yardLook, type YardState } from "./yard";
@@ -873,7 +874,7 @@ export function buildDecor(input: {
     footprints: systemOn(blob, "footprints") ? footprintMarks(blob.footprints, input.now) : [],
     porch: systemOn(blob, "porch") && blob.porch,
     critters: critterKind(input.seasonId, input.hour, input.quiet, systemOn(blob, "critters")),
-    dusk: duskActive(input.hour, systemOn(blob, "dusk") && !input.quiet),
+    dusk: duskActive(input.hour, duskSystemOn({ system: systemOn(blob, "dusk"), quiet: input.quiet })),
     night: nightWash(input.hour, systemOn(blob, "dusk") && !input.quiet),
     yard: yardLook(blob.yard, input.ymd, systemOn(blob, "yard"), input.reduced),
     lane: laneLook(blob.lane, input.ymd, systemOn(blob, "lane"), input.reduced),

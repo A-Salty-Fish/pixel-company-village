@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.11.1";
+export const APP_VERSION = "1.11.2";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,19 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.11.2",
+    date: "2026-10-02",
+    title: "看得清楚一点",
+    notes: [
+      "人站在草地上，边上多了一点深色。还是同一个人，不是方框。",
+      "路上的石子都暖了，一块一块颜色更齐。",
+      "傍晚再沉一点，夜里也再沉一点。黑的地方还留着。",
+      "傍晚安静的时候，窗子还是亮的。",
+      "木牌边上多了一道亮、一道暗，木纹细一点。大小还是原来的。",
+      "田边多了一根篱笆桩和一小簇野花。不挡路，也不挡点人。",
+    ],
+  },
   {
     version: "1.11.1",
     date: "2026-10-02",
