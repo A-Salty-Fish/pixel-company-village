@@ -2567,13 +2567,13 @@ body:has(.farm-page[data-focal-village="village"]) {
   }
 }
 
-/* PV-PM-109 — first tip clears the bottom bar. */
+/* PV-PM-109 — first tip clears the bottom bar, under the signal sheet. */
 @media (max-width: 899px) {
   .farm-page[data-tip-above-bar="1"] .first-visit-hint {
     position: fixed;
     left: 0.5rem;
     right: 0.5rem;
-    z-index: 44;
+    z-index: 32;
     margin: 0;
     bottom: calc(5.25rem + env(safe-area-inset-bottom));
   }
