@@ -117,6 +117,7 @@ import { softChromeMark } from "@/features/soft-chrome/soft-chrome";
 import { pressFeelMark } from "@/features/press-feel/press-feel";
 import { woodPlaqueMark } from "@/features/wood-plaque/wood-plaque";
 import { warmPlaqueMark } from "@/features/warm-plaque/warm-plaque";
+import { warmHudMark } from "@/features/warm-hud/warm-hud";
 import { headerLayoutPad, mapRoomMark } from "@/features/map-room/map-room";
 import { COMPANION_CUE_MS, companionReadOn, companionWaveCue } from "@/features/companion-read/companion-read";
 import { welcomeLine, WELCOME_DELAY_MS, WELCOME_HOLD_MS } from "@/features/village-welcome/village-welcome";
@@ -1740,6 +1741,7 @@ export function VillagePage({ initial }: Props) {
       data-press-feel={pressFeelMark()}
       data-wood-plaque={woodPlaqueMark()}
       data-warm-plaque={warmPlaqueMark()}
+      data-warm-hud={warmHudMark()}
       data-focal-village={focalVillageMark()}
       data-map-room={mapRoomMark()}
       data-village-welcome={welcomeOn ? "1" : "0"}

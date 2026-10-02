@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.9.1";
+export const APP_VERSION = "1.9.2";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,16 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.9.2",
+    date: "2026-10-02",
+    title: "窗子还暖着",
+    notes: [
+      "夜里有几扇窗子会慢慢亮一亮。减少动作时停在暖光上，不闪。",
+      "分数小牌和地图按钮更像暖木头。大小还是原来的。",
+      "田的空角有几簇草和石子。不挡路，也不挡点人。",
+    ],
+  },
   {
     version: "1.9.1",
     date: "2026-10-02",
