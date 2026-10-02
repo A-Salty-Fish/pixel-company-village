@@ -740,6 +740,7 @@ export function VillageScene({
         life.ritualRim ? " ritual-rim-warm" : ""
       }`}
       data-village-host={ready ? "ready" : "boot"}
+      data-companion-ring={life.waveTarget || ""}
       data-load-stage={shownStage}
       data-bell={life.bell ? "1" : "0"}
       data-festival-skin={life.festivalId ?? ""}

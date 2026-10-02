@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.9.0";
+export const APP_VERSION = "1.9.1";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,14 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.9.1",
+    date: "2026-10-02",
+    title: "挥手也亮一下",
+    notes: [
+      "相伴开着时，从人的卡片上挥手，旁边也会亮一小会儿，脚下留一圈。",
+    ],
+  },
   {
     version: "1.9.0",
     date: "2026-10-02",
