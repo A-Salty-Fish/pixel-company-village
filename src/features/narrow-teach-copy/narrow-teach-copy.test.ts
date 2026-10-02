@@ -10,7 +10,9 @@ import {
   teachAria,
   teachHint,
   teachIsNarrow,
+  teachLine,
   teachMentionsWheel,
+  teachMode,
 } from "@/features/narrow-teach-copy/narrow-teach-copy";
 
 test("PV-PM-086 narrow teaching drops the wheel and keeps the next beat on screen", () => {
@@ -39,5 +41,11 @@ test("PV-PM-086 narrow teaching drops the wheel and keeps the next beat on scree
   assert.equal(firstScreenBeat({ x: 600, y: 400 })?.id, "bench");
   assert.equal(firstScreenBeat({ x: 100, y: 90 })?.id, "pond");
   assert.equal(firstScreenBeat(null, false), null);
+  assert.equal(teachMode(null), "pending");
+  assert.equal(teachMode(true), "pinch");
+  assert.equal(teachMode(false), "wheel");
+  assert.equal(teachMentionsWheel(teachLine(null)), false);
+  assert.equal(teachMentionsWheel(teachLine(true)), false);
+  assert.equal(teachLine(true), TEACH_NARROW);
   assert.equal(copyIsClean([narrow, TEACH_NARROW, teachAria(true)]), true);
 });

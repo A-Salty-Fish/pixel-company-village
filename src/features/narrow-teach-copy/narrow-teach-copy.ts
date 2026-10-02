@@ -39,6 +39,17 @@ export function teachMentionsWheel(line: string) {
   return line.includes("滚轮");
 }
 
+/** Unknown width stays pending so a phone never paints the desktop wheel line first. */
+export function teachMode(narrow: boolean | null): "pending" | "pinch" | "wheel" {
+  if (narrow == null) return "pending";
+  return narrow ? "pinch" : "wheel";
+}
+
+export function teachLine(narrow: boolean | null, enabled = NARROW_TEACH_COPY_ENABLED) {
+  if (narrow == null) return "";
+  return teachHint(narrow, enabled);
+}
+
 /** The next-beat chip sits on the map, outside the folded 今日 sheet. */
 export function nextBeatFirstScreen(enabled = NARROW_TEACH_COPY_ENABLED) {
   return enabled;

@@ -56,7 +56,7 @@ import { tapFeedbackMark } from "@/features/villager-tap-feedback/villager-tap-f
 import { skyWashMark } from "@/features/sky-wash/sky-wash";
 import { pathGlowMark } from "@/features/path-micro-glow/path-micro-glow";
 import { isNextBeatAim, nextBeatGlowMark } from "@/features/next-beat-path-glow/next-beat-path-glow";
-import { teachAria, teachHint } from "@/features/narrow-teach-copy/narrow-teach-copy";
+import { NARROW_TEACH_PX, teachAria, teachHint, teachIsNarrow, teachLine, teachMode } from "@/features/narrow-teach-copy/narrow-teach-copy";
 import { nameplateAirMark } from "@/features/nameplate-air/nameplate-air";
 import { narrowFillCamera, narrowMapFillMark } from "@/features/narrow-map-fill/narrow-map-fill";
 import { autumnHintMark } from "@/features/autumn-hint/autumn-hint";
@@ -151,14 +151,14 @@ export function VillageScene({
   const [ready, setReady] = useState(false);
   const [stage, setStage] = useState<LoadStage>("terrain");
   const [hintOpen, setHintOpen] = useState(false);
-  const [teachNarrow, setTeachNarrow] = useState(false);
+  const [teachNarrow, setTeachNarrow] = useState<boolean | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
   const [seenShut, setSeenShut] = useState(legendShut);
   if (legendShut !== seenShut) {
     setSeenShut(legendShut);
     if (legendShut) setLegendOpen(false);
   }
-  const teachNarrowRef = useRef(false);
+  const teachNarrowRef = useRef<boolean | null>(null);
   const stageRef = useRef<LoadStage>("terrain");
   const onSpotRef = useRef(onSpot);
   const onEmptyRef = useRef(onEmpty);
@@ -303,21 +303,22 @@ export function VillageScene({
     kickRef.current?.();
   }, [life]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (typeof window.matchMedia !== "function") return;
-    const narrow = window.matchMedia("(max-width: 480px)");
-    const sync = () => setTeachNarrow(narrow.matches);
+    const narrow = window.matchMedia(`(max-width: ${NARROW_TEACH_PX}px)`);
+    const sync = () => {
+      const next = teachIsNarrow(window.innerWidth);
+      teachNarrowRef.current = next;
+      setTeachNarrow(next);
+      const host = hostRef.current;
+      if (host) host.dataset.teach = teachMode(next);
+      canvasRef.current?.setAttribute("aria-label", teachAria(next));
+      if (hintRef.current && !hoverRef.current) hintRef.current.textContent = teachHint(next);
+    };
     sync();
     narrow.addEventListener("change", sync);
     return () => narrow.removeEventListener("change", sync);
   }, []);
-
-  useEffect(() => {
-    teachNarrowRef.current = teachNarrow;
-    const line = teachHint(teachNarrow);
-    if (hintRef.current && !hoverRef.current) hintRef.current.textContent = line;
-    canvasRef.current?.setAttribute("aria-label", teachAria(teachNarrow));
-  }, [teachNarrow]);
 
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
@@ -363,10 +364,7 @@ export function VillageScene({
       canvas = document.createElement("canvas");
       canvas.className = "pixelated block h-full w-full cursor-grab active:cursor-grabbing";
       canvas.setAttribute("role", "img");
-      canvas.setAttribute(
-        "aria-label",
-        teachAria(teachNarrowRef.current),
-      );
+      canvas.setAttribute("aria-label", teachNarrowRef.current == null ? "" : teachAria(teachNarrowRef.current));
       canvas.style.width = "100%";
       canvas.style.height = "100%";
       canvas.style.touchAction = "none";
@@ -596,7 +594,7 @@ export function VillageScene({
       hoverRef.current = name;
       if (hintRef.current) {
         if (!name) {
-          hintRef.current.textContent = teachHint(teachNarrowRef.current);
+          hintRef.current.textContent = teachLine(teachNarrowRef.current);
           return;
         }
         const found = villagersRef.current.find((v) => v.name === name);
@@ -876,7 +874,7 @@ export function VillageScene({
       data-sky-wash="off"
       data-path-glow="off"
       data-next-beat-glow="off"
-      data-teach={teachNarrow ? "pinch" : "wheel"}
+      data-teach={teachMode(teachNarrow)}
       data-villager-read={villagerReadMark()}
       data-nameplate-air={nameplateAirMark()}
       data-waiting-cue={waitingCueMark(life.waitingCue ?? null)}
@@ -908,14 +906,14 @@ export function VillageScene({
           data-testid="map-hint"
           className="absolute bottom-2 left-3 z-10 flex items-center gap-2 rounded-sm border-[3px] border-[#6a3d18] bg-[#5a3214]/80 px-2 py-1 text-[11px] text-[#fff6d8]"
         >
-          <span>{teachHint(teachNarrow)}</span>
+          <span>{teachLine(teachNarrow)}</span>
           <button type="button" className="hud-icon" onClick={() => setHintOpen(false)} aria-label="收起提示">
             ×
           </button>
         </p>
       ) : (
         <p ref={hintRef} className="sr-only" data-testid="map-hint">
-          {teachHint(teachNarrow)}
+          {teachLine(teachNarrow)}
         </p>
       )}
       <div className="map-more-sheet" data-testid="map-more-sheet">
