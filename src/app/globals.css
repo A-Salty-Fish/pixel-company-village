@@ -2267,6 +2267,8 @@ body:has(.farm-page[data-focal-village="village"]) {
   .farm-page[data-share-solo="1"] .soft-line-chip,
   .farm-page[data-share-solo="1"] .next-beat-first,
   .farm-page[data-share-solo="1"] .next-beat-suggest,
+  .farm-page[data-share-solo="1"] .find-me-receipt,
+  .farm-page[data-share-solo="1"] .home-village-line,
   .farm-page[data-share-solo="1"] [data-testid="map-hint"] {
     display: none;
   }
@@ -2308,3 +2310,55 @@ body:has(.farm-page[data-focal-village="village"]) {
   }
 }
 /* PV-PM-085 / 086 / 087 / 088 end */
+
+/* PV-PM-090 / 093 — short receipts sit on the right so the next-beat chip keeps the left. */
+.find-me-receipt,
+.home-village-line {
+  position: absolute;
+  right: 0.45rem;
+  left: auto;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: min(11rem, 48%);
+  margin: 0;
+  padding: 0.2rem 0.4rem;
+  background: rgb(255 246 216 / 94%);
+  color: #6a3d18;
+  border: 2px solid #e7b14a;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.find-me-receipt {
+  top: 0.45rem;
+}
+
+.home-village-line {
+  top: 2.35rem;
+}
+
+.find-me-receipt .hud-icon,
+.home-village-line .hud-icon {
+  pointer-events: auto;
+}
+
+/* PV-PM-094 — one tip in the page flow, not over the map. */
+.first-visit-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.35rem 0.15rem 0;
+  padding: 0.28rem 0.45rem;
+  background: #fff6d8;
+  color: #2a1a10;
+  border: 2px solid #6a3d18;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.first-visit-hint p {
+  margin: 0;
+}

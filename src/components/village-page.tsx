@@ -149,6 +149,8 @@ import { autumnHintMark } from "@/features/autumn-hint/autumn-hint";
 import { EAVE_FLASH_MS, eaveGlowMark } from "@/features/home-eave-glow/home-eave-glow";
 import { NIGHT_LEAVE_ENABLED, NIGHT_LEAVE_HOLD_MS, NIGHT_LEAVE_LINE, NIGHT_LEAVE_SKIP, loadNightLeave, nightLeaveOffer, saveNightLeave } from "@/features/night-leave/night-leave";
 import { HOME_SETTLE_ENABLED, HOME_SETTLE_MS, HOME_SETTLE_TOAST, HOME_WARM_MS, roofFocus } from "@/features/home-settle/home-settle";
+import { FIND_ME_PATH_ENABLED, FIND_ME_PATH_MS, FIND_ME_RECEIPT } from "@/features/find-me-path/find-me-path";
+import { HOME_VILLAGE_LINE, HOME_VILLAGE_LINE_ENABLED, HOME_VILLAGE_MS } from "@/features/home-village-line/home-village-line";
 import { identityLandDue } from "@/features/identity-land/identity-land";
 import { NIGHT_LINGER_DONE, loadNightLinger, nightCornerFree, nightLingerOffer, pickNightSpot, saveNightLinger, type NightSpot } from "@/features/night-linger/night-linger";
 import { RETURN_WARM_MS, loadReturnVisit, pickLineCue, returnWarmLine, returnWarmOffer, saveReturnVisit } from "@/features/return-warm/return-warm";
@@ -387,6 +389,9 @@ export function VillagePage({ initial }: Props) {
   const [headerWave, setHeaderWave] = useState<{ line: string; until: number } | null>(null);
   const [waveCue, setWaveCue] = useState<{ line: string; name: string; at: number } | null>(null);
   const [welcomeOn, setWelcomeOn] = useState(false);
+  const [findPathAt, setFindPathAt] = useState<number | null>(null);
+  const [findReceipt, setFindReceipt] = useState("");
+  const [homeLine, setHomeLine] = useState("");
   const [beatDone, setBeatDone] = useState(false);
   const [stayCooled, setStayCooled] = useState<Record<string, number>>({});
   const [stayHeld, setStayHeld] = useState<string[]>([]);
@@ -913,6 +918,7 @@ export function VillagePage({ initial }: Props) {
       : null,
     mapAim: mapAim ? { kind: mapAim.kind, x: mapAim.x, y: mapAim.y, at: mapAim.at } : null,
     waveTarget: liveCue ? liveCue.name : null,
+    findPathAt,
     feedbackPulse: feedback?.pulse ? { x: feedback.x, y: feedback.y } : null,
     sfxMuted: comfort.sfxMuted,
     findPrintAt,
@@ -954,6 +960,21 @@ export function VillagePage({ initial }: Props) {
     const id = window.setTimeout(() => setMapAim(null), 4000);
     return () => window.clearTimeout(id);
   }, [mapAim]);
+
+  useEffect(() => {
+    if (!findPathAt) return;
+    const id = window.setTimeout(() => {
+      setFindPathAt(null);
+      setFindReceipt("");
+    }, FIND_ME_PATH_MS);
+    return () => window.clearTimeout(id);
+  }, [findPathAt]);
+
+  useEffect(() => {
+    if (!homeLine) return;
+    const id = window.setTimeout(() => setHomeLine(""), HOME_VILLAGE_MS);
+    return () => window.clearTimeout(id);
+  }, [homeLine]);
 
   useEffect(() => {
     if (!gestureMark) return;
@@ -1403,18 +1424,24 @@ export function VillagePage({ initial }: Props) {
     setHomeSettling(true);
     setEaveFlashAt(Date.now());
     finishTodayTouch("home");
-    if (!motion.reduced) setHomeWarm(true);
+    if (HOME_VILLAGE_LINE_ENABLED) {
+      setHomeLine(HOME_VILLAGE_LINE);
+    } else if (!motion.reduced) {
+      setHomeWarm(true);
+    }
     const home = placeVillagers(people).find((person) => person.name === selfName);
     const spot = home ? roofFocus(home) : null;
-    const sent = noteFeedback({
-      toast: HOME_SETTLE_TOAST,
-      targetId: "roof",
-      state: "home",
-      x: spot?.x,
-      y: spot?.y,
-      aim: false,
-    });
-    if (!sent && spot) aimMap("roof", spot.x, spot.y);
+    if (!HOME_VILLAGE_LINE_ENABLED) {
+      const sent = noteFeedback({
+        toast: HOME_SETTLE_TOAST,
+        targetId: "roof",
+        state: "home",
+        x: spot?.x,
+        y: spot?.y,
+        aim: false,
+      });
+      if (!sent && spot) aimMap("roof", spot.x, spot.y);
+    }
   }
 
   function runChore(label: string) {
@@ -2137,15 +2164,20 @@ export function VillagePage({ initial }: Props) {
               visitOwnGate();
               finishTodayTouch("find");
               if (FIND_FOOTPRINTS_ENABLED) setFindPrintAt(Date.now());
-              const home = selfName ? placeVillagers(people).find((person) => person.name === selfName) : null;
-              noteFeedback({
-                toast: "找到了。",
-                targetId: selfName ?? "self",
-                state: "found",
-                x: home?.x,
-                y: home?.y,
-                aim: false,
-              });
+              if (FIND_ME_PATH_ENABLED) {
+                setFindPathAt(Date.now());
+                setFindReceipt(FIND_ME_RECEIPT);
+              } else {
+                const home = selfName ? placeVillagers(people).find((person) => person.name === selfName) : null;
+                noteFeedback({
+                  toast: "找到了。",
+                  targetId: selfName ?? "self",
+                  state: "found",
+                  x: home?.x,
+                  y: home?.y,
+                  aim: false,
+                });
+              }
             }}
             mapAim={mapAim}
             ambientOn={ambientOn}
@@ -2184,6 +2216,22 @@ export function VillagePage({ initial }: Props) {
             <TodayHint phase={hintPhase} done={loopDone} />
           </VillageScene>
           <FeedbackStrip beat={feedback} />
+          {findReceipt ? (
+            <p className="find-me-receipt" data-testid="find-me-receipt" data-module="find-me-path" role="status">
+              <span>{findReceipt}</span>
+              <button type="button" className="hud-icon" aria-label="收起" onClick={() => setFindReceipt("")}>
+                ×
+              </button>
+            </p>
+          ) : null}
+          {homeLine ? (
+            <p className="home-village-line" data-testid="home-village-line" data-module="home-village-line" role="status">
+              <span>{homeLine}</span>
+              <button type="button" className="hud-icon" aria-label="收起" onClick={() => setHomeLine("")}>
+                ×
+              </button>
+            </p>
+          ) : null}
           {welcomeOn ? (
             <p
               className="village-welcome"

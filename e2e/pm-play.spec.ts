@@ -17,15 +17,26 @@ test("first-run guide names 减动开关 and stays dismissed", async ({ page }) 
   await login(page);
   const guide = page.getByTestId("first-run-guide");
   await expect(guide).toBeVisible();
+  await expect(guide).toHaveAttribute("data-blocks-map", "0");
+  await expect(guide.getByRole("button", { name: "知道了" })).toHaveCount(1);
+  for (let i = 0; i < 6; i += 1) {
+    if ((await guide.count()) === 0) break;
+    if ((await guide.getByText("减动开关").count()) > 0) break;
+    await page.getByTestId("first-run-dismiss").click();
+  }
   await expect(guide).toContainText("减动开关");
   await expect(guide).toContainText("村里新事");
+  await expect(guide).not.toContainText("先选定");
   await expect(page.locator("[data-village-host='ready']")).toHaveAttribute("data-quiet", "1");
   await page.getByTestId("first-run-motion").click();
   await expect(page.getByTestId("wave-d-panel")).toHaveAttribute("open", "");
   await expect(page.getByTestId("wave-toggles").getByText("减动开关", { exact: true })).toBeVisible();
   await expect(page.locator("[data-village-host='ready']")).toHaveAttribute("data-quiet", "1");
-  await page.getByTestId("first-run-dismiss").click();
-  await expect(guide).toHaveCount(0);
+  for (let i = 0; i < 6; i += 1) {
+    if ((await page.getByTestId("first-run-guide").count()) === 0) break;
+    await page.getByTestId("first-run-dismiss").click();
+  }
+  await expect(page.getByTestId("first-run-guide")).toHaveCount(0);
   await page.reload();
   await page.waitForSelector("canvas[data-village-ready='1']");
   await expect(page.getByTestId("first-run-guide")).toHaveCount(0);

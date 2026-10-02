@@ -70,6 +70,10 @@ import { IDENTITY_LAND_ENABLED, IDENTITY_LAND_MS } from "@/features/identity-lan
 import { HOME_SETTLE_ENABLED, HOME_SETTLE_MS, homeSettleFrame, roofFocus } from "@/features/home-settle/home-settle";
 import { thumbShowsHome } from "@/features/thumb-identity/thumb-identity";
 import { MoreDiscoverDot } from "@/features/more-discover/more-cue";
+import { selfRecognizeMark } from "@/features/self-recognize/self-recognize";
+import { selfGhostSuppressed } from "@/features/self-plate-ghost/self-plate-ghost";
+import { findMePathMark } from "@/features/find-me-path/find-me-path";
+import { nightPlateMark } from "@/features/night-plate-contrast/night-plate-contrast";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
 
@@ -531,6 +535,13 @@ export function VillageScene({
                 quiet: Boolean(lifeNowEarly.quiet),
               })
             : "off";
+        host.dataset.findPath = lifeNowEarly.findPathAt
+          ? findMePathMark({
+              elapsedMs: nowMs - lifeNowEarly.findPathAt,
+              quiet: Boolean(lifeNowEarly.quiet),
+              reduced: Boolean(lifeNowEarly.reduceMotion),
+            })
+          : "off";
         host.dataset.nightWindow = nightWindowPulseMark(
           Boolean(NIGHT_WASH_V2_ENABLED && lifeNowEarly.sessionNight),
           Boolean(lifeNowEarly.reduceMotion),
@@ -875,6 +886,13 @@ export function VillageScene({
       data-path-glow="off"
       data-next-beat-glow="off"
       data-teach={teachMode(teachNarrow)}
+      data-self-recognize={selfRecognizeMark({
+        hasSelf: Boolean(life.selfName),
+        quiet: life.quiet,
+        reduced: life.reduceMotion,
+      })}
+      data-self-ghost={selfGhostSuppressed() ? "clear" : "bracket"}
+      data-night-plate={nightPlateMark(shanghaiClock().hour, life.quiet)}
       data-villager-read={villagerReadMark()}
       data-nameplate-air={nameplateAirMark()}
       data-waiting-cue={waitingCueMark(life.waitingCue ?? null)}

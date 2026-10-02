@@ -2,6 +2,16 @@
 
 import { useSyncExternalStore } from "react";
 import { GUIDE_KEY, GUIDE_LINES, guideSeen, visitComplete, visitStep, type VisitFlags } from "@/lib/first-run";
+import {
+  FIRST_VISIT_KEY,
+  FIRST_VISIT_ONE_HINT_ENABLED,
+  FIRST_VISIT_TIPS,
+  emitFirstVisit,
+  firstVisitDone,
+  firstVisitTip,
+  readFirstVisitStep,
+  subscribeFirstVisit,
+} from "@/features/first-visit-one-hint/first-visit-one-hint";
 
 const listeners = new Set<() => void>();
 
@@ -30,9 +40,61 @@ function dismiss() {
     /* private mode */
   }
   emit();
+  emitFirstVisit();
 }
 
-export function FirstRunGuide({ flags, onShowMotion }: { flags: VisitFlags; onShowMotion?: () => void }) {
+function readStep() {
+  if (typeof window === "undefined") return FIRST_VISIT_TIPS.length;
+  try {
+    if (guideSeen(window.localStorage.getItem(GUIDE_KEY))) return FIRST_VISIT_TIPS.length;
+    return readFirstVisitStep(window.localStorage.getItem(FIRST_VISIT_KEY));
+  } catch {
+    return FIRST_VISIT_TIPS.length;
+  }
+}
+
+function dismissOne() {
+  try {
+    const step = readStep();
+    const next = step + 1;
+    window.localStorage.setItem(FIRST_VISIT_KEY, String(next));
+    if (firstVisitDone(next)) window.localStorage.setItem(GUIDE_KEY, "1");
+  } catch {
+    /* private mode */
+  }
+  emit();
+  emitFirstVisit();
+}
+
+function OneVisitHint({ flags, onShowMotion }: { flags: VisitFlags; onShowMotion?: () => void }) {
+  const step = useSyncExternalStore(subscribeFirstVisit, readStep, () => FIRST_VISIT_TIPS.length);
+  if (visitComplete(flags)) return null;
+  const tip = firstVisitTip(step);
+  if (!tip) return null;
+  const motion = tip.includes("减动开关");
+  return (
+    <section
+      className="first-visit-hint"
+      data-testid="first-run-guide"
+      data-open="1"
+      data-visit-step={visitStep(flags)}
+      data-hint-index={step}
+      data-blocks-map="0"
+    >
+      <p>{tip}</p>
+      <button type="button" className="hud-btn" data-testid="first-run-dismiss" onClick={dismissOne}>
+        知道了
+      </button>
+      {motion ? (
+        <button type="button" className="hud-btn hud-btn-ghost" data-testid="first-run-motion" onClick={() => onShowMotion?.()}>
+          去看减动开关
+        </button>
+      ) : null}
+    </section>
+  );
+}
+
+function FullVisitGuide({ flags, onShowMotion }: { flags: VisitFlags; onShowMotion?: () => void }) {
   const seen = useSyncExternalStore(subscribe, readSeen, () => true);
   if (seen || visitComplete(flags)) return null;
   const step = visitStep(flags);
@@ -67,4 +129,11 @@ export function FirstRunGuide({ flags, onShowMotion }: { flags: VisitFlags; onSh
       </div>
     </section>
   );
+}
+
+export function FirstRunGuide({ flags, onShowMotion }: { flags: VisitFlags; onShowMotion?: () => void }) {
+  if (FIRST_VISIT_ONE_HINT_ENABLED) {
+    return <OneVisitHint flags={flags} onShowMotion={onShowMotion} />;
+  }
+  return <FullVisitGuide flags={flags} onShowMotion={onShowMotion} />;
 }

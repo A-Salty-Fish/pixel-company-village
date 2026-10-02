@@ -9,7 +9,6 @@ import {
   benchFrame,
   benchPose,
   chorePixels,
-  findMeRing,
   landmarkPixels,
   nearPorch,
   porchPixels,
@@ -58,6 +57,10 @@ import { eaveGlowMark, eaveGlowPixels, eaveFlashOn } from "@/features/home-eave-
 import { PLAZA, plazaSitSprite } from "@/features/plaza-sit/plaza-sit";
 import { waitingCuePixels } from "@/features/waiting-cue/waiting-cue";
 import { wanderPose } from "@/features/local-stroll/local-stroll";
+import { selfPlateDash, selfRecognizeFeet, selfRecognizeMark } from "@/features/self-recognize/self-recognize";
+import { selfBracketPixels } from "@/features/self-plate-ghost/self-plate-ghost";
+import { findMeApproach, paintFindMePath } from "@/features/find-me-path/find-me-path";
+import { nightPlateAlpha, nightPlateMark } from "@/features/night-plate-contrast/night-plate-contrast";
 
 export const WORLD_W = 1216;
 export const WORLD_H = 1120;
@@ -1476,18 +1479,29 @@ function drawActors(
     const lampOn = Boolean(life?.decor?.porch) || (life?.ritual?.done === true && life.ritual.beat === "dawn");
     const homeNear = nearPorch(self, { x: self.homeX, y: self.homeY });
     paintPixels(ctx, porchPixels(homeNear, lampOn, Boolean(life?.reduceMotion), t), self.homeX, self.homeY);
-    queue.push({
-      sort: self.y + 1,
-      draw: () => paintPixels(ctx, findMeRing(self.x, self.y, Boolean(life?.reduceMotion), t)),
+    const recognize = selfRecognizeMark({
+      hasSelf: true,
+      quiet: Boolean(life?.quiet),
+      reduced: Boolean(life?.reduceMotion),
     });
-    if (life?.selfHighlight) {
+    const feet = selfRecognizeFeet(self.x, self.y, recognize);
+    if (feet.length > 0) {
       queue.push({
-        sort: self.y + 2,
-        draw: () =>
-          paintPixels(
-            ctx,
-            findMeRing(self.x, self.y, true, 0).map((pixel) => ({ ...pixel, color: "#f2d15c" })),
-          ),
+        sort: self.y + 1,
+        draw: () => paintPixels(ctx, feet),
+      });
+    }
+    const brackets = selfBracketPixels(
+      self.x,
+      self.y,
+      Boolean(life?.reduceMotion),
+      t,
+      Boolean(life?.selfHighlight),
+    );
+    if (brackets.length > 0) {
+      queue.push({
+        sort: self.y + 1,
+        draw: () => paintPixels(ctx, brackets),
       });
     }
     const prints = findPrintPixels({
@@ -1674,8 +1688,26 @@ export function paintVillage(
     t,
   });
   paintSkyWash(ctx, viewW, viewH, shanghaiClock().hour);
+  const pathSelf = life?.selfName ? villagers.find((person) => person.name === life.selfName) : undefined;
+  if (life?.findPathAt && pathSelf) {
+    const approach = findMeApproach(pathSelf);
+    paintFindMePath(ctx, {
+      viewW,
+      viewH,
+      camX,
+      camY,
+      worldW: span.w,
+      worldH: span.h,
+      from: approach.from,
+      to: approach.to,
+      elapsedMs: Date.now() - life.findPathAt,
+      quiet: Boolean(life.quiet),
+      reduced: Boolean(life.reduceMotion),
+      t,
+    });
+  }
   if (life?.mapAim) {
-    const self = villagers.find((person) => person.name === life.selfName);
+    const self = pathSelf;
     const aim = life.mapAim;
     const glowInput = {
       viewW,
@@ -1876,8 +1908,18 @@ export function drawNameLabels(
       ctx.fillStyle = FAMILIAR_RIM[item.level] ?? FAMILIAR_RIM[1];
       ctx.fillRect(Math.round(box.x - 1), Math.round(box.y - 1), box.w + 2, box.h + 2);
     }
-    const alpha = (item.hot ? 1 : item.mode === "muted" ? 0.7 : 0.92) * item.plateAlpha * (place?.alpha ?? 1);
+    const baseAlpha = (item.hot ? 1 : item.mode === "muted" ? 0.7 : 0.92) * item.plateAlpha * (place?.alpha ?? 1);
+    const nightRole = item.role === "self" ? "self" : item.role === "neighbor" ? "neighbor" : "far";
+    const alpha = nightPlateAlpha(baseAlpha, nightRole, nightPlateMark(shanghaiClock().hour, quiet));
     blitLabel(ctx, item.sprite, box.x, box.y, item.scale, alpha);
+    if (
+      item.role === "self" &&
+      selfPlateDash(selfRecognizeMark({ hasSelf: true, quiet, reduced: Boolean(life?.reduceMotion) }))
+    ) {
+      const dashW = Math.max(4, Math.round(box.w * 0.56));
+      ctx.fillStyle = "#e7b14a";
+      ctx.fillRect(Math.round(box.x + (box.w - dashW) / 2), Math.round(box.y + box.h + 1), dashW, 2);
+    }
     drawn += 1;
   }
 
