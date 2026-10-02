@@ -48,6 +48,7 @@ import { pathFocusPixels } from "@/features/path-focus/path-focus";
 import { tapDustPixels, tapHop } from "@/features/villager-tap-feedback/villager-tap-feedback";
 import { paintSkyWash } from "@/features/sky-wash/sky-wash";
 import { paintPathMicroGlow } from "@/features/path-micro-glow/path-micro-glow";
+import { isNextBeatAim, paintNextBeatPathGlow } from "@/features/next-beat-path-glow/next-beat-path-glow";
 import { waveCuePixels } from "@/features/companion-read/companion-read";
 import { feedbackPulsePixels } from "@/features/village-feedback/village-feedback";
 import { autumnLeafFrame } from "@/features/autumn-leaf-drift/autumn-leaf-drift";
@@ -1676,7 +1677,7 @@ export function paintVillage(
   if (life?.mapAim) {
     const self = villagers.find((person) => person.name === life.selfName);
     const aim = life.mapAim;
-    paintPathMicroGlow(ctx, {
+    const glowInput = {
       viewW,
       viewH,
       camX,
@@ -1689,7 +1690,9 @@ export function paintVillage(
       reduced: Boolean(life.reduceMotion),
       quiet: Boolean(life.quiet),
       t,
-    });
+    };
+    if (isNextBeatAim(aim.kind)) paintNextBeatPathGlow(ctx, glowInput);
+    else paintPathMicroGlow(ctx, glowInput);
   }
   const aimRing = life?.mapAim
     ? isToyId(life.mapAim.kind)

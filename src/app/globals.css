@@ -2182,3 +2182,129 @@ body:has(.farm-page[data-focal-village="village"]) {
   stroke: #e7c48a;
 }
 /* PV-PM-078 end */
+
+/* PV-PM-086 — next beat on the first phone screen. PV-PM-088 suggestion. */
+.first-wave,
+.next-beat-first {
+  display: none;
+}
+
+.next-beat-suggest {
+  position: absolute;
+  top: 3.2rem;
+  left: 0.45rem;
+  z-index: 18;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  max-width: min(14rem, 72%);
+  margin: 0;
+  padding: 0.15rem 0.2rem 0.15rem 0.45rem;
+  background: rgb(90 50 20 / 92%);
+  color: #fff6d8;
+  border: 2px solid #e7c48a;
+  pointer-events: auto;
+}
+
+.next-beat-suggest-go {
+  min-height: 44px;
+  padding: 0.15rem 0.35rem;
+  background: transparent;
+  color: #fff6d8;
+  border: 0;
+  font-size: 13px;
+  text-align: left;
+}
+
+@media (max-width: 480px) {
+  .farm-page[data-narrow-teach="1"] .next-beat-first {
+    display: inline-flex;
+    align-items: center;
+    position: absolute;
+    top: 0.4rem;
+    left: 0.4rem;
+    z-index: 18;
+    min-width: 44px;
+    min-height: 44px;
+    max-width: 46%;
+    pointer-events: auto;
+  }
+
+  .farm-page[data-narrow-teach="1"] .next-beat-suggest {
+    top: 4.4rem;
+  }
+
+  /* PV-PM-087 — wave and 相伴 stay on the first screen, above the tool row. */
+  .farm-page[data-first-social="1"] .village-map-slot:not([data-map-more="1"]) .first-wave {
+    display: inline-flex;
+    min-height: 44px;
+  }
+
+  .farm-page[data-first-social="1"][data-map-hud="fold"] .village-map-slot:not([data-map-more="1"]) .co-presence-toggle {
+    display: inline-flex;
+    min-height: 44px;
+  }
+
+  .farm-page[data-first-social="1"][data-map-hud="fold"] .village-map-slot:not([data-map-more="1"]) .map-corner {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    bottom: 3.6rem;
+    max-width: calc(100% - 0.8rem);
+    max-height: none;
+    overflow: visible;
+  }
+
+  /* PV-PM-085 — share card alone. Bottom tools stay. Nothing else stacks. */
+  .farm-page[data-share-solo="1"][data-map-hud="fold"] .village-map-slot .map-more-sheet,
+  .farm-page[data-share-solo="1"] .map-corner,
+  .farm-page[data-share-solo="1"] .village-welcome,
+  .farm-page[data-share-solo="1"] .companion-cue,
+  .farm-page[data-share-solo="1"] .map-feedback,
+  .farm-page[data-share-solo="1"] .today-hint,
+  .farm-page[data-share-solo="1"] .dusk-lantern-chip,
+  .farm-page[data-share-solo="1"] .soft-line-chip,
+  .farm-page[data-share-solo="1"] .next-beat-first,
+  .farm-page[data-share-solo="1"] .next-beat-suggest,
+  .farm-page[data-share-solo="1"] [data-testid="map-hint"] {
+    display: none;
+  }
+
+  .farm-page[data-share-solo="1"] .narrow-today[data-open="1"] .narrow-today-body {
+    display: none;
+  }
+
+  .farm-page[data-share-solo="1"] .share-village-slot {
+    position: fixed;
+    top: 4.6rem;
+    right: 0.45rem;
+    left: 0.45rem;
+    z-index: 40;
+    max-width: none;
+    align-items: stretch;
+  }
+
+  .farm-page[data-share-solo="1"] .share-village {
+    align-self: flex-end;
+  }
+
+  .farm-page[data-share-solo="1"] .share-preview {
+    width: 100%;
+    box-sizing: border-box;
+    max-height: calc(100dvh - 16rem);
+    overflow: auto;
+    overflow-wrap: anywhere;
+  }
+
+  .farm-page[data-share-solo="1"] .share-preview-actions .hud-btn,
+  .farm-page[data-share-solo="1"] .share-preview-actions .hud-icon {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .farm-page[data-share-solo="1"][data-map-hud="fold"] .village-map-slot .map-tools {
+    flex-wrap: nowrap;
+  }
+}
+/* PV-PM-085 / 086 / 087 / 088 end */

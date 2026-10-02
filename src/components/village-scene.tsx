@@ -55,6 +55,8 @@ import { pathFocusMark } from "@/features/path-focus/path-focus";
 import { tapFeedbackMark } from "@/features/villager-tap-feedback/villager-tap-feedback";
 import { skyWashMark } from "@/features/sky-wash/sky-wash";
 import { pathGlowMark } from "@/features/path-micro-glow/path-micro-glow";
+import { isNextBeatAim, nextBeatGlowMark } from "@/features/next-beat-path-glow/next-beat-path-glow";
+import { NARROW_TEACH_PX, teachAria, teachHint, teachIsNarrow, teachLine, teachMode } from "@/features/narrow-teach-copy/narrow-teach-copy";
 import { nameplateAirMark } from "@/features/nameplate-air/nameplate-air";
 import { narrowFillCamera, narrowMapFillMark } from "@/features/narrow-map-fill/narrow-map-fill";
 import { autumnHintMark } from "@/features/autumn-hint/autumn-hint";
@@ -97,6 +99,7 @@ type Props = {
   identityPulse?: number;
   homeSettle?: number;
   onHome?: () => void;
+  legendShut?: number;
   children?: ReactNode;
 };
 
@@ -129,6 +132,7 @@ export function VillageScene({
   identityPulse = 0,
   homeSettle = 0,
   onHome,
+  legendShut = 0,
   children,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -147,6 +151,14 @@ export function VillageScene({
   const [ready, setReady] = useState(false);
   const [stage, setStage] = useState<LoadStage>("terrain");
   const [hintOpen, setHintOpen] = useState(false);
+  const [teachNarrow, setTeachNarrow] = useState<boolean | null>(null);
+  const [legendOpen, setLegendOpen] = useState(false);
+  const [seenShut, setSeenShut] = useState(legendShut);
+  if (legendShut !== seenShut) {
+    setSeenShut(legendShut);
+    if (legendShut) setLegendOpen(false);
+  }
+  const teachNarrowRef = useRef<boolean | null>(null);
   const stageRef = useRef<LoadStage>("terrain");
   const onSpotRef = useRef(onSpot);
   const onEmptyRef = useRef(onEmpty);
@@ -291,13 +303,27 @@ export function VillageScene({
     kickRef.current?.();
   }, [life]);
 
-  useEffect(() => {
-    const node = legendRef.current;
-    if (!node || typeof window.matchMedia !== "function") return;
-    const wide = window.matchMedia("(min-width: 481px)");
+  useLayoutEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const narrow = window.matchMedia(`(max-width: ${NARROW_TEACH_PX}px)`);
     const sync = () => {
-      node.open = wide.matches;
+      const next = teachIsNarrow(window.innerWidth);
+      teachNarrowRef.current = next;
+      setTeachNarrow(next);
+      const host = hostRef.current;
+      if (host) host.dataset.teach = teachMode(next);
+      canvasRef.current?.setAttribute("aria-label", teachAria(next));
+      if (hintRef.current && !hoverRef.current) hintRef.current.textContent = teachHint(next);
     };
+    sync();
+    narrow.addEventListener("change", sync);
+    return () => narrow.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const wide = window.matchMedia("(min-width: 481px)");
+    const sync = () => setLegendOpen(wide.matches);
     sync();
     wide.addEventListener("change", sync);
     return () => wide.removeEventListener("change", sync);
@@ -338,10 +364,7 @@ export function VillageScene({
       canvas = document.createElement("canvas");
       canvas.className = "pixelated block h-full w-full cursor-grab active:cursor-grabbing";
       canvas.setAttribute("role", "img");
-      canvas.setAttribute(
-        "aria-label",
-        "像素公司农庄，同事们按当日分数在田里挥锄、浇水或去湖边抛竿。可拖动画布、滚轮缩放。",
-      );
+      canvas.setAttribute("aria-label", teachNarrowRef.current == null ? "" : teachAria(teachNarrowRef.current));
       canvas.style.width = "100%";
       canvas.style.height = "100%";
       canvas.style.touchAction = "none";
@@ -500,6 +523,14 @@ export function VillageScene({
               quiet: Boolean(lifeNowEarly.quiet),
             })
           : "off";
+        host.dataset.nextBeatGlow =
+          aim && isNextBeatAim(aim.kind)
+            ? nextBeatGlowMark({
+                elapsedMs: nowMs - aim.at,
+                reduced: Boolean(lifeNowEarly.reduceMotion),
+                quiet: Boolean(lifeNowEarly.quiet),
+              })
+            : "off";
         host.dataset.nightWindow = nightWindowPulseMark(
           Boolean(NIGHT_WASH_V2_ENABLED && lifeNowEarly.sessionNight),
           Boolean(lifeNowEarly.reduceMotion),
@@ -563,7 +594,7 @@ export function VillageScene({
       hoverRef.current = name;
       if (hintRef.current) {
         if (!name) {
-          hintRef.current.textContent = "拖动画布 · 滚轮缩放 · 点小人看今日信号";
+          hintRef.current.textContent = teachLine(teachNarrowRef.current);
           return;
         }
         const found = villagersRef.current.find((v) => v.name === name);
@@ -842,6 +873,8 @@ export function VillageScene({
       data-tap-feedback="off"
       data-sky-wash="off"
       data-path-glow="off"
+      data-next-beat-glow="off"
+      data-teach={teachMode(teachNarrow)}
       data-villager-read={villagerReadMark()}
       data-nameplate-air={nameplateAirMark()}
       data-waiting-cue={waitingCueMark(life.waitingCue ?? null)}
@@ -870,16 +903,17 @@ export function VillageScene({
       {ready && hintOpen && !life.quiet ? (
         <p
           ref={hintRef}
+          data-testid="map-hint"
           className="absolute bottom-2 left-3 z-10 flex items-center gap-2 rounded-sm border-[3px] border-[#6a3d18] bg-[#5a3214]/80 px-2 py-1 text-[11px] text-[#fff6d8]"
         >
-          <span>拖动画布 · 滚轮缩放 · 点小人看今日信号</span>
+          <span>{teachLine(teachNarrow)}</span>
           <button type="button" className="hud-icon" onClick={() => setHintOpen(false)} aria-label="收起提示">
             ×
           </button>
         </p>
       ) : (
-        <p ref={hintRef} className="sr-only">
-          拖动画布 · 滚轮缩放 · 点小人看今日信号
+        <p ref={hintRef} className="sr-only" data-testid="map-hint">
+          {teachLine(teachNarrow)}
         </p>
       )}
       <div className="map-more-sheet" data-testid="map-more-sheet">
@@ -889,7 +923,15 @@ export function VillageScene({
             村口 · {life.decor.weatherLabel}
           </div>
         ) : null}
-        <details className="name-legend" data-testid="name-legend" ref={legendRef} open>
+        <details
+          className="name-legend"
+          data-testid="name-legend"
+          ref={legendRef}
+          open={legendOpen}
+          onToggle={(event) => {
+            if (event.currentTarget.open !== legendOpen) setLegendOpen(event.currentTarget.open);
+          }}
+        >
           <summary>图例</summary>
           <span>
             <i className="swatch swatch-scored" /> 彩猫 · 琥珀名牌 · 有分

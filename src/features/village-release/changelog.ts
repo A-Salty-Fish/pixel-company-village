@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.9.2";
+export const APP_VERSION = "1.10.0";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,17 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.10.0",
+    date: "2026-10-02",
+    title: "窄屏先看清",
+    notes: [
+      "手机上打开分享时，别的牌子先收起来。只留分享卡片和底下的栏。",
+      "手机上的提示改成拖动和双指捏合。去下一处的按钮就在第一屏，不用先做完本周。",
+      "挥手和相伴在第一屏。挥一下，旁边会应一小会儿。相伴开着还是关着，一眼能看出来。",
+      "点了去下一处，路上的暖点更清楚。做完可以收起下一句。安静时暖点停着。",
+    ],
+  },
   {
     version: "1.9.2",
     date: "2026-10-02",

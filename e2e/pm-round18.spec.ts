@@ -26,7 +26,12 @@ test("narrow first screen folds the ritual trio and the map hud", async ({ page 
   await expect(page.getByTestId("today-can-do")).toBeHidden();
   await expect(page.getByTestId("toggle-plates")).toBeHidden();
   await expect(page.getByTestId("gesture-ambient")).toBeHidden();
-  await expect(page.getByTestId("co-presence-toggle")).toBeHidden();
+  await expect(page.getByTestId("co-presence-toggle")).toBeVisible();
+  await expect(page.getByTestId("first-wave")).toBeVisible();
+  await expect(page.getByTestId("first-wave")).toHaveText("挥手");
+  await expect(page.locator("[data-village-host]")).toHaveAttribute("data-teach", "pinch");
+  await expect(page.locator("canvas")).toHaveAttribute("aria-label", /双指捏合/);
+  await expect(page.locator("canvas")).not.toHaveAttribute("aria-label", /滚轮/);
   await expect(page.getByTestId("toy-dock")).toBeHidden();
   await expect(page.getByTestId("thumb-home")).toBeHidden();
   await expect(page.getByTestId("thumb-who")).toBeVisible();
@@ -57,7 +62,10 @@ test("a 375px map does not stack the extra actions down the left", async ({ page
   await expect(page.getByTestId("emote-bar")).toBeHidden();
   await expect(page.getByTestId("toggle-plates")).toBeHidden();
   await expect(page.getByTestId("name-legend")).toBeHidden();
-  await expect(page.getByTestId("co-presence-toggle")).toBeHidden();
+  await expect(page.getByTestId("co-presence-toggle")).toBeVisible();
+  await expect(page.getByTestId("first-wave")).toBeVisible();
+  await expect(page.getByTestId("first-wave")).toHaveText("挥手");
+  await expect(page.locator("[data-village-host]")).toHaveAttribute("data-teach", "pinch");
   await expect(page.getByTestId("thumb-home")).toBeVisible();
   const tools = await page.getByTestId("map-tools").boundingBox();
   expect(tools && tools.height <= 56).toBeTruthy();
@@ -74,4 +82,6 @@ test("desktop still shows the ritual trio and the map legend", async ({ page }) 
   await expect(page.getByTestId("map-more")).toBeHidden();
   await expect(page.getByTestId("refresh-scores")).toBeVisible();
   await expect(page.getByTestId("exit-village")).toBeVisible();
+  await expect(page.locator("[data-village-host]")).toHaveAttribute("data-teach", "wheel");
+  await expect(page.getByTestId("first-wave")).toBeHidden();
 });

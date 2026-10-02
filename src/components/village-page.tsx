@@ -48,6 +48,8 @@ import {
   nextBeatOffer,
   pickNextBeat,
   NEXT_BEAT_DONE,
+  NEXT_BEATS,
+  type NextBeat,
 } from "@/features/week-next-beat/next-beat";
 import { YARD_TOY_FOCUS_ENABLED, isToyId, toyAnchor } from "@/features/yard-toy-focus/yard-toy-focus";
 import {
@@ -123,6 +125,10 @@ import { COMPANION_CUE_MS, companionReadOn, companionWaveCue } from "@/features/
 import { welcomeLine, WELCOME_DELAY_MS, WELCOME_HOLD_MS } from "@/features/village-welcome/village-welcome";
 import { skyWashBand } from "@/features/sky-wash/sky-wash";
 import { ShareVillage } from "@/features/share-village/share-card";
+import { SHARE_SOLO_DETAILS, shareSoloActive, shareSoloMark } from "@/features/share-solo-layer/share-solo-layer";
+import { firstScreenBeat, narrowTeachOn, nextBeatFirstScreen } from "@/features/narrow-teach-copy/narrow-teach-copy";
+import { FIRST_SCREEN_SOCIAL_ENABLED, FIRST_WAVE_LABEL, firstScreenSocialOn } from "@/features/first-screen-social/first-screen-social";
+import { NEXT_BEAT_GLOW_MS, nextBeatGlowOn, nextBeatSuggestion } from "@/features/next-beat-path-glow/next-beat-path-glow";
 import { APP_VERSION } from "@/features/village-release/changelog";
 import { focalVillageMark } from "@/features/focal-village/focal-village";
 import { DUSK_LANTERN_ENABLED, DUSK_LANTERN_LINE, duskLanternOffer } from "@/features/dusk-lantern/dusk-lantern";
@@ -337,6 +343,10 @@ export function VillagePage({ initial }: Props) {
   const [headerFold, setHeaderFold] = useState(false);
   const [todayOpen, setTodayOpen] = useState(false);
   const [mapMore, setMapMore] = useState(false);
+  const [shareSolo, setShareSolo] = useState(false);
+  const [legendShut, setLegendShut] = useState(0);
+  const [beatSuggest, setBeatSuggest] = useState<{ id: string; line: string } | null>(null);
+  const suggestTimer = useRef<number | null>(null);
   const [loopDone, setLoopDone] = useState<TodayLoopId[]>([]);
   const loopDoneRef = useRef<TodayLoopId[]>([]);
   const loopSeeded = useRef(false);
@@ -967,6 +977,12 @@ export function VillagePage({ initial }: Props) {
   }, []);
 
   useEffect(() => {
+    return () => {
+      if (suggestTimer.current != null) window.clearTimeout(suggestTimer.current);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!waveCue) return;
     const id = window.setTimeout(() => setWaveCue(null), Math.max(0, waveCue.at + COMPANION_CUE_MS - Date.now()));
     return () => window.clearTimeout(id);
@@ -981,6 +997,45 @@ export function VillagePage({ initial }: Props) {
   function aimMap(kind: string, x: number, y: number) {
     const at = Date.now();
     setMapAim({ token: at, kind, x, y, at });
+  }
+
+  function onShareOpen(open: boolean) {
+    const width = typeof window === "undefined" ? 900 : window.innerWidth;
+    const solo = shareSoloActive(open, width);
+    setShareSolo(solo);
+    if (!solo) return;
+    setMapMore(false);
+    setYardOpen(false);
+    setTodayOpen(false);
+    setMapAim((current) => (current && isToyId(current.kind) ? null : current));
+    setLegendShut((token) => token + 1);
+    for (const id of SHARE_SOLO_DETAILS) {
+      const node = document.querySelector<HTMLDetailsElement>(`[data-testid='${id}']`);
+      if (node) node.open = false;
+    }
+  }
+
+  function runNextBeat(beat: NextBeat, markWeek = false) {
+    if (markWeek && selfName) {
+      storeBeatDone(selfName, clock.weekKey);
+      setBeatDone(true);
+    }
+    setWaveLine(NEXT_BEAT_DONE);
+    const sent = noteFeedback({
+      toast: NEXT_BEAT_DONE,
+      targetId: beat.id,
+      state: "aimed",
+      x: beat.x,
+      y: beat.y,
+    });
+    if (!sent) aimMap(beat.id, beat.x, beat.y);
+    if (!nextBeatGlowOn()) return;
+    setBeatSuggest(null);
+    if (suggestTimer.current != null) window.clearTimeout(suggestTimer.current);
+    const follow = nextBeatSuggestion(beat.id);
+    suggestTimer.current = window.setTimeout(() => {
+      setBeatSuggest(follow);
+    }, NEXT_BEAT_GLOW_MS);
   }
 
   function noteFeedback(input: { toast: string; targetId: string; state: string; x?: number; y?: number; aim?: boolean }) {
@@ -1434,11 +1489,16 @@ export function VillagePage({ initial }: Props) {
     night: nightOn && nightCornerFree({ dusk: duskCue, extraWalk: extraOn }),
   });
   const autumnMark = autumnPaletteMark(season.id);
+  const selfSpot = useMemo(() => {
+    if (!selfName) return null;
+    const self = placeVillagers(people).find((person) => person.name === selfName);
+    return self ? { x: self.x, y: self.y } : null;
+  }, [selfName, people]);
   const nextBeat = useMemo(() => {
     if (!nextBeatOffer(tally.complete)) return null;
-    const self = selfName ? placeVillagers(people).find((person) => person.name === selfName) ?? null : null;
-    return pickNextBeat(self ? { x: self.x, y: self.y } : null);
-  }, [tally.complete, selfName, people]);
+    return pickNextBeat(selfSpot);
+  }, [tally.complete, selfSpot]);
+  const mapBeat = useMemo(() => (nextBeatFirstScreen() ? firstScreenBeat(selfSpot) : null), [selfSpot]);
   const stayOn = STAY_AWHILE_ENABLED && stayVisible(tally.complete, beatDone);
   const stayPool = useMemo(() => {
     if (!stayOn) return [];
@@ -1746,6 +1806,10 @@ export function VillagePage({ initial }: Props) {
       data-map-room={mapRoomMark()}
       data-village-welcome={welcomeOn ? "1" : "0"}
       data-companion-cue={liveCue ? "1" : "0"}
+      data-share-solo={shareSoloMark(shareSolo)}
+      data-narrow-teach={narrowTeachOn() ? "1" : "0"}
+      data-first-social={firstScreenSocialOn() ? "1" : "0"}
+      data-next-beat-path={nextBeatGlowOn() ? "1" : "0"}
     >
       <LightSfxBridge muted={comfort.sfxMuted} reduceMotion={motion.reduced} />
       <div className="village-hero" data-testid="village-hero">
@@ -1908,21 +1972,7 @@ export function VillagePage({ initial }: Props) {
             className="parchment-badge"
             data-testid="next-beat"
             data-next-id={nextBeat.id}
-            onClick={() => {
-              if (selfName) {
-                storeBeatDone(selfName, clock.weekKey);
-                setBeatDone(true);
-              }
-              setWaveLine(NEXT_BEAT_DONE);
-              const sent = noteFeedback({
-                toast: NEXT_BEAT_DONE,
-                targetId: nextBeat.id,
-                state: "aimed",
-                x: nextBeat.x,
-                y: nextBeat.y,
-              });
-              if (!sent) aimMap(nextBeat.id, nextBeat.x, nextBeat.y);
-            }}
+            onClick={() => runNextBeat(nextBeat, true)}
           >
             {nextBeatLabel(nextBeat)}
           </button>
@@ -2107,6 +2157,7 @@ export function VillagePage({ initial }: Props) {
             identityPulse={identityPulse}
             homeSettle={homeSettle}
             onHome={settleHome}
+            legendShut={legendShut}
             onToyTap={(id) => {
               setYardOpen(true);
               const spot = toyAnchor(id);
@@ -2165,7 +2216,37 @@ export function VillagePage({ initial }: Props) {
               names: people.map((person) => person.name),
               version: APP_VERSION,
             }}
+            onOpenChange={onShareOpen}
           />
+          {mapBeat ? (
+            <button
+              type="button"
+              className="parchment-badge next-beat-first"
+              data-testid="next-beat-first"
+              data-next-id={mapBeat.id}
+              data-week-gate="0"
+              onClick={() => runNextBeat(mapBeat, tally.complete)}
+            >
+              {nextBeatLabel(mapBeat)}
+            </button>
+          ) : null}
+          {beatSuggest ? (
+            <div className="next-beat-suggest" data-testid="next-beat-suggest" data-module="next-beat-path-glow" data-next-id={beatSuggest.id}>
+              <button
+                type="button"
+                className="next-beat-suggest-go"
+                onClick={() => {
+                  const beat = NEXT_BEATS.find((item) => item.id === beatSuggest.id);
+                  if (beat) runNextBeat(beat, tally.complete);
+                }}
+              >
+                {beatSuggest.line}
+              </button>
+              <button type="button" className="hud-icon" aria-label="收起" onClick={() => setBeatSuggest(null)}>
+                ×
+              </button>
+            </div>
+          ) : null}
           {line === "return" ? (
             <SoftLineChip
               testId="return-warm"
@@ -2296,6 +2377,18 @@ export function VillagePage({ initial }: Props) {
                 disabled={!selfName}
                 onAct={runLoop}
               />
+            ) : null}
+            {FIRST_SCREEN_SOCIAL_ENABLED ? (
+              <button
+                type="button"
+                className="hud-btn hud-btn-ghost first-wave"
+                data-testid="first-wave"
+                data-module="first-screen-social"
+                disabled={!selfName}
+                onClick={() => emote("wave")}
+              >
+                {FIRST_WAVE_LABEL}
+              </button>
             ) : null}
             {CO_PRESENCE_ENABLED ? (
               <CoPresenceToggle
