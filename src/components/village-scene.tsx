@@ -72,6 +72,8 @@ import { landmarkSettleFrame, landmarkSettleMode, landmarkSettleNarrow } from "@
 import { WaveButton } from "@/features/wave-gift/wave-button";
 import { thumbShowsHome } from "@/features/thumb-identity/thumb-identity";
 import { MAP_FIELD_HOLD_LINE, mapPendingAttr } from "@/features/map-field-hold/map-field-hold";
+import { visitorLegend } from "@/features/header-lean/header-lean";
+import { MORE_LEAN_ENABLED } from "@/features/more-lean/more-lean";
 import { mapHomeAria, mapHomeFace } from "@/features/one-home-word/one-home-word";
 import { MoreDiscoverDot } from "@/features/more-discover/more-cue";
 import { selfRecognizeMark } from "@/features/self-recognize/self-recognize";
@@ -108,6 +110,7 @@ type Props = {
   homeSettle?: number;
   onHome?: () => void;
   legendShut?: number;
+  sheetExtra?: ReactNode;
   children?: ReactNode;
 };
 
@@ -141,6 +144,7 @@ export function VillageScene({
   homeSettle = 0,
   onHome,
   legendShut = 0,
+  sheetExtra = null,
   children,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -997,7 +1001,24 @@ export function VillageScene({
             <i className="swatch swatch-muted" /> 灰猫 · 灰名牌 · 未评分
           </span>
           <span>{plateLegend(life.quiet)}</span>
+          {visitorLegend(Boolean(life.selfName)) ? (
+            <span data-testid="visitor-legend">{visitorLegend(Boolean(life.selfName))}</span>
+          ) : null}
         </details>
+        {MORE_LEAN_ENABLED ? (
+          <div className="more-lean-inline">
+            <button
+              type="button"
+              className="hud-btn hud-btn-ghost"
+              data-testid="toggle-plates"
+              aria-pressed={life.showAllPlates}
+              onClick={onTogglePlates}
+            >
+              {life.showAllPlates ? "收起名牌" : "全显名牌"}
+            </button>
+            {sheetExtra}
+          </div>
+        ) : null}
         {life.selfName && onEmote ? (
           <div className="emote-bar" data-testid="emote-bar">
             <button type="button" className="hud-btn hud-btn-ghost" onClick={() => onEmote("stretch")}>
@@ -1024,15 +1045,17 @@ export function VillageScene({
         <button type="button" className="hud-icon" onClick={() => applyZoom(zoom + 1)} aria-label="拉近">
           +
         </button>
-        <button
-          type="button"
-          className="hud-icon hud-icon-wide map-more-item"
-          data-testid="toggle-plates"
-          aria-pressed={life.showAllPlates}
-          onClick={onTogglePlates}
-        >
-          {life.showAllPlates ? "收起名牌" : "全显名牌"}
-        </button>
+        {MORE_LEAN_ENABLED ? null : (
+          <button
+            type="button"
+            className="hud-icon hud-icon-wide map-more-item"
+            data-testid="toggle-plates"
+            aria-pressed={life.showAllPlates}
+            onClick={onTogglePlates}
+          >
+            {life.showAllPlates ? "收起名牌" : "全显名牌"}
+          </button>
+        )}
         {onSfxMute && onAmbient ? (
           <GestureChrome
             muted={life.sfxMuted !== false}

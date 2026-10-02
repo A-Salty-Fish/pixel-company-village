@@ -28,6 +28,16 @@ export async function openWeekBoard(page: Page) {
   if ((await badge.getAttribute("aria-expanded")) !== "true") await badge.click();
 }
 
+/** Folded roster keeps unscored names behind 「还有 N 人」. Expand when a test needs that row. */
+export async function ensureRosterRow(page: Page, name: string) {
+  const row = page.locator(`[data-roster-name="${name}"]`);
+  if ((await row.count()) === 0) {
+    const more = page.getByTestId("roster-more");
+    if ((await more.count()) > 0) await more.click();
+  }
+  return page.locator(`[data-roster-name="${name}"]`);
+}
+
 export async function roster(page: Page) {
   const scores = await page.request.get("/api/scores");
   if (!scores.ok()) throw new Error("scores_unavailable");

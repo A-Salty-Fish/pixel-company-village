@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { login, roster } from "./login";
+import { ensureRosterRow, login, roster } from "./login";
 
 async function heroBox(page: Page) {
   return page.evaluate(() => {
@@ -96,7 +96,7 @@ test("a wave reply lands on the map and find-me holds", async ({ page }) => {
   const other = body.people.find((person) => person.name !== self)?.name ?? "";
   await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(self);
-  await page.locator(`[data-roster-name="${other}"]`).click();
+  await (await ensureRosterRow(page, other)).click();
   await page.getByTestId("signal-actions").getByRole("button", { name: "挥手" }).click();
   await expect(page.locator("[data-village-host='ready']")).toHaveAttribute("data-wave-reply", "1");
   await page.keyboard.press("Escape");

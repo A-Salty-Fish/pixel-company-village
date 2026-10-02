@@ -26,9 +26,8 @@ test("narrow first screen folds the ritual trio and the map hud", async ({ page 
   await expect(page.getByTestId("today-can-do")).toBeHidden();
   await expect(page.getByTestId("toggle-plates")).toBeHidden();
   await expect(page.getByTestId("gesture-ambient")).toBeHidden();
-  await expect(page.getByTestId("co-presence-toggle")).toBeVisible();
-  await expect(page.getByTestId("first-wave")).toBeVisible();
-  await expect(page.getByTestId("first-wave")).toHaveText("挥手");
+  await expect(page.getByTestId("co-presence-toggle")).toBeHidden();
+  await expect(page.getByTestId("first-wave")).toBeHidden();
   await expect(page.locator("[data-village-host]")).toHaveAttribute("data-teach", "pinch");
   await expect(page.locator("canvas")).toHaveAttribute("aria-label", /双指捏合/);
   await expect(page.locator("canvas")).not.toHaveAttribute("aria-label", /滚轮/);
@@ -43,7 +42,8 @@ test("narrow first screen folds the ritual trio and the map hud", async ({ page 
 
   await page.getByTestId("map-more").click();
   await expect(page.getByTestId("name-legend")).toBeVisible();
-  await expect(page.getByTestId("co-presence-toggle")).toBeVisible();
+  await expect(page.getByTestId("toggle-plates")).toBeVisible();
+  await expect(page.getByTestId("co-presence-toggle")).toBeHidden();
   await expect(page.getByTestId("today-entry")).toBeVisible();
 
   await page.getByTestId("today-entry").click();

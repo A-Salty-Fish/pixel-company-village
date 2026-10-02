@@ -4,11 +4,12 @@ import { login, roster, openVillageDrawer } from "./login";
 test("visitor banner is visible before identity is chosen", async ({ page }) => {
   await login(page);
   await expect(page.getByTestId("visitor-banner")).toContainText("访客模式");
-  await expect(page.getByTestId("weather-chip")).toBeVisible();
+  await expect(page.getByTestId("weather-chip")).toBeHidden();
   const body = await roster(page);
   const self = body.people[0]?.name ?? "";
   await page.getByTestId("comfort-settings").locator("> summary").click();
   await page.getByTestId("self-picker").selectOption(self);
+  await expect(page.getByTestId("weather-chip")).toBeVisible();
   await expect(page.getByTestId("visitor-banner")).toHaveCount(0);
 });
 

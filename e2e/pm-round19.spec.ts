@@ -61,7 +61,8 @@ test("更多 shows one cue, then stays quiet after it is opened", async ({ page 
   expect(metrics.anim).toContain("more-cue-btn");
   await more.click();
   await expect(page.getByTestId("name-legend")).toBeVisible();
-  await expect(page.getByTestId("co-presence-toggle")).toBeVisible();
+  await expect(page.getByTestId("toggle-plates")).toBeVisible();
+  await expect(page.getByTestId("co-presence-toggle")).toBeHidden();
   await expect(cue).toBeHidden();
 
   await page.reload();

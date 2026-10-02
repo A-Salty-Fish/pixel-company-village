@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.12.0";
+export const APP_VERSION = "1.13.0";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,20 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.13.0",
+    date: "2026-10-02",
+    title: "走进田",
+    notes: [
+      "第一次进村，那一句提示停在底栏上面，留出一点空。点「知道了」，底栏还在。",
+      "点「我是谁」，名字就落在眼前。选定之后，镜头回到这个人。",
+      "还没选定自己时，地图上只留一句邀请。",
+      "名册先收成自己、有分的人，和还有几人。展开仍能看见还没分。",
+      "页头的更多只留刷新和出村。",
+      "页脚改成一句人话。",
+      "地图上的更多只多出图例、院子和名牌。",
+    ],
+  },
   {
     version: "1.12.0",
     date: "2026-10-02",
