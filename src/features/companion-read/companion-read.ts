@@ -1,5 +1,6 @@
 /**
  * PV-PM-082 — 相伴 shows whether it is on, and a wave leaves a short cue.
+ * PV-D-018 — the person-card wave and the map-bar wave share that cue.
  * The cue sits on the map for a couple of seconds. It is not the week board.
  * Set COMPANION_READ_ENABLED to false to keep the quiet toggle.
  */
@@ -21,6 +22,38 @@ export function companionLabel(on: boolean, enabled = COMPANION_READ_ENABLED) {
 export function companionMark(on: boolean, enabled = COMPANION_READ_ENABLED): "on" | "off" {
   if (!enabled) return "off";
   return on ? "on" : "off";
+}
+
+/** Person-card wave and map-bar wave. Both leave the same cue while 相伴 is on. */
+export const COMPANION_WAVE_ENTRIES = ["panel", "header"] as const;
+export type CompanionWaveEntry = (typeof COMPANION_WAVE_ENTRIES)[number];
+
+export type CompanionWaveCue = {
+  line: string;
+  name: string;
+  at: number;
+};
+
+/**
+ * One map cue plus the foot ring. Reduced motion still returns the cue;
+ * the ring pixels do not animate.
+ */
+export function companionWaveCue(input: {
+  entry: CompanionWaveEntry;
+  companionOn: boolean;
+  name: string | null | undefined;
+  line: string;
+  at: number;
+  enabled?: boolean;
+}): CompanionWaveCue | null {
+  if (input.entry !== "panel" && input.entry !== "header") return null;
+  if (!companionReadOn(input.enabled)) return null;
+  if (!input.companionOn) return null;
+  const name = typeof input.name === "string" ? input.name.trim() : "";
+  const line = input.line.trim();
+  if (!name || !line) return null;
+  if (!Number.isFinite(input.at)) return null;
+  return { line, name, at: input.at };
 }
 
 export function waveCueVisible(elapsedMs: number, enabled = COMPANION_READ_ENABLED) {

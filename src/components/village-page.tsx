@@ -118,7 +118,7 @@ import { pressFeelMark } from "@/features/press-feel/press-feel";
 import { woodPlaqueMark } from "@/features/wood-plaque/wood-plaque";
 import { warmPlaqueMark } from "@/features/warm-plaque/warm-plaque";
 import { headerLayoutPad, mapRoomMark } from "@/features/map-room/map-room";
-import { COMPANION_CUE_MS } from "@/features/companion-read/companion-read";
+import { COMPANION_CUE_MS, companionReadOn, companionWaveCue } from "@/features/companion-read/companion-read";
 import { welcomeLine, WELCOME_DELAY_MS, WELCOME_HOLD_MS } from "@/features/village-welcome/village-welcome";
 import { skyWashBand } from "@/features/sky-wash/sky-wash";
 import { ShareVillage } from "@/features/share-village/share-card";
@@ -858,6 +858,7 @@ export function VillagePage({ initial }: Props) {
     facts: weekFacts,
     weekKey: clock.weekKey,
   });
+  const liveCue = waveCue && coOn && companionReadOn() ? waveCue : null;
   const life: SceneLife = {
     quiet: comfort.quiet,
     reduceMotion: motion.reduced,
@@ -900,7 +901,7 @@ export function VillagePage({ initial }: Props) {
       ? { lantern: loopBlob.lanternGlow, scare: loopBlob.scareTips, pebbles: loopPebbles }
       : null,
     mapAim: mapAim ? { kind: mapAim.kind, x: mapAim.x, y: mapAim.y, at: mapAim.at } : null,
-    waveTarget: waveCue ? waveCue.name : null,
+    waveTarget: liveCue ? liveCue.name : null,
     feedbackPulse: feedback?.pulse ? { x: feedback.x, y: feedback.y } : null,
     sfxMuted: comfort.sfxMuted,
     findPrintAt,
@@ -1131,6 +1132,11 @@ export function VillagePage({ initial }: Props) {
     setFx(null);
   }
 
+  function noteCompanionWave(entry: "panel" | "header", name: string | null | undefined, line: string, at: number) {
+    const cue = companionWaveCue({ entry, companionOn: coOn, name, line, at });
+    if (cue) setWaveCue(cue);
+  }
+
   function wave() {
     if (!selected) return;
     const spent = spendWave(selected.name);
@@ -1138,10 +1144,12 @@ export function VillagePage({ initial }: Props) {
       setFx(blockedKindnessFx(selected.name, spent.line));
       return;
     }
+    const started = nowMs();
     setFx(withSocialReply(emoteFx(selected.name, "wave"), selfName, familiarity[selected.name] ?? 0));
     markGesture("wave");
     advanceLoop("wave");
     const name = selected.name;
+    noteCompanionWave("panel", name, headerWaveLine(Boolean(selfName) && name !== selfName), started);
     if (selfName && name !== selfName) {
       commitPlay((current) => ({ ...current, bonds: bumpBond(current.bonds, name) }));
     }
@@ -1174,7 +1182,7 @@ export function VillagePage({ initial }: Props) {
         duration: HEADER_WAVE_MS,
       });
       setHeaderWave({ line, until: started + HEADER_WAVE_MS });
-      setWaveCue({ line, name: target?.name ?? selfName, at: started });
+      noteCompanionWave("header", target?.name ?? selfName, line, started);
       markGesture("wave");
       const spot = target ?? (self ? { name: self.name, x: self.x, y: self.y } : null);
       noteFeedback({
@@ -1186,6 +1194,7 @@ export function VillagePage({ initial }: Props) {
       });
       return;
     }
+    if (kind === "wave") noteCompanionWave("header", selfName, headerWaveLine(false), nowMs());
     setFx(emoteFx(selfName, kind));
   }
 
@@ -1734,7 +1743,7 @@ export function VillagePage({ initial }: Props) {
       data-focal-village={focalVillageMark()}
       data-map-room={mapRoomMark()}
       data-village-welcome={welcomeOn ? "1" : "0"}
-      data-companion-cue={waveCue ? "1" : "0"}
+      data-companion-cue={liveCue ? "1" : "0"}
     >
       <LightSfxBridge muted={comfort.sfxMuted} reduceMotion={motion.reduced} />
       <div className="village-hero" data-testid="village-hero">
@@ -2136,9 +2145,14 @@ export function VillagePage({ initial }: Props) {
               </button>
             </p>
           ) : null}
-          {waveCue ? (
-            <p className="companion-cue" data-testid="companion-cue" data-module="companion-read">
-              {waveCue.line}
+          {liveCue ? (
+            <p
+              className="companion-cue"
+              data-testid="companion-cue"
+              data-module="companion-read"
+              data-motion={motion.reduced ? "still" : "hold"}
+            >
+              {liveCue.line}
             </p>
           ) : null}
           <ShareVillage
