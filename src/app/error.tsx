@@ -1,6 +1,7 @@
 "use client";
 
 import { focalVillageMark } from "@/features/focal-village/focal-village";
+import { warmPlaqueMark } from "@/features/warm-plaque/warm-plaque";
 import { woodPlaqueMark } from "@/features/wood-plaque/wood-plaque";
 
 export default function VillageError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
@@ -8,6 +9,7 @@ export default function VillageError({ reset }: { error: Error & { digest?: stri
     <div
       className="farm-page flex flex-1 items-center justify-center px-4 py-10"
       data-wood-plaque={woodPlaqueMark()}
+      data-warm-plaque={warmPlaqueMark()}
       data-focal-village={focalVillageMark()}
     >
       <div className="hud-panel max-w-md overflow-hidden" data-testid="village-boundary">

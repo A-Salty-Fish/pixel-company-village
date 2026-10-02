@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.7.0";
+export const APP_VERSION = "1.8.0";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,19 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.8.0",
+    date: "2026-10-01",
+    title: "还想多看一眼",
+    notes: [
+      "小路边上多了草和花，路口留着空。",
+      "屋顶多一条亮边，墙的一边暗一点。屋子不再平平一片。",
+      "人脚下的影子更软，轮廓清楚一点。",
+      "木牌和按钮换成暖木头，看着不像表格。",
+      "夜里窗子还是暖的。手机下半截仍是田，不是深蓝空地。",
+      "进村头半分钟，眼睛先被路口拉过去。减少动作时停着。",
+    ],
+  },
   {
     version: "1.7.0",
     date: "2026-10-01",

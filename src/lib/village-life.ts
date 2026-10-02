@@ -120,6 +120,8 @@ export type SceneLife = {
   eaveFlashAt?: number | null;
   /** PV-PM-067. Calendar month 1–12 from the local clock. */
   calendarMonth?: number;
+  /** PV-PM-073. First half-minute on the north-path crossing. */
+  pathFocus?: "pulse" | "still" | "off";
 };
 
 export const DEFAULT_COMFORT: Comfort = {
