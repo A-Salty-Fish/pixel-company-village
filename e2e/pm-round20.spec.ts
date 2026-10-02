@@ -27,6 +27,10 @@ test("隔天回来有一句，当天再进就没有", async ({ page }) => {
 
 test("清晨有一句门廊，点一下就收起", async ({ page }) => {
   await login(page);
+  const body = await roster(page);
+  const name = body.people[0]?.name ?? "";
+  await page.getByTestId("comfort-settings").locator(":scope > summary").click();
+  await page.getByTestId("self-picker").selectOption(name);
   await page.evaluate(() => window.__VILLAGE_TEST__?.setClock("2026-10-01T01:30:00.000Z"));
   const dawn = page.getByTestId("dawn-porch");
   await expect(dawn).toBeVisible();

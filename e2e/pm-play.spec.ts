@@ -13,6 +13,62 @@ const WORLD: Record<string, string> = {
   把锄头放下: "rest",
 };
 
+test("390 first visit keeps the tip above the bar and the name picker on this screen", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+  await page.evaluate(() => {
+    window.localStorage.removeItem("village-self-v1");
+    window.sessionStorage.removeItem("village-self-session");
+    window.localStorage.removeItem("village:visit-v1");
+    window.localStorage.removeItem("village:guide-seen-v1");
+    window.localStorage.removeItem("village:first-visit-step-v1");
+  });
+  await page.reload();
+  await page.waitForSelector("canvas[data-village-ready='1']");
+  const guide = page.getByTestId("first-run-guide");
+  await expect(guide).toBeVisible();
+  await expect(guide).toHaveAttribute("data-blocks-map", "0");
+  await expect(guide).toContainText("先选定「我是谁」。先在地图上找我，或去看村口。");
+  await expect(guide).not.toContainText("减动");
+  const gap = await page.evaluate(() => {
+    const tip = document.querySelector("[data-testid='first-run-guide']")?.getBoundingClientRect();
+    const thumb = document.querySelector("[data-testid='thumb-who']")?.getBoundingClientRect();
+    return {
+      tipTop: tip?.top ?? 0,
+      tipBottom: tip?.bottom ?? 0,
+      thumbTop: thumb?.top ?? 0,
+      height: window.innerHeight,
+    };
+  });
+  expect(gap.tipTop).toBeGreaterThanOrEqual(0);
+  expect(gap.tipBottom).toBeLessThanOrEqual(gap.height);
+  expect(gap.thumbTop - gap.tipBottom).toBeGreaterThanOrEqual(8);
+
+  const before = await page.evaluate(() => window.scrollY);
+  await page.getByTestId("thumb-who").click();
+  const picker = page.getByTestId("who-sheet").getByTestId("self-picker");
+  await expect(picker).toBeVisible();
+  const after = await page.evaluate(() => ({ y: window.scrollY, height: window.innerHeight }));
+  expect(Math.abs(after.y - before)).toBeLessThan(after.height);
+  await expect(page.getByTestId("comfort-settings")).not.toHaveAttribute("open", "");
+  const quietInView = await page.evaluate(() => {
+    const nodes = Array.from(document.querySelectorAll("span, p"));
+    return nodes.some((el) => {
+      if (!el.textContent?.includes("安静村子")) return false;
+      const style = getComputedStyle(el);
+      if (style.display === "none" || style.visibility === "hidden") return false;
+      const box = el.getBoundingClientRect();
+      return box.width > 0 && box.height > 0 && box.bottom > 0 && box.top < window.innerHeight;
+    });
+  });
+  expect(quietInView).toBe(false);
+  await page.getByTestId("who-sheet").getByRole("button", { name: "收起" }).click();
+  await page.getByTestId("first-run-dismiss").click();
+  await expect(guide).toHaveCount(0);
+  await expect(page.getByTestId("thumb-who")).toBeVisible();
+  await expect(page.getByTestId("thumb-bar")).toBeVisible();
+});
+
 test("cleared visit and guide keys show the first tip again at 390", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page);

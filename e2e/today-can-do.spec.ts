@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login } from "./login";
+import { login, roster } from "./login";
 
 test("today hint sits on the map corner with the three lines, then leaves after a person", async ({ page }) => {
   await page.goto("/login");
@@ -8,6 +8,10 @@ test("today hint sits on the map corner with the three lines, then leaves after 
     window.sessionStorage.setItem("village:today-hint-dismiss-v1", "1");
   });
   await login(page);
+  const body = await roster(page);
+  const self = body.people[0]?.name ?? "";
+  await page.getByTestId("comfort-settings").locator("> summary").click();
+  await page.getByTestId("self-picker").selectOption(self);
 
   const hint = page.getByTestId("today-can-do");
   await expect(hint).toBeVisible();

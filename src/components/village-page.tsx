@@ -117,6 +117,14 @@ import { NARROW_CHROME_ENABLED, todayEntryLabel } from "@/features/narrow-chrome
 import { unscoredAction, unscoredStatus } from "@/features/roster-quiet-score/roster-quiet-score";
 import { WEEK_INVITE_LINE, weekInviteOpensList, weekInviteShows } from "@/features/week-empty-invite/week-empty-invite";
 import { rosterLiftMark } from "@/features/roster-lift/roster-lift";
+import { tipAboveBarMark } from "@/features/tip-above-bar/tip-above-bar";
+import { WHO_ON_SCREEN_ENABLED, whoOnScreenMark } from "@/features/who-on-screen/who-on-screen";
+import { WhoSheet } from "@/features/who-on-screen/who-sheet";
+import { guestInvitesQuiet, oneFieldInviteMark } from "@/features/one-field-invite/one-field-invite";
+import { rosterMoreLabel, rosterShortList, rosterShortMark } from "@/features/roster-short-cut/roster-short-cut";
+import { HEADER_LEAN_ENABLED, headerLeanMark, showScoreSourceButton } from "@/features/header-lean/header-lean";
+import { HUMAN_FOOTER_ENABLED, footerLine, humanFooterMark } from "@/features/human-footer/human-footer";
+import { MORE_LEAN_ENABLED, moreLeanMark } from "@/features/more-lean/more-lean";
 import { SOCIAL_FLOAT_CHIP, SOCIAL_FLOAT_FOLD_ENABLED } from "@/features/social-float-fold/social-float-fold";
 import { MAP_HUD_FOLD_ENABLED, toyTapCopy } from "@/features/map-hud-fold/map-hud-fold";
 import { THUMB_IDENTITY_ENABLED, thumbShowsHome } from "@/features/thumb-identity/thumb-identity";
@@ -356,6 +364,8 @@ export function VillagePage({ initial }: Props) {
   const [dismissedBroadcast, setDismissedBroadcast] = useState<string | null>(null);
   const [parchment, setParchment] = useState<null | "ritual" | "week" | "season">(null);
   const [headerFold, setHeaderFold] = useState(false);
+  const [whoOpen, setWhoOpen] = useState(false);
+  const [rosterOpen, setRosterOpen] = useState(false);
   const [todayOpen, setTodayOpen] = useState(false);
   const [mapMore, setMapMore] = useState(false);
   const [floatOpen, setFloatOpen] = useState(false);
@@ -1450,6 +1460,22 @@ export function VillagePage({ initial }: Props) {
     setTodayTouch("done");
   }
 
+  function toggleYard() {
+    const next = !yardOpen;
+    setYardOpen(next);
+    if (!next) {
+      setMapAim(null);
+      return;
+    }
+    const spot = toyAnchor("lantern");
+    const copy = toyTapCopy("lantern", {
+      lantern: loopBlob.lanternGlow,
+      scare: loopBlob.scareTips,
+      pebbles: loopPebbles,
+    });
+    noteFeedback({ toast: "院子在这边。", targetId: "lantern", state: copy.state, x: spot.x, y: spot.y });
+  }
+
   function settleHome() {
     if (!HOME_SETTLE_ENABLED) {
       visitOwnGate("镜头回到自己的小屋。");
@@ -1807,6 +1833,11 @@ export function VillagePage({ initial }: Props) {
 
   const dayMark = scoreDayMark(dateCopy.fresh, comfort.quiet);
   const visitorLine = visitorCopy(selfName, waveState.toggles.visitor);
+  const guestQuiet = guestInvitesQuiet(Boolean(selfName));
+  const weekInvite = weekInviteShows(tally.done, waveState.toggles.weekBoard);
+  const todayFace = !guestQuiet && weekInvite ? WEEK_INVITE_LINE : todayEntryLabel(tally.done, tally.total, waveState.toggles.weekBoard);
+  const rosterCut = rosterShortList(people, selfName, rosterOpen);
+  const pickerNames = (rosterMode === "empty" ? payload.people : people).map((person) => person.name);
   const yardShown = yardOpen || Boolean(mapAim && isToyId(mapAim.kind));
   const ritualShown = ritualMark ? RITUAL_BEATS[ritualMark.beat] : ritualBeat(clock.hour);
   const openParchment = (id: "ritual" | "week" | "season") => {
@@ -1882,6 +1913,13 @@ export function VillagePage({ initial }: Props) {
       data-roster-lift={rosterLiftMark()}
       data-has-self={selfName ? "1" : "0"}
       data-float-fold={SOCIAL_FLOAT_FOLD_ENABLED ? "1" : "0"}
+      data-tip-above-bar={tipAboveBarMark()}
+      data-who-on-screen={whoOnScreenMark()}
+      data-one-invite={oneFieldInviteMark()}
+      data-roster-short={rosterShortMark()}
+      data-header-lean={headerLeanMark()}
+      data-human-footer={humanFooterMark()}
+      data-more-lean={moreLeanMark()}
     >
       <LightSfxBridge muted={comfort.sfxMuted} reduceMotion={motion.reduced} />
       <div className="village-hero" data-testid="village-hero">
@@ -1960,17 +1998,19 @@ export function VillagePage({ initial }: Props) {
                 {exitBye}
               </p>
             ) : null}
-            {visitorLine ? <p className="header-fold-visitor">{visitorLine}</p> : null}
-            <button
-              type="button"
-              className="hud-btn hud-btn-ghost header-fold-score"
-              onClick={() => {
-                const node = document.querySelector<HTMLDetailsElement>("[data-testid='score-meta']");
-                if (node) node.open = !node.open;
-              }}
-            >
-              分数从哪来
-            </button>
+            {visitorLine && !HEADER_LEAN_ENABLED ? <p className="header-fold-visitor">{visitorLine}</p> : null}
+            {showScoreSourceButton() ? (
+              <button
+                type="button"
+                className="hud-btn hud-btn-ghost header-fold-score"
+                onClick={() => {
+                  const node = document.querySelector<HTMLDetailsElement>("[data-testid='score-meta']");
+                  if (node) node.open = !node.open;
+                }}
+              >
+                分数从哪来
+              </button>
+            ) : null}
           </div>
         </div>
         <details className="px-3 pb-2" data-testid="score-meta">
@@ -2001,19 +2041,17 @@ export function VillagePage({ initial }: Props) {
             className="narrow-today-summary"
             data-testid="today-entry"
             aria-expanded={todayOpen}
-            data-week-invite={weekInviteShows(tally.done, waveState.toggles.weekBoard) ? "1" : "0"}
+            data-week-invite={weekInvite && !guestQuiet ? "1" : "0"}
             onClick={() => {
               const opening = !todayOpen;
               setTodayOpen(opening);
               if (opening) advanceLoop("today");
-              if (weekInviteOpensList(opening, weekInviteShows(tally.done, waveState.toggles.weekBoard))) {
+              if (weekInviteOpensList(opening, weekInvite && !guestQuiet)) {
                 setParchment("week");
               }
             }}
           >
-            {weekInviteShows(tally.done, waveState.toggles.weekBoard)
-              ? WEEK_INVITE_LINE
-              : todayEntryLabel(tally.done, tally.total, waveState.toggles.weekBoard)}
+            {todayFace}
           </button>
         ) : null}
         <div className="narrow-today-body">
@@ -2253,6 +2291,7 @@ export function VillagePage({ initial }: Props) {
             homeSettle={homeSettle}
             onHome={settleHome}
             legendShut={legendShut}
+            sheetExtra={MORE_LEAN_ENABLED && MAP_HUD_FOLD_ENABLED ? <YardEntry pressed={yardOpen} onToggle={toggleYard} /> : null}
             onToyTap={(id) => {
               setYardOpen(true);
               const spot = toyAnchor(id);
@@ -2443,30 +2482,8 @@ export function VillagePage({ initial }: Props) {
             </div>
           ) : null}
           <div className="map-corner" data-testid="map-corner">
-            {MAP_HUD_FOLD_ENABLED ? (
-              <button
-                type="button"
-                className="hud-btn hud-btn-ghost map-more-item yard-entry"
-                data-testid="yard-entry"
-                aria-pressed={yardOpen}
-                onClick={() => {
-                  const next = !yardOpen;
-                  setYardOpen(next);
-                  if (!next) {
-                    setMapAim(null);
-                    return;
-                  }
-                  const spot = toyAnchor("lantern");
-                  const copy = toyTapCopy("lantern", {
-                    lantern: loopBlob.lanternGlow,
-                    scare: loopBlob.scareTips,
-                    pebbles: loopPebbles,
-                  });
-                  noteFeedback({ toast: "院子在这边。", targetId: "lantern", state: copy.state, x: spot.x, y: spot.y });
-                }}
-              >
-                院子
-              </button>
+            {MAP_HUD_FOLD_ENABLED && !MORE_LEAN_ENABLED ? (
+              <YardEntry pressed={yardOpen} onToggle={toggleYard} />
             ) : null}
             {extraOn && extraSpot ? (
               <button
@@ -2700,15 +2717,19 @@ export function VillagePage({ initial }: Props) {
         comfort={comfort}
         selfName={selfName}
         preset={preset}
-        names={(rosterMode === "empty" ? payload.people : people).map((person) => person.name)}
+        names={pickerNames}
+        pickerTestId={whoOpen && WHO_ON_SCREEN_ENABLED ? "self-picker-parked" : "self-picker"}
         onComfort={(next: Comfort) => saveComfort(next)}
         onSelf={(name, nextPreset) => {
           const previous = selfName;
           saveSelf(name, name ? nextPreset : null);
+          setWhoOpen(false);
           if (!identityLandDue({ previous, next: name })) return;
           setIdentityPulse((value) => value + 1);
           advanceLoop("who");
-          document.querySelector("[data-testid='village-hero']")?.scrollIntoView({ block: "start" });
+          if (!WHO_ON_SCREEN_ENABLED) {
+            document.querySelector("[data-testid='village-hero']")?.scrollIntoView({ block: "start" });
+          }
         }}
         motionReduced={motion.reduced}
       />
@@ -2872,14 +2893,37 @@ export function VillagePage({ initial }: Props) {
           回家
         </button>
         <button type="button" className="hud-btn hud-btn-ghost thumb-who" data-testid="thumb-who" onClick={() => {
+          if (WHO_ON_SCREEN_ENABLED) {
+            setWhoOpen(true);
+            return;
+          }
           document.querySelector<HTMLElement>("[data-testid='comfort-settings']")?.setAttribute("open", "");
           document.querySelector<HTMLElement>("[data-testid='self-picker']")?.focus();
         }}>
           我是谁
         </button>
       </div>
+      {whoOpen && WHO_ON_SCREEN_ENABLED ? (
+        <WhoSheet
+          names={pickerNames}
+          selfName={selfName}
+          onSelf={(name) => {
+            const previous = selfName;
+            saveSelf(name, name ? preset : null);
+            setWhoOpen(false);
+            if (!identityLandDue({ previous, next: name })) return;
+            setIdentityPulse((value) => value + 1);
+            advanceLoop("who");
+          }}
+          onClose={() => setWhoOpen(false)}
+        />
+      ) : null}
 
-      <section className="hud-panel roster-board overflow-hidden" data-testid="roster-board">
+      <section
+        className={`hud-panel roster-board${rosterCut.folded ? "" : " overflow-hidden"}`}
+        data-testid="roster-board"
+        data-folded={rosterCut.folded ? "1" : "0"}
+      >
         <div className="hud-title">田亩名册</div>
         {people.length === 0 && error ? (
           <div className="space-y-2 px-3 py-6 text-center text-sm text-[#4a3a28]">
@@ -2895,8 +2939,9 @@ export function VillagePage({ initial }: Props) {
         ) : people.length === 0 ? (
           <p className="px-3 py-6 text-center text-sm text-[#4a3a28]">等评分机器人投喂一条分数吧。</p>
         ) : (
+          <>
           <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3" data-testid="roster-list">
-            {people.map((person, index) => {
+            {rosterCut.shown.map((person, index) => {
               const active = person.name === selectedName;
               return (
                 <button
@@ -2932,27 +2977,55 @@ export function VillagePage({ initial }: Props) {
               );
             })}
           </div>
+          {rosterCut.hidden > 0 ? (
+            <p className="px-3 pb-3">
+              <button type="button" className="hud-btn hud-btn-ghost" data-testid="roster-more" onClick={() => setRosterOpen(true)}>
+                {rosterMoreLabel(rosterCut.hidden)}
+              </button>
+            </p>
+          ) : null}
+          </>
         )}
       </section>
 
-      <section className="page-foot space-y-2 pb-8">
-        <h2 className="text-sm font-medium text-[#4a3a28]">动画怎么来的</h2>
-        <div className="flex flex-wrap gap-2">
-          {STATE_ORDER.map((state) => (
-            <span key={state} className="hud-chip">
-              {STATE_LABELS[state]}
-            </span>
-          ))}
-        </div>
-        <p className="text-xs leading-5 text-[#4a3a28]/80">
-          小人动作只看评分日的 work / fish / on_task，消息只计条数。未评分的人是灰猫。这是玩乐雷达，不是评价同事。
-        </p>
-        <p className="disclaimer-banner text-xs">{payload.disclaimer}</p>
-        <p className="text-xs leading-5 text-[#6a3d18]/80">
-          草地、水、树、房子、悬崖和七色猫咪村民来自 Little Wilds 完整包。作物 CC0 josehzz。名牌是 Fusion Pixel Font。详见 CREDITS.md。
-        </p>
+      <section className="page-foot space-y-2 pb-8" data-testid="page-foot">
+        {HUMAN_FOOTER_ENABLED ? (
+          <p data-testid="human-footer">{footerLine()}</p>
+        ) : (
+          <>
+            <h2 className="text-sm font-medium text-[#4a3a28]">动画怎么来的</h2>
+            <div className="flex flex-wrap gap-2">
+              {STATE_ORDER.map((state) => (
+                <span key={state} className="hud-chip">
+                  {STATE_LABELS[state]}
+                </span>
+              ))}
+            </div>
+            <p className="text-xs leading-5 text-[#4a3a28]/80">
+              小人动作只看评分日的 work / fish / on_task，消息只计条数。未评分的人是灰猫。这是玩乐雷达，不是评价同事。
+            </p>
+            <p className="disclaimer-banner text-xs">{payload.disclaimer}</p>
+            <p className="text-xs leading-5 text-[#6a3d18]/80">
+              草地、水、树、房子、悬崖和七色猫咪村民来自 Little Wilds 完整包。作物 CC0 josehzz。名牌是 Fusion Pixel Font。详见 CREDITS.md。
+            </p>
+          </>
+        )}
       </section>
     </div>
+  );
+}
+
+function YardEntry({ pressed, onToggle }: { pressed: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      className="hud-btn hud-btn-ghost map-more-item yard-entry"
+      data-testid="yard-entry"
+      aria-pressed={pressed}
+      onClick={onToggle}
+    >
+      院子
+    </button>
   );
 }
 

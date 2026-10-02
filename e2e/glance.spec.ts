@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, openWeekBoard, roster } from "./login";
+import { ensureRosterRow, login, openWeekBoard, roster } from "./login";
 
 test("a cleared store opens the visit, not a signal card", async ({ page }) => {
   await login(page);
@@ -37,7 +37,7 @@ test("three local steps finish the visit and still open a card", async ({ page }
   await openWeekBoard(page);
   await page.getByTestId("today-chores").locator("button").first().click();
   await expect(page.getByTestId("first-run-guide")).toHaveAttribute("data-visit-step", "social");
-  await page.locator(`[data-roster-name="${other}"]`).click();
+  await (await ensureRosterRow(page, other)).click();
   await page.getByTestId("signal-actions").getByRole("button", { name: "挥手" }).click();
   await expect(page.getByTestId("signal-card")).toContainText("对方也挥了回来");
   await expect(page.getByTestId("history-window")).toBeVisible();

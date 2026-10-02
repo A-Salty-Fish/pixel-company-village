@@ -2566,3 +2566,138 @@ body:has(.farm-page[data-focal-village="village"]) {
     display: none;
   }
 }
+
+/* PV-PM-109 — first tip clears the bottom bar. */
+@media (max-width: 899px) {
+  .farm-page[data-tip-above-bar="1"] .first-visit-hint {
+    position: fixed;
+    left: 0.5rem;
+    right: 0.5rem;
+    z-index: 44;
+    margin: 0;
+    bottom: calc(5.25rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* PV-PM-111 — name picker on the current screen. */
+.who-sheet {
+  position: fixed;
+  left: 0.75rem;
+  right: 0.75rem;
+  top: 28%;
+  z-index: 48;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  background: #fff6d8;
+  color: #2a1a10;
+  border: 3px solid #6a3d18;
+  box-shadow: 3px 3px 0 #3d2a1c;
+}
+
+.who-sheet .hud-select {
+  width: 100%;
+  min-height: 44px;
+}
+
+/* PV-PM-110 — one invitation until a name is chosen. */
+.farm-page[data-one-invite="1"][data-has-self="0"] .share-village-slot,
+.farm-page[data-one-invite="1"][data-has-self="0"] .village-welcome,
+.farm-page[data-one-invite="1"][data-has-self="0"] .next-beat-first,
+.farm-page[data-one-invite="1"][data-has-self="0"] .next-beat-suggest,
+.farm-page[data-one-invite="1"][data-has-self="0"] .today-hint,
+.farm-page[data-one-invite="1"][data-has-self="0"] .first-wave,
+.farm-page[data-one-invite="1"][data-has-self="0"] .co-presence-toggle,
+.farm-page[data-one-invite="1"][data-has-self="0"] .social-float-chip,
+.farm-page[data-one-invite="1"][data-has-self="0"] .weather-chip,
+.farm-page[data-one-invite="1"][data-has-self="0"] [data-testid="dawn-porch"],
+.farm-page[data-one-invite="1"][data-has-self="0"] [data-testid="dusk-lantern"],
+.farm-page[data-one-invite="1"][data-has-self="0"] [data-testid="night-linger"],
+.farm-page[data-one-invite="1"][data-has-self="0"] [data-testid="return-warm"] {
+  display: none !important;
+}
+
+/* PV-PM-112 — short roster, then 村里. */
+@media (max-width: 480px) {
+  .farm-page[data-roster-short="1"] .drawer-wall {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .farm-page[data-roster-short="1"] .drawer-wall .village-drawer {
+    order: -1;
+  }
+
+  .farm-page[data-roster-short="1"] .roster-board[data-folded="1"] [data-testid="roster-list"] {
+    max-height: 36vh;
+    overflow: auto;
+  }
+}
+
+/* PV-PM-113 — an open header does not uncover a second score essay. */
+@media (max-width: 900px) {
+  .farm-page[data-header-lean="1"][data-narrow-chrome="1"] .village-header:has(.header-actions.is-open) [data-testid="score-meta"]:not([open]) {
+    display: none;
+  }
+
+  .farm-page[data-header-lean="1"] .village-map-slot {
+    min-height: 280px;
+  }
+}
+
+/* PV-PM-114 */
+.page-foot [data-testid="human-footer"] {
+  margin: 0;
+  color: #4a3a28;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+/* PV-PM-115 — 更多 adds legend, yard, and nameplates without a pile. */
+.more-lean-inline {
+  position: absolute;
+  left: 22rem;
+  bottom: 0.75rem;
+  z-index: 13;
+  display: flex;
+  gap: 0.25rem;
+  pointer-events: auto;
+}
+
+@media (max-width: 900px) {
+  .farm-page[data-more-lean="1"][data-map-hud="fold"] .village-map-slot[data-map-more="1"] .map-tools {
+    flex-wrap: nowrap;
+  }
+
+  .farm-page[data-more-lean="1"][data-map-hud="fold"] .village-map-slot[data-map-more="1"] .map-more-sheet {
+    right: auto;
+    width: max-content;
+    max-width: calc(100% - 8.5rem);
+    bottom: 3.6rem;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .farm-page[data-more-lean="1"][data-map-hud="fold"] .village-map-slot[data-map-more="1"] .more-lean-inline {
+    position: static;
+    left: auto;
+    bottom: auto;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .farm-page[data-more-lean="1"][data-map-hud="fold"] .village-map-slot[data-map-more="1"] .map-more-sheet .today-hint,
+  .farm-page[data-more-lean="1"][data-map-hud="fold"] .village-map-slot[data-map-more="1"] .map-more-sheet .weather-chip,
+  .farm-page[data-more-lean="1"][data-map-hud="fold"] .village-map-slot[data-map-more="1"] .map-more-sheet .emote-bar {
+    display: none !important;
+  }
+
+  .farm-page[data-more-lean="1"][data-map-hud="fold"] .village-map-slot[data-map-more="1"] .map-corner {
+    right: 0.35rem;
+    left: auto;
+    max-width: 7rem;
+    overflow: visible;
+  }
+}

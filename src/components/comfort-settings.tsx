@@ -11,6 +11,7 @@ type Props = {
   preset: StatusId | null;
   names: string[];
   motionReduced: boolean;
+  pickerTestId?: string;
   onComfort: (next: Comfort) => void;
   onSelf: (name: string | null, preset: StatusId | null) => void;
 };
@@ -21,6 +22,7 @@ export function ComfortSettings({
   preset,
   names,
   motionReduced,
+  pickerTestId = "self-picker",
   onComfort,
   onSelf,
 }: Props) {
@@ -130,7 +132,7 @@ export function ComfortSettings({
           <span className="pixel-label">选择自己的名字</span>
           <select
             className="hud-select"
-            data-testid="self-picker"
+            data-testid={pickerTestId}
             value={selfName ?? ""}
             onChange={(event) => onSelf(event.target.value || null, preset)}
           >

@@ -26,6 +26,10 @@ test("production read-only smoke @prod", async ({ page }) => {
   await expect(page.getByTestId("signal-card")).toBeVisible();
   await page.screenshot({ path: "tmp/prod-smoke/04-scored-card.png", fullPage: true });
   if (quiet) {
+    const more = page.getByTestId("roster-more");
+    if ((await page.locator(`[data-roster-name="${quiet.name}"]`).count()) === 0 && (await more.count()) > 0) {
+      await more.click();
+    }
     await page.locator("[data-roster-item]").filter({ hasText: quiet.name }).first().click();
     await expect(page.getByTestId("signal-card")).toContainText("未评分");
   }
