@@ -25,7 +25,7 @@ function plotPeople(count: number) {
   return people;
 }
 
-test("PV-PM-073 pulls the first half-minute onto the north-path crossing", () => {
+test("PV-PM-073 and PV-PM-080 keep warm stones still when motion is reduced", () => {
   assert.equal(PATH_FOCUS_ENABLED, true);
   assert.equal(pathFocusOn(), true);
   assert.equal(pathFocusOn(false), false);
@@ -50,6 +50,10 @@ test("PV-PM-073 pulls the first half-minute onto the north-path crossing", () =>
   const pulse = pathFocusPixels("pulse", 0);
   const flipped = pathFocusPixels("pulse", 1.2);
   assert.notDeepEqual(pulse.map((pixel) => pixel.color), flipped.map((pixel) => pixel.color));
+
+  const reduced = pathFocusPixels("still", 0.4);
+  assert.deepEqual(reduced.map((pixel) => pixel.color), later.map((pixel) => pixel.color));
+  assert.equal(reduced.every((pixel) => pixel.color === "#f2d15c" || pixel.color === "#fff6d8"), true);
 
   const cam = narrowFillCamera({ people: plotPeople(18), cssW: 390, cssH: 596 });
   assert.ok(cam);

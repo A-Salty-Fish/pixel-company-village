@@ -117,6 +117,12 @@ import { softChromeMark } from "@/features/soft-chrome/soft-chrome";
 import { pressFeelMark } from "@/features/press-feel/press-feel";
 import { woodPlaqueMark } from "@/features/wood-plaque/wood-plaque";
 import { warmPlaqueMark } from "@/features/warm-plaque/warm-plaque";
+import { headerLayoutPad, mapRoomMark } from "@/features/map-room/map-room";
+import { COMPANION_CUE_MS } from "@/features/companion-read/companion-read";
+import { welcomeLine, WELCOME_DELAY_MS, WELCOME_HOLD_MS } from "@/features/village-welcome/village-welcome";
+import { skyWashBand } from "@/features/sky-wash/sky-wash";
+import { ShareVillage } from "@/features/share-village/share-card";
+import { APP_VERSION } from "@/features/village-release/changelog";
 import { focalVillageMark } from "@/features/focal-village/focal-village";
 import { DUSK_LANTERN_ENABLED, DUSK_LANTERN_LINE, duskLanternOffer } from "@/features/dusk-lantern/dusk-lantern";
 import { dawnPanTarget, dawnPorchOffer, pickDawnSpot, type DawnSpot } from "@/features/dawn-porch/dawn-porch";
@@ -368,6 +374,8 @@ export function VillagePage({ initial }: Props) {
   const [ambientOn, setAmbientOn] = useState(false);
   const [gestureMark, setGestureMark] = useState<{ id: GestureId; audio: "played" | "silent" } | null>(null);
   const [headerWave, setHeaderWave] = useState<{ line: string; until: number } | null>(null);
+  const [waveCue, setWaveCue] = useState<{ line: string; name: string; at: number } | null>(null);
+  const [welcomeOn, setWelcomeOn] = useState(false);
   const [beatDone, setBeatDone] = useState(false);
   const [stayCooled, setStayCooled] = useState<Record<string, number>>({});
   const [stayHeld, setStayHeld] = useState<string[]>([]);
@@ -385,9 +393,14 @@ export function VillagePage({ initial }: Props) {
   useLayoutEffect(() => {
     const node = headerRef.current;
     if (!node) return;
+    const collapsed = { px: 0 };
     const sync = () => {
       const height = Math.ceil(node.getBoundingClientRect().height);
-      document.documentElement.style.setProperty("--village-header-h", `${height}px`);
+      const foldOpen = Boolean(node.querySelector(".header-actions.is-open"));
+      const scoreOpen = Boolean(node.querySelector("[data-testid='score-meta'][open]"));
+      if (!foldOpen && !scoreOpen) collapsed.px = height;
+      const pad = headerLayoutPad(collapsed.px, height);
+      document.documentElement.style.setProperty("--village-header-h", `${pad}px`);
     };
     sync();
     const observer = new ResizeObserver(sync);
@@ -425,6 +438,7 @@ export function VillagePage({ initial }: Props) {
       ? localScoreHistory(selected.name, clock.ymd)
       : { days: [], recordedDays: 0, source: "local" as const };
   const scoredCount = people.filter((person) => person.scored).length;
+  const messageCount = people.reduce((sum, person) => sum + (person.scored ? person.msgs : 0), 0);
   const placeholderCount = people.length - scoredCount;
   const dateCopy = scoreDateCopy(payload.date, clock.ymd);
   function commitPlay(recipe: (current: PlayBlob) => PlayBlob) {
@@ -886,6 +900,7 @@ export function VillagePage({ initial }: Props) {
       ? { lantern: loopBlob.lanternGlow, scare: loopBlob.scareTips, pebbles: loopPebbles }
       : null,
     mapAim: mapAim ? { kind: mapAim.kind, x: mapAim.x, y: mapAim.y, at: mapAim.at } : null,
+    waveTarget: waveCue ? waveCue.name : null,
     feedbackPulse: feedback?.pulse ? { x: feedback.x, y: feedback.y } : null,
     sfxMuted: comfort.sfxMuted,
     findPrintAt,
@@ -939,6 +954,21 @@ export function VillagePage({ initial }: Props) {
     const id = window.setTimeout(() => setHeaderWave(null), Math.max(0, headerWave.until - Date.now()));
     return () => window.clearTimeout(id);
   }, [headerWave]);
+
+  useEffect(() => {
+    const show = window.setTimeout(() => setWelcomeOn(true), WELCOME_DELAY_MS);
+    const hide = window.setTimeout(() => setWelcomeOn(false), WELCOME_DELAY_MS + WELCOME_HOLD_MS);
+    return () => {
+      window.clearTimeout(show);
+      window.clearTimeout(hide);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!waveCue) return;
+    const id = window.setTimeout(() => setWaveCue(null), Math.max(0, waveCue.at + COMPANION_CUE_MS - Date.now()));
+    return () => window.clearTimeout(id);
+  }, [waveCue]);
 
   function markGesture(id: GestureId) {
     if (!GESTURE_SFX_ENABLED) return;
@@ -1144,6 +1174,7 @@ export function VillagePage({ initial }: Props) {
         duration: HEADER_WAVE_MS,
       });
       setHeaderWave({ line, until: started + HEADER_WAVE_MS });
+      setWaveCue({ line, name: target?.name ?? selfName, at: started });
       markGesture("wave");
       const spot = target ?? (self ? { name: self.name, x: self.x, y: self.y } : null);
       noteFeedback({
@@ -1701,6 +1732,9 @@ export function VillagePage({ initial }: Props) {
       data-wood-plaque={woodPlaqueMark()}
       data-warm-plaque={warmPlaqueMark()}
       data-focal-village={focalVillageMark()}
+      data-map-room={mapRoomMark()}
+      data-village-welcome={welcomeOn ? "1" : "0"}
+      data-companion-cue={waveCue ? "1" : "0"}
     >
       <LightSfxBridge muted={comfort.sfxMuted} reduceMotion={motion.reduced} />
       <div className="village-hero" data-testid="village-hero">
@@ -2088,6 +2122,34 @@ export function VillagePage({ initial }: Props) {
             <TodayHint phase={hintPhase} done={loopDone} />
           </VillageScene>
           <FeedbackStrip beat={feedback} />
+          {welcomeOn ? (
+            <p
+              className="village-welcome"
+              data-testid="village-welcome"
+              data-module="village-welcome"
+              data-motion={motion.reduced ? "still" : "in"}
+              data-sky={skyWashBand(clock.hour)}
+            >
+              <span>{welcomeLine(clock.hour, season.id)}</span>
+              <button type="button" className="hud-icon" aria-label="收起" onClick={() => setWelcomeOn(false)}>
+                ×
+              </button>
+            </p>
+          ) : null}
+          {waveCue ? (
+            <p className="companion-cue" data-testid="companion-cue" data-module="companion-read">
+              {waveCue.line}
+            </p>
+          ) : null}
+          <ShareVillage
+            facts={{
+              date: clock.ymd,
+              scored: scoredCount,
+              messages: messageCount,
+              names: people.map((person) => person.name),
+              version: APP_VERSION,
+            }}
+          />
           {line === "return" ? (
             <SoftLineChip
               testId="return-warm"

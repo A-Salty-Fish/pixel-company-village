@@ -43,6 +43,10 @@ import { buildingVolumeLayers } from "@/features/building-volume/building-volume
 import { villagerGroundOn, villagerGroundPixels } from "@/features/villager-ground/villager-ground";
 import { paintNightHearth } from "@/features/night-hearth/night-hearth";
 import { pathFocusPixels } from "@/features/path-focus/path-focus";
+import { tapDustPixels, tapHop } from "@/features/villager-tap-feedback/villager-tap-feedback";
+import { paintSkyWash } from "@/features/sky-wash/sky-wash";
+import { paintPathMicroGlow } from "@/features/path-micro-glow/path-micro-glow";
+import { waveCuePixels } from "@/features/companion-read/companion-read";
 import { feedbackPulsePixels } from "@/features/village-feedback/village-feedback";
 import { autumnLeafFrame } from "@/features/autumn-leaf-drift/autumn-leaf-drift";
 import { autumnHintFrame } from "@/features/autumn-hint/autumn-hint";
@@ -684,7 +688,13 @@ function drawVillager(
     ctx.fillStyle = "rgba(24, 36, 16, 0.35)";
     ctx.fillRect(Math.round(x - 8), Math.round(y - 2), 16, 3);
   }
-  drawSprite(ctx, catFrame(color, person.dir, anim, frame), x, y);
+  const tapElapsed =
+    life?.tapName === person.name && typeof life.tapAt === "number" ? Date.now() - life.tapAt : -1;
+  const hop = tapHop(tapElapsed, Boolean(life?.reduceMotion));
+  const dust = tapDustPixels(x, y, tapElapsed, Boolean(life?.reduceMotion));
+  if (dust.length > 0) paintPixels(ctx, dust);
+  drawSprite(ctx, catFrame(color, person.dir, anim, frame), x, y - hop);
+  if (life?.waveTarget === person.name) paintPixels(ctx, waveCuePixels(x, y));
   if (!stood && !softGround && zoom < 2) {
     ctx.strokeStyle = "#2a1a10";
     ctx.lineWidth = 2;
@@ -1642,6 +1652,25 @@ export function paintVillage(
     night: Boolean(NIGHT_WASH_V2_ENABLED && life?.sessionNight),
     reduced: Boolean(life?.reduceMotion),
   });
+  paintSkyWash(ctx, viewW, viewH, shanghaiClock().hour);
+  if (life?.mapAim) {
+    const self = villagers.find((person) => person.name === life.selfName);
+    const aim = life.mapAim;
+    paintPathMicroGlow(ctx, {
+      viewW,
+      viewH,
+      camX,
+      camY,
+      worldW: span.w,
+      worldH: span.h,
+      from: self ? { x: self.x, y: self.y } : { x: aim.x - 64, y: aim.y },
+      to: { x: aim.x, y: aim.y },
+      elapsedMs: Date.now() - aim.at,
+      reduced: Boolean(life.reduceMotion),
+      quiet: Boolean(life.quiet),
+      t,
+    });
+  }
   const aimRing = life?.mapAim
     ? isToyId(life.mapAim.kind)
       ? toyFocusPixels(life.mapAim.x, life.mapAim.y)
