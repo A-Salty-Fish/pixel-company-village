@@ -17,7 +17,7 @@ import {
 import type { KindnessMenuId } from "@/lib/copy";
 import { ComfortSettings } from "@/components/comfort-settings";
 import { FirstRunGuide } from "@/components/first-run-guide";
-import { readVisit, VISIT_KEY, type VisitFlags } from "@/lib/first-run";
+import { emptyVisit, readVisit, VISIT_KEY, type VisitFlags } from "@/lib/first-run";
 import { HeaderRitual } from "@/components/header-ritual";
 import { PlayShelf } from "@/components/play-shelf";
 import { VillageLoopsPanel } from "@/components/village-loops-panel";
@@ -326,7 +326,7 @@ export function VillagePage({ initial }: Props) {
   const [homePulse, setHomePulse] = useState(0);
   const [choreBook, setChoreBook] = useState<ReadonlyMap<string, ViewerChoreFlags>>(() => new Map());
   const [waveLine, setWaveLine] = useState<string | null>(null);
-  const [visitFlags, setVisitFlags] = useState<VisitFlags | null>(null);
+  const [visitFlags, setVisitFlags] = useState<VisitFlags>(emptyVisit);
   const [loopLine, setLoopLine] = useState<{ viewer: string; text: string } | null>(null);
   const loopSnap = useSyncExternalStore(subscribeLoops, getLoopSnapshot, getServerLoopSnapshot);
   const [nookLine, setNookLine] = useState<{ viewer: string; text: string } | null>(null);
@@ -637,18 +637,26 @@ export function VillagePage({ initial }: Props) {
     setGlanceMark(loadGlance(selfName, clock.weekKey));
   }, [selfName, clock.weekKey]);
 
-  useEffect(() => {
-    setVisitFlags(readVisit(window.localStorage.getItem(VISIT_KEY)));
+  useLayoutEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(VISIT_KEY);
+      if (raw) setVisitFlags(readVisit(raw));
+    } catch {
+      /* storage blocked */
+    }
   }, []);
 
   useEffect(() => {
-    if (!visitFlags) return;
-    window.localStorage.setItem(VISIT_KEY, JSON.stringify(visitFlags));
+    try {
+      window.localStorage.setItem(VISIT_KEY, JSON.stringify(visitFlags));
+    } catch {
+      /* private mode */
+    }
   }, [visitFlags]);
 
   useEffect(() => {
     if (!selfName) return;
-    setVisitFlags((current) => (current && !current.self ? { ...current, self: true } : current));
+    setVisitFlags((current) => (current.self ? current : { ...current, self: true }));
   }, [selfName, visitFlags]);
 
   useEffect(() => {
@@ -2590,18 +2598,16 @@ export function VillagePage({ initial }: Props) {
         </div>
       ) : null}
       {shelfLine ? <p className="px-1 text-xs text-[#6a3d18]">{shelfLine}</p> : null}
-      {visitFlags ? (
-        <FirstRunGuide
-          flags={visitFlags}
-          onShowMotion={() => {
-            const drawer = document.querySelector<HTMLDetailsElement>("[data-testid='village-drawer']");
-            if (drawer) drawer.open = true;
-            const panel = document.querySelector<HTMLDetailsElement>("[data-testid='wave-d-panel']");
-            if (panel) panel.open = true;
-            document.querySelector<HTMLInputElement>("[data-testid='reduce-motion-toggle']")?.focus();
-          }}
-        />
-      ) : null}
+      <FirstRunGuide
+        flags={visitFlags}
+        onShowMotion={() => {
+          const drawer = document.querySelector<HTMLDetailsElement>("[data-testid='village-drawer']");
+          if (drawer) drawer.open = true;
+          const panel = document.querySelector<HTMLDetailsElement>("[data-testid='wave-d-panel']");
+          if (panel) panel.open = true;
+          document.querySelector<HTMLInputElement>("[data-testid='reduce-motion-toggle']")?.focus();
+        }}
+      />
       <ComfortSettings
         comfort={comfort}
         selfName={selfName}

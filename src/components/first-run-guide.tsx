@@ -1,13 +1,12 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import { GUIDE_KEY, GUIDE_LINES, guideSeen, visitComplete, visitStep, type VisitFlags } from "@/lib/first-run";
+import { useLayoutEffect, useSyncExternalStore } from "react";
+import { GUIDE_KEY, GUIDE_LINES, VISIT_KEY, guideSeen, visitComplete, visitStep, type VisitFlags } from "@/lib/first-run";
 import {
   FIRST_VISIT_KEY,
   FIRST_VISIT_ONE_HINT_ENABLED,
   FIRST_VISIT_TIPS,
   emitFirstVisit,
-  firstVisitDone,
   firstVisitTip,
   readFirstVisitStep,
   subscribeFirstVisit,
@@ -43,31 +42,45 @@ function dismiss() {
   emitFirstVisit();
 }
 
-function readStep() {
-  if (typeof window === "undefined") return FIRST_VISIT_TIPS.length;
+/** Matches the server snapshot until the browser reads storage. */
+let stepCache = 0;
+
+function storedStep() {
+  if (typeof window === "undefined") return 0;
   try {
     if (guideSeen(window.localStorage.getItem(GUIDE_KEY))) return FIRST_VISIT_TIPS.length;
     return readFirstVisitStep(window.localStorage.getItem(FIRST_VISIT_KEY));
   } catch {
-    return FIRST_VISIT_TIPS.length;
+    return 0;
   }
 }
 
-function dismissOne() {
-  try {
-    const step = readStep();
-    const next = step + 1;
-    window.localStorage.setItem(FIRST_VISIT_KEY, String(next));
-    if (firstVisitDone(next)) window.localStorage.setItem(GUIDE_KEY, "1");
-  } catch {
-    /* private mode */
-  }
-  emit();
+function readStep() {
+  return stepCache;
+}
+
+function publishStep(step: number) {
+  stepCache = step;
   emitFirstVisit();
 }
 
+function dismissOne(flags: VisitFlags) {
+  try {
+    window.localStorage.setItem(VISIT_KEY, JSON.stringify(flags));
+    window.localStorage.setItem(FIRST_VISIT_KEY, String(FIRST_VISIT_TIPS.length));
+    window.localStorage.setItem(GUIDE_KEY, "1");
+  } catch {
+    /* private mode */
+  }
+  publishStep(FIRST_VISIT_TIPS.length);
+  emit();
+}
+
 function OneVisitHint({ flags, onShowMotion }: { flags: VisitFlags; onShowMotion?: () => void }) {
-  const step = useSyncExternalStore(subscribeFirstVisit, readStep, () => FIRST_VISIT_TIPS.length);
+  const step = useSyncExternalStore(subscribeFirstVisit, readStep, () => 0);
+  useLayoutEffect(() => {
+    publishStep(storedStep());
+  }, []);
   if (visitComplete(flags)) return null;
   const tip = firstVisitTip(step);
   if (!tip) return null;
@@ -82,7 +95,7 @@ function OneVisitHint({ flags, onShowMotion }: { flags: VisitFlags; onShowMotion
       data-blocks-map="0"
     >
       <p>{tip}</p>
-      <button type="button" className="hud-btn" data-testid="first-run-dismiss" onClick={dismissOne}>
+      <button type="button" className="hud-btn" data-testid="first-run-dismiss" onClick={() => dismissOne(flags)}>
         知道了
       </button>
       {motion ? (
