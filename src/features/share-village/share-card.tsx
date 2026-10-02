@@ -41,7 +41,7 @@ export function ShareVillage(props: { facts: ShareFacts; onOpenChange?: (open: b
   }
 
   return (
-    <div className="share-village-slot">
+    <div className="share-village-slot" data-sentence-strip="1">
       <button
         type="button"
         className="share-village"

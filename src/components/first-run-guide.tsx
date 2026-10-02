@@ -14,6 +14,7 @@ import {
   subscribeFirstVisit,
 } from "@/features/first-visit-one-hint/first-visit-one-hint";
 import { softenFirstTip } from "@/features/play-first-tip/play-first-tip";
+import { tipForIdentity } from "@/features/tip-follows-content/tip-follows-content";
 
 const listeners = new Set<() => void>();
 
@@ -97,7 +98,15 @@ function dismissOne(flags: VisitFlags) {
   emit();
 }
 
-function OneVisitHint({ flags, onShowMotion }: { flags: VisitFlags; onShowMotion?: () => void }) {
+function OneVisitHint({
+  flags,
+  hasSelf,
+  onShowMotion,
+}: {
+  flags: VisitFlags;
+  hasSelf: boolean;
+  onShowMotion?: () => void;
+}) {
   const step = useSyncExternalStore(subscribeFirstVisit, readStep, () => 0);
   useLayoutEffect(() => {
     publishStep(storedStep());
@@ -110,7 +119,8 @@ function OneVisitHint({ flags, onShowMotion }: { flags: VisitFlags; onShowMotion
   }, [flags]);
   if (visitComplete(flags)) return null;
   const raw = firstVisitTip(step);
-  const tip = raw == null ? null : softenFirstTip(raw, step);
+  const softened = raw == null ? null : softenFirstTip(raw, step);
+  const tip = softened == null ? null : tipForIdentity(softened, hasSelf);
   if (!tip) return null;
   const motion = tip.includes("减动开关");
   return (
@@ -172,9 +182,17 @@ function FullVisitGuide({ flags, onShowMotion }: { flags: VisitFlags; onShowMoti
   );
 }
 
-export function FirstRunGuide({ flags, onShowMotion }: { flags: VisitFlags; onShowMotion?: () => void }) {
+export function FirstRunGuide({
+  flags,
+  hasSelf = false,
+  onShowMotion,
+}: {
+  flags: VisitFlags;
+  hasSelf?: boolean;
+  onShowMotion?: () => void;
+}) {
   if (FIRST_VISIT_ONE_HINT_ENABLED) {
-    return <OneVisitHint flags={flags} onShowMotion={onShowMotion} />;
+    return <OneVisitHint flags={flags} hasSelf={hasSelf} onShowMotion={onShowMotion} />;
   }
   return <FullVisitGuide flags={flags} onShowMotion={onShowMotion} />;
 }
