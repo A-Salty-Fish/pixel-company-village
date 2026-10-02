@@ -3,11 +3,17 @@
 import { useState } from "react";
 import { SHARE_LABEL, SHARE_VILLAGE_ENABLED, sharePreview, type ShareFacts } from "@/features/share-village/share-village";
 
-export function ShareVillage(props: { facts: ShareFacts }) {
+export function ShareVillage(props: { facts: ShareFacts; onOpenChange?: (open: boolean) => void }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   if (!SHARE_VILLAGE_ENABLED) return null;
   const card = sharePreview(props.facts);
+
+  function setShareOpen(next: boolean) {
+    setCopied(false);
+    setOpen(next);
+    props.onOpenChange?.(next);
+  }
 
   async function copyCard() {
     const link = typeof window === "undefined" ? "" : window.location.origin;
@@ -41,11 +47,9 @@ export function ShareVillage(props: { facts: ShareFacts }) {
         className="share-village"
         data-testid="share-village"
         data-module="share-village"
+        data-open={open ? "1" : "0"}
         aria-expanded={open}
-        onClick={() => {
-          setCopied(false);
-          setOpen((value) => !value);
-        }}
+        onClick={() => setShareOpen(!open)}
       >
         {SHARE_LABEL}
       </button>
@@ -61,7 +65,7 @@ export function ShareVillage(props: { facts: ShareFacts }) {
             <button type="button" className="hud-btn hud-btn-ghost" onClick={() => void copyCard()}>
               {copied ? "已复制" : "复制"}
             </button>
-            <button type="button" className="hud-icon" aria-label="收起" onClick={() => setOpen(false)}>
+            <button type="button" className="hud-icon" aria-label="收起" onClick={() => setShareOpen(false)}>
               ×
             </button>
           </div>
