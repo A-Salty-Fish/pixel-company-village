@@ -122,6 +122,11 @@ export type SceneLife = {
   calendarMonth?: number;
   /** PV-PM-073. First half-minute on the north-path crossing. */
   pathFocus?: "pulse" | "still" | "off";
+  /** PV-PM-076. Epoch ms of the latest tap. Cleared by the scene, not stored. */
+  tapName?: string | null;
+  tapAt?: number | null;
+  /** PV-PM-082. Person under the short wave ring. */
+  waveTarget?: string | null;
 };
 
 export const DEFAULT_COMFORT: Comfort = {

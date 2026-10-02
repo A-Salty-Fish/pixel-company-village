@@ -50,6 +50,9 @@ import { buildingVolumeMark } from "@/features/building-volume/building-volume";
 import { villagerGroundMark } from "@/features/villager-ground/villager-ground";
 import { nightHearthMark } from "@/features/night-hearth/night-hearth";
 import { pathFocusMark } from "@/features/path-focus/path-focus";
+import { tapFeedbackMark } from "@/features/villager-tap-feedback/villager-tap-feedback";
+import { skyWashMark } from "@/features/sky-wash/sky-wash";
+import { pathGlowMark } from "@/features/path-micro-glow/path-micro-glow";
 import { nameplateAirMark } from "@/features/nameplate-air/nameplate-air";
 import { narrowFillCamera, narrowMapFillMark } from "@/features/narrow-map-fill/narrow-map-fill";
 import { autumnHintMark } from "@/features/autumn-hint/autumn-hint";
@@ -136,6 +139,8 @@ export function VillageScene({
   const onSelectRef = useRef(onSelect);
   const fxRef = useRef(fx);
   const lifeRef = useRef(life);
+  const tapRef = useRef<{ name: string; at: number } | null>(null);
+  const legendRef = useRef<HTMLDetailsElement>(null);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
   const [stage, setStage] = useState<LoadStage>("terrain");
@@ -283,6 +288,18 @@ export function VillageScene({
     lifeRef.current = life;
     kickRef.current?.();
   }, [life]);
+
+  useEffect(() => {
+    const node = legendRef.current;
+    if (!node || typeof window.matchMedia !== "function") return;
+    const wide = window.matchMedia("(min-width: 481px)");
+    const sync = () => {
+      node.open = wide.matches;
+    };
+    sync();
+    wide.addEventListener("change", sync);
+    return () => wide.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     const mark = () => {
@@ -464,6 +481,23 @@ export function VillageScene({
         });
         lifeNowEarly.pathFocus = focus;
         host.dataset.pathFocus = focus;
+        const tap = tapRef.current;
+        lifeNowEarly.tapName = tap?.name ?? null;
+        lifeNowEarly.tapAt = tap?.at ?? null;
+        const tapMark = tap
+          ? tapFeedbackMark({ elapsedMs: nowMs - tap.at, reduced: Boolean(lifeNowEarly.reduceMotion) })
+          : "off";
+        host.dataset.tapFeedback = tapMark;
+        if (tap && tapMark === "off") tapRef.current = null;
+        host.dataset.skyWash = skyWashMark(shanghaiClock().hour);
+        const aim = lifeNowEarly.mapAim;
+        host.dataset.pathGlow = aim
+          ? pathGlowMark({
+              elapsedMs: nowMs - aim.at,
+              reduced: Boolean(lifeNowEarly.reduceMotion),
+              quiet: Boolean(lifeNowEarly.quiet),
+            })
+          : "off";
       }
       host.dataset.waveReply =
         activeFx && activeFx.kind === "wave" && nowMs - activeFx.startedAt < activeFx.duration ? "1" : "0";
@@ -566,9 +600,21 @@ export function VillageScene({
       drag.current = null;
       if (moved) return;
       if (found) {
+        tapRef.current = { name: found.name, at: Date.now() };
+        if (lifeRef.current) {
+          lifeRef.current.tapName = found.name;
+          lifeRef.current.tapAt = tapRef.current.at;
+        }
+        kickRef.current?.();
         onSelectRef.current(found.name);
         return;
       }
+      tapRef.current = null;
+      if (lifeRef.current) {
+        lifeRef.current.tapName = null;
+        lifeRef.current.tapAt = null;
+      }
+      kickRef.current?.();
       if (MAP_HUD_FOLD_ENABLED) {
         const toy = hitToy(world.x, world.y);
         if (toy) {
@@ -783,6 +829,9 @@ export function VillageScene({
       data-villager-ground={villagerGroundMark()}
       data-night-hearth={nightHearthMark(Boolean(NIGHT_WASH_V2_ENABLED && life.sessionNight))}
       data-path-focus="off"
+      data-tap-feedback="off"
+      data-sky-wash="off"
+      data-path-glow="off"
       data-villager-read={villagerReadMark()}
       data-nameplate-air={nameplateAirMark()}
       data-waiting-cue={waitingCueMark(life.waitingCue ?? null)}
@@ -830,7 +879,8 @@ export function VillageScene({
             村口 · {life.decor.weatherLabel}
           </div>
         ) : null}
-        <div className="name-legend" data-testid="name-legend">
+        <details className="name-legend" data-testid="name-legend" ref={legendRef} open>
+          <summary>图例</summary>
           <span>
             <i className="swatch swatch-scored" /> 彩猫 · 琥珀名牌 · 有分
           </span>
@@ -838,7 +888,7 @@ export function VillageScene({
             <i className="swatch swatch-muted" /> 灰猫 · 灰名牌 · 未评分
           </span>
           <span>{plateLegend(life.quiet)}</span>
-        </div>
+        </details>
         {life.selfName && onEmote ? (
           <div className="emote-bar" data-testid="emote-bar">
             <button type="button" className="hud-btn hud-btn-ghost" onClick={() => onEmote("stretch")}>

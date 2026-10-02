@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.8.0";
+export const APP_VERSION = "1.9.0";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,21 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.9.0",
+    date: "2026-10-02",
+    title: "还想回村",
+    notes: [
+      "点一个人，脚下轻轻弹一下，很快就停。",
+      "清晨、白天、傍晚和夜里，天边的颜色不一样。夜里的路还认得出。",
+      "减少动作时，路口的暖石停着，不闪。",
+      "往下一处走，路上留两三颗暖点。安静时也不闪。",
+      "进村时，地图边上轻轻说一句。可以收起。",
+      "手机上先看见的还是田。图例和设置收着，不把地图挤扁。",
+      "相伴开着能看出来。挥手之后，旁边亮一小会儿。",
+      "可以分享村子。只带日期、人数和名字，不带说过的话。",
+    ],
+  },
   {
     version: "1.8.0",
     date: "2026-10-01",
