@@ -12,6 +12,8 @@ import { RELATION_FIRST_ENABLED } from "@/features/signal-card-relation-first/re
 import { RelationFirstLead, ScoreRingsDisclosure } from "@/features/signal-card-relation-first/relation-first-view";
 import { SIGNAL_CARE_ENABLED } from "@/features/signal-care/signal-care";
 import { SignalCareNote } from "@/features/signal-care/signal-care-view";
+import { CARD_SQUASH_MS, cardSquashMark } from "@/features/card-open-squash/card-open-squash";
+import { WaveButton } from "@/features/wave-gift/wave-button";
 
 type Props = {
   person: PersonWithState;
@@ -41,6 +43,8 @@ type Props = {
   gardenCrop: string | null;
   careDays?: string[];
   bondCount?: number;
+  quiet?: boolean;
+  reduced?: boolean;
   onClose: () => void;
   onKindness: (action: KindnessMenuId) => void;
   onWave: () => void;
@@ -64,6 +68,7 @@ export type HistoryDayView = {
 export function SignalCard(props: Props) {
   const [menu, setMenu] = useState<"closed" | "pick" | KindnessMenuId>("closed");
   const [secretAsk, setSecretAsk] = useState(false);
+  const [squashDone, setSquashDone] = useState(false);
 
   const person = props.person;
   const showScores = person.scored && (!props.hideScores || props.isSelf);
@@ -78,6 +83,16 @@ export function SignalCard(props: Props) {
   useEffect(() => {
     closeRef.current?.focus({ preventScroll: true });
   }, []);
+  const squash = cardSquashMark({
+    elapsedMs: squashDone ? CARD_SQUASH_MS : 0,
+    quiet: Boolean(props.quiet),
+    reduced: Boolean(props.reduced),
+  });
+  useEffect(() => {
+    if (squash !== "squash") return;
+    const id = window.setTimeout(() => setSquashDone(true), CARD_SQUASH_MS);
+    return () => window.clearTimeout(id);
+  }, [squash]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -97,6 +112,7 @@ export function SignalCard(props: Props) {
       aria-labelledby="signal-sheet-title"
       data-signal-card={props.person.scored ? "scored" : "unscored"}
       data-relation-first={RELATION_FIRST_ENABLED ? "1" : "0"}
+      data-card-squash={squash}
       data-testid="signal-card"
     >
       <div className="signal-sheet-head hud-title" data-testid="signal-sheet-head">
@@ -297,15 +313,12 @@ export function SignalCard(props: Props) {
         >
           {actionLabel}
         </button>
-        <button
-          type="button"
+        <WaveButton
           className="hud-btn hud-btn-ghost"
-          onClick={props.onWave}
-          data-wave
+          onWave={props.onWave}
           disabled={!props.hasIdentity || !props.canWave}
-        >
-          挥手
-        </button>
+          label="挥手"
+        />
         <p className="text-xs text-[#6a3d18]" data-wave-note>
           {props.waveHint} 本机操作，不改评分日。
         </p>

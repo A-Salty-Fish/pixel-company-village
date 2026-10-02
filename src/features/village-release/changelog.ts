@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.11.2";
+export const APP_VERSION = "1.11.3";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,16 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.11.3",
+    date: "2026-10-02",
+    title: "轻轻一下",
+    notes: [
+      "点开一个人，卡片边上轻轻扁一下，很快就回来。安静村子里这一下没有。",
+      "挥手按下去能看出来。邻里应的那一句像递来的小礼物，不是弹出来的提示。安静时就停着。",
+      "去看村口、湖边或长椅，镜头慢慢停稳。窄的手机上也不抖。安静时直接就到。",
+    ],
+  },
   {
     version: "1.11.2",
     date: "2026-10-02",

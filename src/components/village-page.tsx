@@ -124,6 +124,10 @@ import { warmHudMark } from "@/features/warm-hud/warm-hud";
 import { woodBevelMark } from "@/features/wood-bevel/wood-bevel";
 import { headerLayoutPad, mapRoomMark } from "@/features/map-room/map-room";
 import { COMPANION_CUE_MS, companionReadOn, companionWaveCue } from "@/features/companion-read/companion-read";
+import { WAVE_GIFT_ENABLED } from "@/features/wave-gift/wave-gift";
+import { WaveButton } from "@/features/wave-gift/wave-button";
+import { WaveGiftNote } from "@/features/wave-gift/wave-gift-note";
+import { microMotionStill } from "@/features/micro-still/micro-still";
 import { welcomeLine, WELCOME_DELAY_MS, WELCOME_HOLD_MS } from "@/features/village-welcome/village-welcome";
 import { skyWashBand } from "@/features/sky-wash/sky-wash";
 import { ShareVillage } from "@/features/share-village/share-card";
@@ -391,7 +395,7 @@ export function VillagePage({ initial }: Props) {
   const [mapAim, setMapAim] = useState<{ token: number; kind: string; x: number; y: number; at: number } | null>(null);
   const [ambientOn, setAmbientOn] = useState(false);
   const [gestureMark, setGestureMark] = useState<{ id: GestureId; audio: "played" | "silent" } | null>(null);
-  const [headerWave, setHeaderWave] = useState<{ line: string; until: number } | null>(null);
+  const [headerWave, setHeaderWave] = useState<{ line: string; until: number; at: number } | null>(null);
   const [waveCue, setWaveCue] = useState<{ line: string; name: string; at: number } | null>(null);
   const [welcomeOn, setWelcomeOn] = useState(false);
   const [findPathAt, setFindPathAt] = useState<number | null>(null);
@@ -1288,7 +1292,7 @@ export function VillagePage({ initial }: Props) {
         startedAt: started,
         duration: HEADER_WAVE_MS,
       });
-      setHeaderWave({ line, until: started + HEADER_WAVE_MS });
+      setHeaderWave({ line, until: started + HEADER_WAVE_MS, at: started });
       noteCompanionWave("header", target?.name ?? selfName, line, started);
       markGesture("wave");
       const spot = target ?? (self ? { name: self.name, x: self.x, y: self.y } : null);
@@ -1820,6 +1824,8 @@ export function VillagePage({ initial }: Props) {
       data-gesture-audio={gestureMark?.audio ?? "silent"}
       data-gesture-bed={ambientBedOn({ muted: comfort.sfxMuted, ambient: ambientOn, reduceMotion: motion.reduced }) ? "live" : "off"}
       data-header-wave={headerWave ? "receipt" : "off"}
+      data-wave-gift={WAVE_GIFT_ENABLED ? "gift" : "plain"}
+      data-micro-still={microMotionStill(comfort.quiet, motion.reduced) ? "1" : "0"}
       data-stay-focus={stayFocus ?? ""}
       data-co-presence={coEvent?.id ?? "off"}
       data-co-presence-on={coOn ? "1" : "0"}
@@ -2055,9 +2061,20 @@ export function VillagePage({ initial }: Props) {
         </button>
       </div>
       {headerWave ? (
-        <p className="px-1 text-xs text-[#6a3d18]" data-testid="header-wave-receipt" data-header-wave="receipt">
-          {headerWave.line}
-        </p>
+        WAVE_GIFT_ENABLED ? (
+          <WaveGiftNote
+            className="wave-gift-note px-1 text-xs text-[#6a3d18]"
+            testId="header-wave-receipt"
+            line={headerWave.line}
+            at={headerWave.at}
+            still={microMotionStill(comfort.quiet, motion.reduced)}
+            header
+          />
+        ) : (
+          <p className="px-1 text-xs text-[#6a3d18]" data-testid="header-wave-receipt" data-header-wave="receipt">
+            {headerWave.line}
+          </p>
+        )
       ) : null}
       {ritualPhase !== "off" ? (
         <p className="px-1 text-xs text-[#6a3d18]" data-testid="ritual-afterglow" data-ritual-afterglow={ritualPhase}>
@@ -2278,14 +2295,25 @@ export function VillagePage({ initial }: Props) {
             </p>
           ) : null}
           {liveCue ? (
-            <p
-              className="companion-cue"
-              data-testid="companion-cue"
-              data-module="companion-read"
-              data-motion={motion.reduced ? "still" : "hold"}
-            >
-              {liveCue.line}
-            </p>
+            WAVE_GIFT_ENABLED ? (
+              <WaveGiftNote
+                className="companion-cue wave-gift-note"
+                testId="companion-cue"
+                line={liveCue.line}
+                at={liveCue.at}
+                still={microMotionStill(comfort.quiet, motion.reduced)}
+                moduleName="companion-read"
+              />
+            ) : (
+              <p
+                className="companion-cue"
+                data-testid="companion-cue"
+                data-module="companion-read"
+                data-motion={motion.reduced ? "still" : "hold"}
+              >
+                {liveCue.line}
+              </p>
+            )
           ) : null}
           <ShareVillage
             facts={{
@@ -2458,16 +2486,14 @@ export function VillagePage({ initial }: Props) {
               />
             ) : null}
             {FIRST_SCREEN_SOCIAL_ENABLED ? (
-              <button
-                type="button"
+              <WaveButton
                 className="hud-btn hud-btn-ghost first-wave"
-                data-testid="first-wave"
-                data-module="first-screen-social"
+                testId="first-wave"
+                moduleName="first-screen-social"
+                label={FIRST_WAVE_LABEL}
                 disabled={!selfName}
-                onClick={() => emote("wave")}
-              >
-                {FIRST_WAVE_LABEL}
-              </button>
+                onWave={() => emote("wave")}
+              />
             ) : null}
             {CO_PRESENCE_ENABLED ? (
               <CoPresenceToggle
@@ -2582,6 +2608,8 @@ export function VillagePage({ initial }: Props) {
               gardenCrop={play.garden2[selected.name] ?? null}
               careDays={prefs.rev > 0 ? kindnessDays(selected.name) : []}
               bondCount={play.bonds[selected.name] ?? 0}
+              quiet={comfort.quiet}
+              reduced={motion.reduced}
               onClose={() => {
                 const name = selected.name;
                 setSelectedName(null);
