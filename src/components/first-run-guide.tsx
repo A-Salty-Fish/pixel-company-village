@@ -7,6 +7,8 @@ import {
   FIRST_VISIT_ONE_HINT_ENABLED,
   FIRST_VISIT_TIPS,
   emitFirstVisit,
+  firstVisitDone,
+  firstVisitShownStep,
   firstVisitTip,
   readFirstVisitStep,
   subscribeFirstVisit,
@@ -48,8 +50,12 @@ let stepCache = 0;
 function storedStep() {
   if (typeof window === "undefined") return 0;
   try {
-    if (guideSeen(window.localStorage.getItem(GUIDE_KEY))) return FIRST_VISIT_TIPS.length;
-    return readFirstVisitStep(window.localStorage.getItem(FIRST_VISIT_KEY));
+    const seen = guideSeen(window.localStorage.getItem(GUIDE_KEY));
+    const stepRaw = window.localStorage.getItem(FIRST_VISIT_KEY);
+    if (!seen && firstVisitDone(readFirstVisitStep(stepRaw))) {
+      window.localStorage.removeItem(FIRST_VISIT_KEY);
+    }
+    return firstVisitShownStep(seen, stepRaw);
   } catch {
     return 0;
   }
@@ -60,8 +66,22 @@ function readStep() {
 }
 
 function publishStep(step: number) {
+  if (stepCache === step) return;
   stepCache = step;
   emitFirstVisit();
+}
+
+/** Drop the dismiss latch so a cleared identity can see the first tip again. */
+export function forgetFirstVisit() {
+  try {
+    window.localStorage.removeItem(GUIDE_KEY);
+    window.localStorage.removeItem(FIRST_VISIT_KEY);
+  } catch {
+    /* private mode */
+  }
+  stepCache = 0;
+  emitFirstVisit();
+  emit();
 }
 
 function dismissOne(flags: VisitFlags) {
@@ -80,7 +100,13 @@ function OneVisitHint({ flags, onShowMotion }: { flags: VisitFlags; onShowMotion
   const step = useSyncExternalStore(subscribeFirstVisit, readStep, () => 0);
   useLayoutEffect(() => {
     publishStep(storedStep());
-  }, []);
+    const onStorage = (event: StorageEvent) => {
+      if (event.key && event.key !== GUIDE_KEY && event.key !== FIRST_VISIT_KEY) return;
+      publishStep(storedStep());
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [flags]);
   if (visitComplete(flags)) return null;
   const tip = firstVisitTip(step);
   if (!tip) return null;

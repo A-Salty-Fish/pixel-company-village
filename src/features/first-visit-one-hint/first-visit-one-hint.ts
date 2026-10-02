@@ -55,11 +55,28 @@ export function readFirstVisitStep(raw: string | null) {
   return step;
 }
 
+/**
+ * Guide-seen hides the chip. A finished step key without that latch is leftover
+ * from 「知道了」 after visit/guide keys were cleared — show the first tip again.
+ */
+export function firstVisitShownStep(seen: boolean, stepRaw: string | null) {
+  if (seen) return FIRST_VISIT_TIPS.length;
+  const step = readFirstVisitStep(stepRaw);
+  if (firstVisitDone(step)) return 0;
+  return step;
+}
+
+/** Stored visit still says a name was chosen, but identity is gone. */
+export function firstVisitIdentityDropped(storedSelf: boolean, hasSelf: boolean) {
+  return storedSelf && !hasSelf;
+}
+
 /** While a first-visit tip is up, other 「知道了」 tips wait. */
 export function firstVisitHoldsSlot(input: { guideSeen: boolean; step: number; enabled?: boolean }) {
   const enabled = input.enabled ?? FIRST_VISIT_ONE_HINT_ENABLED;
   if (!enabled || input.guideSeen) return false;
-  return !firstVisitDone(input.step);
+  const shown = firstVisitDone(input.step) ? 0 : input.step;
+  return !firstVisitDone(shown);
 }
 
 export function firstVisitCopy() {

@@ -9,10 +9,13 @@ import {
   firstVisitCopy,
   firstVisitDone,
   firstVisitHoldsSlot,
+  firstVisitIdentityDropped,
   firstVisitOn,
+  firstVisitShownStep,
   firstVisitTip,
   readFirstVisitStep,
 } from "@/features/first-visit-one-hint/first-visit-one-hint";
+import { emptyVisit, visitForIdentity } from "@/lib/first-run";
 
 test("PV-PM-094 one first-visit tip at a time, then the next", () => {
   assert.equal(FIRST_VISIT_ONE_HINT_ENABLED, true);
@@ -33,7 +36,19 @@ test("PV-PM-094 one first-visit tip at a time, then the next", () => {
   assert.equal(readFirstVisitStep("nope"), 0);
   assert.equal(firstVisitHoldsSlot({ guideSeen: false, step: 0 }), true);
   assert.equal(firstVisitHoldsSlot({ guideSeen: true, step: 0 }), false);
-  assert.equal(firstVisitHoldsSlot({ guideSeen: false, step: FIRST_VISIT_TIPS.length }), false);
+  assert.equal(firstVisitHoldsSlot({ guideSeen: false, step: FIRST_VISIT_TIPS.length }), true);
+  assert.equal(firstVisitShownStep(false, null), 0);
+  assert.equal(firstVisitShownStep(false, String(FIRST_VISIT_TIPS.length)), 0);
+  assert.equal(firstVisitShownStep(true, null), FIRST_VISIT_TIPS.length);
+  assert.equal(firstVisitTip(firstVisitShownStep(false, String(FIRST_VISIT_TIPS.length))), FIRST_VISIT_TIPS[0]);
+  assert.equal(firstVisitIdentityDropped(true, false), true);
+  assert.equal(firstVisitIdentityDropped(false, false), false);
+  assert.equal(firstVisitIdentityDropped(true, true), false);
+  const stuck = visitForIdentity({ self: true, yard: true, social: true }, false);
+  assert.equal(stuck.self, false);
+  assert.equal(stuck.yard && stuck.social, true);
+  const fresh = emptyVisit();
+  assert.equal(visitForIdentity(fresh, false), fresh);
   assert.equal(copyIsClean(firstVisitCopy()), true);
   assert.equal(firstVisitCopy().some((line) => line.includes("知道了")), false);
 });

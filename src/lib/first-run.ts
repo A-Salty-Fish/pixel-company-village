@@ -43,6 +43,12 @@ export function visitComplete(flags: VisitFlags) {
   return flags.self && flags.yard && flags.social;
 }
 
+/** `self` follows the current identity. A cleared 「我是谁」 must not stay complete. */
+export function visitForIdentity(flags: VisitFlags, hasSelf: boolean): VisitFlags {
+  if (flags.self === hasSelf) return flags;
+  return { ...flags, self: hasSelf };
+}
+
 export function visitStep(flags: VisitFlags) {
   if (!flags.self) return "self" as const;
   if (!flags.yard) return "yard" as const;

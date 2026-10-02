@@ -13,6 +13,67 @@ const WORLD: Record<string, string> = {
   把锄头放下: "rest",
 };
 
+test("cleared visit and guide keys show the first tip again at 390", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+  await page.evaluate(() => {
+    window.localStorage.setItem("village:first-visit-step-v1", "5");
+    window.localStorage.setItem(
+      "village:visit-v1",
+      JSON.stringify({ self: true, yard: true, social: true }),
+    );
+    window.localStorage.setItem("village:guide-seen-v1", "1");
+    window.localStorage.removeItem("village-self-v1");
+    window.sessionStorage.removeItem("village-self-session");
+    window.localStorage.removeItem("village:visit-v1");
+    window.localStorage.removeItem("village:guide-seen-v1");
+  });
+  await page.reload();
+  await page.waitForSelector("canvas[data-village-ready='1']");
+  const guide = page.getByTestId("first-run-guide");
+  await expect(guide).toBeVisible();
+  await expect(guide).toHaveAttribute("data-blocks-map", "0");
+  await expect(guide).toContainText("先选定「我是谁」。");
+  await expect(guide.getByRole("button", { name: "知道了" })).toHaveCount(1);
+  await page.getByTestId("first-run-dismiss").click();
+  await expect(guide).toHaveCount(0);
+  const visit = await page.evaluate(() => window.localStorage.getItem("village:visit-v1"));
+  expect(visit).toContain("self");
+  await page.reload();
+  await page.waitForSelector("canvas[data-village-ready='1']");
+  await expect(page.getByTestId("first-run-guide")).toHaveCount(0);
+});
+
+test("resetting 我是谁 brings the first tip back", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+  const body = await roster(page);
+  const self = body.people[0]?.name ?? "";
+  await page.getByTestId("comfort-settings").locator("> summary").click();
+  await page.getByTestId("self-picker").selectOption(self);
+  await page.evaluate(() => {
+    window.localStorage.setItem("village:guide-seen-v1", "1");
+    window.localStorage.setItem("village:first-visit-step-v1", "5");
+    window.localStorage.setItem(
+      "village:visit-v1",
+      JSON.stringify({ self: true, yard: true, social: true }),
+    );
+  });
+  await page.reload();
+  await page.waitForSelector("canvas[data-village-ready='1']");
+  await expect(page.getByTestId("first-run-guide")).toHaveCount(0);
+  await page.getByTestId("comfort-settings").locator("> summary").click();
+  await page.getByTestId("self-picker").selectOption("");
+  const guide = page.getByTestId("first-run-guide");
+  await expect(guide).toBeVisible();
+  await expect(guide).toContainText("先选定「我是谁」。");
+  await expect(guide).toHaveAttribute("data-blocks-map", "0");
+  await page.reload();
+  await page.waitForSelector("canvas[data-village-ready='1']");
+  await expect(page.getByTestId("first-run-guide")).toBeVisible();
+  await expect(page.getByTestId("first-run-guide")).toContainText("先选定「我是谁」。");
+});
+
 test("first-run guide names 减动开关 and stays dismissed", async ({ page }) => {
   await login(page);
   await page.evaluate(() => {
