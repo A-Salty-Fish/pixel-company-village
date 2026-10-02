@@ -15,17 +15,21 @@ const WORLD: Record<string, string> = {
 
 test("first-run guide names 减动开关 and stays dismissed", async ({ page }) => {
   await login(page);
+  await page.evaluate(() => {
+    localStorage.removeItem("village:visit-v1");
+    localStorage.removeItem("village:guide-seen-v1");
+    localStorage.removeItem("village:first-visit-step-v1");
+  });
+  await page.reload();
+  await page.waitForSelector("canvas[data-village-ready='1']");
   const guide = page.getByTestId("first-run-guide");
   await expect(guide).toBeVisible();
-  await expect(guide).toContainText("减动开关");
-  await expect(guide).toContainText("村里新事");
-  await expect(page.locator("[data-village-host='ready']")).toHaveAttribute("data-quiet", "1");
-  await page.getByTestId("first-run-motion").click();
-  await expect(page.getByTestId("wave-d-panel")).toHaveAttribute("open", "");
-  await expect(page.getByTestId("wave-toggles").getByText("减动开关", { exact: true })).toBeVisible();
-  await expect(page.locator("[data-village-host='ready']")).toHaveAttribute("data-quiet", "1");
+  await expect(guide).toHaveAttribute("data-blocks-map", "0");
+  await expect(guide).toContainText("先选定「我是谁」。");
+  await expect(guide.getByRole("button", { name: "知道了" })).toHaveCount(1);
   await page.getByTestId("first-run-dismiss").click();
-  await expect(guide).toHaveCount(0);
+  const visit = await page.evaluate(() => window.localStorage.getItem("village:visit-v1"));
+  expect(visit).toContain("self");
   await page.reload();
   await page.waitForSelector("canvas[data-village-ready='1']");
   await expect(page.getByTestId("first-run-guide")).toHaveCount(0);

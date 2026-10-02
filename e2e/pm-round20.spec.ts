@@ -55,18 +55,16 @@ test("回家落到屋檐，并留下一句回执", async ({ page }) => {
   await expect(tools.getByTestId("map-home")).toBeVisible();
   await expect(tools.getByTestId("map-home")).toHaveText("回家");
   await expect(page.getByTestId("thumb-home")).toBeVisible();
-  const warm = page.waitForFunction(
-    () => document.querySelector("[data-testid='village-map-slot']")?.getAttribute("data-home-warm") === "1",
-  );
   const settle = page.waitForFunction(
     () => document.querySelector(".farm-page")?.getAttribute("data-home-settle") === "1",
   );
   await tools.getByTestId("map-home").click();
-  await warm;
   await settle;
-  await expect(page.getByTestId("village-feedback")).toHaveText("回到屋檐下了。");
-  await expect(page.locator(".farm-page")).toHaveAttribute("data-feedback-target", "roof");
-  await expect(page.locator(".farm-page")).toHaveAttribute("data-feedback-state", "home");
+  const line = page.getByTestId("home-village-line");
+  await expect(line).toBeVisible();
+  await expect(line).toContainText("灶还温着。");
+  await expect(page.locator(".village-map-slot")).toHaveAttribute("data-home-warm", "0");
+  await expect(page.locator(".farm-page")).not.toHaveAttribute("data-feedback-state", "home");
 });
 
 test("宽屏选定身份后，底栏同时有找我和回家", async ({ page }) => {
@@ -85,13 +83,12 @@ test("宽屏选定身份后，底栏同时有找我和回家", async ({ page }) 
   await expect(tools.getByTestId("find-me")).toBeVisible();
   await expect(home).toBeVisible();
   await expect(home).toHaveText("回家");
-  const warm = page.waitForFunction(
-    () => document.querySelector("[data-testid='village-map-slot']")?.getAttribute("data-home-warm") === "1",
-  );
   await home.click();
-  await warm;
-  await expect(page.getByTestId("village-feedback")).toHaveText("回到屋檐下了。");
-  await expect(page.locator(".farm-page")).toHaveAttribute("data-feedback-state", "home");
+  const line = page.getByTestId("home-village-line");
+  await expect(line).toBeVisible();
+  await expect(line).toContainText("灶还温着。");
+  await expect(page.locator(".village-map-slot")).toHaveAttribute("data-home-warm", "0");
+  await expect(page.locator(".farm-page")).not.toHaveAttribute("data-feedback-state", "home");
 });
 
 test("减少动作时回家只移动镜头", async ({ page }) => {
@@ -109,5 +106,7 @@ test("减少动作时回家只移动镜头", async ({ page }) => {
   await page.getByTestId("map-tools").getByTestId("map-home").click();
   await settle;
   await expect(page.locator(".village-map-slot")).toHaveAttribute("data-home-warm", "0");
-  await expect(page.getByTestId("village-feedback")).toHaveText("回到屋檐下了。");
+  const line = page.getByTestId("home-village-line");
+  await expect(line).toBeVisible();
+  await expect(line).toContainText("灶还温着。");
 });

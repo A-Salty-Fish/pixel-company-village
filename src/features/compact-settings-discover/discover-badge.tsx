@@ -8,6 +8,13 @@ import {
   discoverShouldShow,
   discoverStoredValue,
 } from "@/features/compact-settings-discover/discover";
+import { GUIDE_KEY, guideSeen } from "@/lib/first-run";
+import {
+  FIRST_VISIT_KEY,
+  firstVisitHoldsSlot,
+  readFirstVisitStep,
+  subscribeFirstVisit,
+} from "@/features/first-visit-one-hint/first-visit-one-hint";
 
 const listeners = new Set<() => void>();
 
@@ -17,13 +24,19 @@ function emit() {
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  const stopVisit = subscribeFirstVisit(listener);
+  return () => {
+    listeners.delete(listener);
+    stopVisit();
+  };
 }
 
 function readHidden() {
   if (!COMPACT_SETTINGS_DISCOVER_ENABLED) return true;
   if (typeof window === "undefined") return true;
   try {
+    const step = readFirstVisitStep(window.localStorage.getItem(FIRST_VISIT_KEY));
+    if (firstVisitHoldsSlot({ guideSeen: guideSeen(window.localStorage.getItem(GUIDE_KEY)), step })) return true;
     return !discoverShouldShow(window.localStorage.getItem(DISCOVER_KEY));
   } catch {
     return true;

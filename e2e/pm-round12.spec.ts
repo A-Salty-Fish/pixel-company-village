@@ -11,6 +11,10 @@ const GROUND: Record<string, string> = {
 test("体贴设置 shows a one-time tip for 减少动作 and 安静村子", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await login(page);
+  for (let i = 0; i < 6; i += 1) {
+    if ((await page.getByTestId("first-run-guide").count()) === 0) break;
+    await page.getByTestId("first-run-dismiss").click();
+  }
   const tip = page.getByTestId("settings-discover");
   await expect(tip).toBeVisible();
   await expect(tip).toContainText("减少动作和安静村子在这里。");

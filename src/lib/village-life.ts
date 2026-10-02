@@ -127,6 +127,8 @@ export type SceneLife = {
   tapAt?: number | null;
   /** PV-PM-082. Person under the short wave ring. */
   waveTarget?: string | null;
+  /** PV-PM-090. Epoch ms when 找我 left path stones. Not a next-beat aim. */
+  findPathAt?: number | null;
 };
 
 export const DEFAULT_COMFORT: Comfort = {

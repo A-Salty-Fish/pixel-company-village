@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.10.0";
+export const APP_VERSION = "1.11.0";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,19 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.11.0",
+    date: "2026-10-02",
+    title: "认得自己",
+    notes: [
+      "选定「我是谁」之后，自己的名牌和脚下马上暖一下。不用先点「找我」。安静时也不闪。",
+      "自己名牌底下不再垫着一圈黄括号。旁边的人名牌还是原来的样子。",
+      "点「找我」，路上留两三颗暖石，旁边短短一句。安静时石子停着。",
+      "点「回家」，会说「灶还温着。」可以收起。安静时这句话还在，也不闪。",
+      "夜里十点之后，自己和近处的名牌清楚一点。远处的还是淡的。",
+      "第一次进村，一次只看见一条提示。点「知道了」就收起，刷新也不再出现。不挡住地图。",
+    ],
+  },
   {
     version: "1.10.0",
     date: "2026-10-02",
