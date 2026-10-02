@@ -46,9 +46,11 @@ import { mapDepthMark } from "@/features/map-depth/map-depth";
 import { meadowBreathCount, meadowBreathMark } from "@/features/meadow-breath/meadow-breath";
 import { villagerReadMark } from "@/features/villager-read/villager-read";
 import { pathMeadowMark } from "@/features/path-meadow/path-meadow";
+import { cornerMeadowMark } from "@/features/corner-meadow/corner-meadow";
 import { buildingVolumeMark } from "@/features/building-volume/building-volume";
 import { villagerGroundMark } from "@/features/villager-ground/villager-ground";
 import { nightHearthMark } from "@/features/night-hearth/night-hearth";
+import { nightWindowPulseMark } from "@/features/night-window-pulse/night-window-pulse";
 import { pathFocusMark } from "@/features/path-focus/path-focus";
 import { tapFeedbackMark } from "@/features/villager-tap-feedback/villager-tap-feedback";
 import { skyWashMark } from "@/features/sky-wash/sky-wash";
@@ -498,6 +500,11 @@ export function VillageScene({
               quiet: Boolean(lifeNowEarly.quiet),
             })
           : "off";
+        host.dataset.nightWindow = nightWindowPulseMark(
+          Boolean(NIGHT_WASH_V2_ENABLED && lifeNowEarly.sessionNight),
+          Boolean(lifeNowEarly.reduceMotion),
+        );
+        host.dataset.cornerMeadow = cornerMeadowMark(Boolean(lifeNowEarly.reduceMotion));
       }
       host.dataset.waveReply =
         activeFx && activeFx.kind === "wave" && nowMs - activeFx.startedAt < activeFx.duration ? "1" : "0";
@@ -829,6 +836,8 @@ export function VillageScene({
       data-building-volume={buildingVolumeMark()}
       data-villager-ground={villagerGroundMark()}
       data-night-hearth={nightHearthMark(Boolean(NIGHT_WASH_V2_ENABLED && life.sessionNight))}
+      data-night-window={nightWindowPulseMark(Boolean(NIGHT_WASH_V2_ENABLED && life.sessionNight), Boolean(life.reduceMotion))}
+      data-corner-meadow={cornerMeadowMark(Boolean(life.reduceMotion))}
       data-path-focus="off"
       data-tap-feedback="off"
       data-sky-wash="off"

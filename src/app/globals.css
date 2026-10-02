@@ -2160,3 +2160,25 @@ body:has(.farm-page[data-focal-village="village"]) {
     animation: none;
   }
 }
+
+/* PV-PM-078 — score chips and map controls. Material, radius, stroke, tint. */
+.farm-page[data-warm-hud="warm"] .hud-chip,
+.farm-page[data-warm-hud="warm"] .header-fold-score,
+.farm-page[data-warm-hud="warm"] .map-tools .hud-icon:not(.map-more-toggle),
+.farm-page[data-warm-hud="warm"] .thumb-bar .hud-btn {
+  background-color: #f3d7a4;
+  background-image:
+    linear-gradient(#fff6d8, #fff6d8),
+    repeating-linear-gradient(90deg, #f6e0b8 0 6px, #e7c48a 6px 7px, #f3d7a4 7px 12px);
+  background-size: 100% 2px, auto;
+  background-repeat: no-repeat, repeat;
+  color: #2a1a10;
+  border-color: #8a5528;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px #e7c48a;
+}
+
+.farm-page[data-warm-hud="warm"] .ring-track {
+  stroke: #e7c48a;
+}
+/* PV-PM-078 end */

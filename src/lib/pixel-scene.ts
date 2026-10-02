@@ -39,9 +39,11 @@ import { meadowBreathFrame } from "@/features/meadow-breath/meadow-breath";
 import { mapDepthGround, mapDepthRoofLayers } from "@/features/map-depth/map-depth";
 import { villagerIdleBob, villagerReadOn, villagerShadowPixels } from "@/features/villager-read/villager-read";
 import { pathMeadowPixels } from "@/features/path-meadow/path-meadow";
+import { cornerMeadowPixels } from "@/features/corner-meadow/corner-meadow";
 import { buildingVolumeLayers } from "@/features/building-volume/building-volume";
 import { villagerGroundOn, villagerGroundPixels } from "@/features/villager-ground/villager-ground";
 import { paintNightHearth } from "@/features/night-hearth/night-hearth";
+import { paintNightWindowPulse } from "@/features/night-window-pulse/night-window-pulse";
 import { pathFocusPixels } from "@/features/path-focus/path-focus";
 import { tapDustPixels, tapHop } from "@/features/villager-tap-feedback/villager-tap-feedback";
 import { paintSkyWash } from "@/features/sky-wash/sky-wash";
@@ -1406,6 +1408,13 @@ function drawActors(
         draw: () => paintPixels(ctx, meadow),
       });
     }
+    const corners = cornerMeadowPixels(Boolean(life.reduceMotion), t);
+    if (corners.length > 0) {
+      queue.push({
+        sort: 4,
+        draw: () => paintPixels(ctx, corners),
+      });
+    }
     for (const layer of buildingVolumeLayers()) {
       const pixels = layer.pixels;
       queue.push({
@@ -1651,6 +1660,17 @@ export function paintVillage(
     worldH: span.h,
     night: Boolean(NIGHT_WASH_V2_ENABLED && life?.sessionNight),
     reduced: Boolean(life?.reduceMotion),
+  });
+  paintNightWindowPulse(ctx, {
+    viewW,
+    viewH,
+    camX,
+    camY,
+    worldW: span.w,
+    worldH: span.h,
+    night: Boolean(NIGHT_WASH_V2_ENABLED && life?.sessionNight),
+    reduced: Boolean(life?.reduceMotion),
+    t,
   });
   paintSkyWash(ctx, viewW, viewH, shanghaiClock().hour);
   if (life?.mapAim) {
