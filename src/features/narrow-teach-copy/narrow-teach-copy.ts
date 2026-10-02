@@ -1,7 +1,10 @@
 /**
- * PV-PM-086 — a phone teaches pinch and drag, and keeps the next beat on the first screen.
+ * PV-PM-086 / PV-D-019 — a phone teaches pinch and drag, and keeps a next beat
+ * on the first screen before the week board is 3/3.
  * Set NARROW_TEACH_COPY_ENABLED to false to keep the desktop wheel line.
  */
+
+import { pickNextBeat, type NextBeat } from "@/features/week-next-beat/next-beat";
 
 export const NARROW_TEACH_COPY_ENABLED = true;
 export const NARROW_TEACH_PX = 480;
@@ -39,6 +42,18 @@ export function teachMentionsWheel(line: string) {
 /** The next-beat chip sits on the map, outside the folded 今日 sheet. */
 export function nextBeatFirstScreen(enabled = NARROW_TEACH_COPY_ENABLED) {
   return enabled;
+}
+
+/**
+ * Nearest landmark for a newcomer. Weekly progress is not an input:
+ * 0/3 still gets 去看村口 (or whichever stop is closest).
+ */
+export function firstScreenBeat(
+  self: { x: number; y: number } | null,
+  enabled = NARROW_TEACH_COPY_ENABLED,
+): NextBeat | null {
+  if (!nextBeatFirstScreen(enabled)) return null;
+  return pickNextBeat(self);
 }
 
 export function teachCopy() {

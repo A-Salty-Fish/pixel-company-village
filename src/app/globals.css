@@ -2224,6 +2224,8 @@ body:has(.farm-page[data-focal-village="village"]) {
     top: 0.4rem;
     left: 0.4rem;
     z-index: 18;
+    min-width: 44px;
+    min-height: 44px;
     max-width: 46%;
     pointer-events: auto;
   }

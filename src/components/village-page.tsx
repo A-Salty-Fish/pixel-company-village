@@ -126,7 +126,7 @@ import { welcomeLine, WELCOME_DELAY_MS, WELCOME_HOLD_MS } from "@/features/villa
 import { skyWashBand } from "@/features/sky-wash/sky-wash";
 import { ShareVillage } from "@/features/share-village/share-card";
 import { SHARE_SOLO_DETAILS, shareSoloActive, shareSoloMark } from "@/features/share-solo-layer/share-solo-layer";
-import { narrowTeachOn, nextBeatFirstScreen } from "@/features/narrow-teach-copy/narrow-teach-copy";
+import { firstScreenBeat, narrowTeachOn, nextBeatFirstScreen } from "@/features/narrow-teach-copy/narrow-teach-copy";
 import { FIRST_SCREEN_SOCIAL_ENABLED, FIRST_WAVE_LABEL, firstScreenSocialOn } from "@/features/first-screen-social/first-screen-social";
 import { NEXT_BEAT_GLOW_MS, nextBeatGlowOn, nextBeatSuggestion } from "@/features/next-beat-path-glow/next-beat-path-glow";
 import { APP_VERSION } from "@/features/village-release/changelog";
@@ -1015,8 +1015,8 @@ export function VillagePage({ initial }: Props) {
     }
   }
 
-  function runNextBeat(beat: NextBeat) {
-    if (selfName) {
+  function runNextBeat(beat: NextBeat, markWeek = false) {
+    if (markWeek && selfName) {
       storeBeatDone(selfName, clock.weekKey);
       setBeatDone(true);
     }
@@ -1489,11 +1489,16 @@ export function VillagePage({ initial }: Props) {
     night: nightOn && nightCornerFree({ dusk: duskCue, extraWalk: extraOn }),
   });
   const autumnMark = autumnPaletteMark(season.id);
+  const selfSpot = useMemo(() => {
+    if (!selfName) return null;
+    const self = placeVillagers(people).find((person) => person.name === selfName);
+    return self ? { x: self.x, y: self.y } : null;
+  }, [selfName, people]);
   const nextBeat = useMemo(() => {
     if (!nextBeatOffer(tally.complete)) return null;
-    const self = selfName ? placeVillagers(people).find((person) => person.name === selfName) ?? null : null;
-    return pickNextBeat(self ? { x: self.x, y: self.y } : null);
-  }, [tally.complete, selfName, people]);
+    return pickNextBeat(selfSpot);
+  }, [tally.complete, selfSpot]);
+  const mapBeat = useMemo(() => (nextBeatFirstScreen() ? firstScreenBeat(selfSpot) : null), [selfSpot]);
   const stayOn = STAY_AWHILE_ENABLED && stayVisible(tally.complete, beatDone);
   const stayPool = useMemo(() => {
     if (!stayOn) return [];
@@ -1967,7 +1972,7 @@ export function VillagePage({ initial }: Props) {
             className="parchment-badge"
             data-testid="next-beat"
             data-next-id={nextBeat.id}
-            onClick={() => runNextBeat(nextBeat)}
+            onClick={() => runNextBeat(nextBeat, true)}
           >
             {nextBeatLabel(nextBeat)}
           </button>
@@ -2213,15 +2218,16 @@ export function VillagePage({ initial }: Props) {
             }}
             onOpenChange={onShareOpen}
           />
-          {nextBeat && nextBeatFirstScreen() ? (
+          {mapBeat ? (
             <button
               type="button"
               className="parchment-badge next-beat-first"
               data-testid="next-beat-first"
-              data-next-id={nextBeat.id}
-              onClick={() => runNextBeat(nextBeat)}
+              data-next-id={mapBeat.id}
+              data-week-gate="0"
+              onClick={() => runNextBeat(mapBeat, tally.complete)}
             >
-              {nextBeatLabel(nextBeat)}
+              {nextBeatLabel(mapBeat)}
             </button>
           ) : null}
           {beatSuggest ? (
@@ -2231,7 +2237,7 @@ export function VillagePage({ initial }: Props) {
                 className="next-beat-suggest-go"
                 onClick={() => {
                   const beat = NEXT_BEATS.find((item) => item.id === beatSuggest.id);
-                  if (beat) runNextBeat(beat);
+                  if (beat) runNextBeat(beat, tally.complete);
                 }}
               >
                 {beatSuggest.line}

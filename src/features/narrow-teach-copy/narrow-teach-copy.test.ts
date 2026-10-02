@@ -5,6 +5,7 @@ import {
   NARROW_TEACH_COPY_ENABLED,
   TEACH_NARROW,
   narrowTeachOn,
+  firstScreenBeat,
   nextBeatFirstScreen,
   teachAria,
   teachHint,
@@ -33,5 +34,10 @@ test("PV-PM-086 narrow teaching drops the wheel and keeps the next beat on scree
   assert.equal(teachAria(true).includes("双指捏合"), true);
   assert.equal(nextBeatFirstScreen(), true);
   assert.equal(nextBeatFirstScreen(false), false);
+  assert.equal(firstScreenBeat(null)?.id, "gate");
+  assert.equal(firstScreenBeat(null)?.label, "村口");
+  assert.equal(firstScreenBeat({ x: 600, y: 400 })?.id, "bench");
+  assert.equal(firstScreenBeat({ x: 100, y: 90 })?.id, "pond");
+  assert.equal(firstScreenBeat(null, false), null);
   assert.equal(copyIsClean([narrow, TEACH_NARROW, teachAria(true)]), true);
 });
