@@ -9,6 +9,10 @@ async function fireClick(locator: Locator) {
 }
 
 async function ensureCompanion(page: Page, on: boolean) {
+  const chip = page.getByTestId("social-float-chip");
+  if ((await chip.count()) > 0 && (await chip.getAttribute("aria-expanded")) !== "true") {
+    await chip.click();
+  }
   const more = page.getByTestId("map-more");
   if ((await more.getAttribute("aria-expanded")) !== "true") await more.click();
   const toggle = page.getByTestId("co-presence-toggle");

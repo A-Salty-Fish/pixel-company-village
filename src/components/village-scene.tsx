@@ -71,6 +71,8 @@ import { HOME_SETTLE_ENABLED, HOME_SETTLE_MS, homeSettleFrame, roofFocus } from 
 import { landmarkSettleFrame, landmarkSettleMode, landmarkSettleNarrow } from "@/features/landmark-settle/landmark-settle";
 import { WaveButton } from "@/features/wave-gift/wave-button";
 import { thumbShowsHome } from "@/features/thumb-identity/thumb-identity";
+import { MAP_FIELD_HOLD_LINE, mapPendingAttr } from "@/features/map-field-hold/map-field-hold";
+import { mapHomeAria, mapHomeFace } from "@/features/one-home-word/one-home-word";
 import { MoreDiscoverDot } from "@/features/more-discover/more-cue";
 import { selfRecognizeMark } from "@/features/self-recognize/self-recognize";
 import { selfGhostSuppressed } from "@/features/self-plate-ghost/self-plate-ghost";
@@ -924,11 +926,17 @@ export function VillageScene({
       })}
       data-self-ghost={selfGhostSuppressed() ? "clear" : "bracket"}
       data-night-plate={nightPlateMark(shanghaiClock().hour, life.quiet)}
+      data-map-pending={mapPendingAttr(ready)}
       data-villager-read={villagerReadMark()}
       data-nameplate-air={nameplateAirMark()}
       data-waiting-cue={waitingCueMark(life.waitingCue ?? null)}
       data-ritual-rim={life.ritualRim ? "warm" : "off"}
     >
+      {mapPendingAttr(ready) === "1" ? (
+        <div className="map-field-hold" data-testid="map-field-hold" data-map-pending="1" aria-hidden>
+          <p>{MAP_FIELD_HOLD_LINE}</p>
+        </div>
+      ) : null}
       {shownStage === "timeout" || shownStage === "failed" ? (
         <div className="load-recovery" data-testid="load-recovery">
           <p>田垄铺得太久了。可以再试一次，右上角也能刷新评分日。</p>
@@ -1050,10 +1058,11 @@ export function VillageScene({
             type="button"
             className="hud-icon hud-icon-find map-home"
             data-testid="map-home"
+            aria-label={mapHomeAria()}
             disabled={!life.selfName}
             onClick={() => onHome?.()}
           >
-            回家
+            {mapHomeFace()}
           </button>
         ) : null}
         {MAP_HUD_FOLD_ENABLED ? (

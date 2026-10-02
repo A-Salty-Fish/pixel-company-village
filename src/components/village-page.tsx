@@ -114,6 +114,10 @@ import { VillageDrawer } from "@/features/village-drawer/drawer-view";
 import { SOFT_AMBIENT_ENABLED, softAmbientOn, syncSoftAmbient } from "@/features/soft-ambient/soft-ambient";
 import { RITUAL_RIM_MS, RITUAL_RIM_TOAST, ritualRimOffer } from "@/features/ritual-rim/ritual-rim";
 import { NARROW_CHROME_ENABLED, todayEntryLabel } from "@/features/narrow-chrome/narrow-chrome";
+import { unscoredAction, unscoredStatus } from "@/features/roster-quiet-score/roster-quiet-score";
+import { WEEK_INVITE_LINE, weekInviteOpensList, weekInviteShows } from "@/features/week-empty-invite/week-empty-invite";
+import { rosterLiftMark } from "@/features/roster-lift/roster-lift";
+import { SOCIAL_FLOAT_CHIP, SOCIAL_FLOAT_FOLD_ENABLED } from "@/features/social-float-fold/social-float-fold";
 import { MAP_HUD_FOLD_ENABLED, toyTapCopy } from "@/features/map-hud-fold/map-hud-fold";
 import { THUMB_IDENTITY_ENABLED, thumbShowsHome } from "@/features/thumb-identity/thumb-identity";
 import { softChromeMark } from "@/features/soft-chrome/soft-chrome";
@@ -354,6 +358,7 @@ export function VillagePage({ initial }: Props) {
   const [headerFold, setHeaderFold] = useState(false);
   const [todayOpen, setTodayOpen] = useState(false);
   const [mapMore, setMapMore] = useState(false);
+  const [floatOpen, setFloatOpen] = useState(false);
   const [shareSolo, setShareSolo] = useState(false);
   const [legendShut, setLegendShut] = useState(0);
   const [beatSuggest, setBeatSuggest] = useState<{ id: string; line: string } | null>(null);
@@ -1874,6 +1879,9 @@ export function VillagePage({ initial }: Props) {
       data-narrow-teach={narrowTeachOn() ? "1" : "0"}
       data-first-social={firstScreenSocialOn() ? "1" : "0"}
       data-next-beat-path={nextBeatGlowOn() ? "1" : "0"}
+      data-roster-lift={rosterLiftMark()}
+      data-has-self={selfName ? "1" : "0"}
+      data-float-fold={SOCIAL_FLOAT_FOLD_ENABLED ? "1" : "0"}
     >
       <LightSfxBridge muted={comfort.sfxMuted} reduceMotion={motion.reduced} />
       <div className="village-hero" data-testid="village-hero">
@@ -1993,12 +2001,19 @@ export function VillagePage({ initial }: Props) {
             className="narrow-today-summary"
             data-testid="today-entry"
             aria-expanded={todayOpen}
+            data-week-invite={weekInviteShows(tally.done, waveState.toggles.weekBoard) ? "1" : "0"}
             onClick={() => {
-              setTodayOpen((open) => !open);
-              if (!todayOpen) advanceLoop("today");
+              const opening = !todayOpen;
+              setTodayOpen(opening);
+              if (opening) advanceLoop("today");
+              if (weekInviteOpensList(opening, weekInviteShows(tally.done, waveState.toggles.weekBoard))) {
+                setParchment("week");
+              }
             }}
           >
-            {todayEntryLabel(tally.done, tally.total, waveState.toggles.weekBoard)}
+            {weekInviteShows(tally.done, waveState.toggles.weekBoard)
+              ? WEEK_INVITE_LINE
+              : todayEntryLabel(tally.done, tally.total, waveState.toggles.weekBoard)}
           </button>
         ) : null}
         <div className="narrow-today-body">
@@ -2486,16 +2501,37 @@ export function VillagePage({ initial }: Props) {
               />
             ) : null}
             {FIRST_SCREEN_SOCIAL_ENABLED ? (
-              <WaveButton
-                className="hud-btn hud-btn-ghost first-wave"
-                testId="first-wave"
-                moduleName="first-screen-social"
-                label={FIRST_WAVE_LABEL}
-                disabled={!selfName}
-                onWave={() => emote("wave")}
-              />
-            ) : null}
-            {CO_PRESENCE_ENABLED ? (
+              <div className="social-float-fold" data-testid="social-float-fold" data-open={floatOpen ? "1" : "0"}>
+                {SOCIAL_FLOAT_FOLD_ENABLED ? (
+                  <button
+                    type="button"
+                    className="hud-btn hud-btn-ghost social-float-chip"
+                    data-testid="social-float-chip"
+                    aria-expanded={floatOpen}
+                    onClick={() => setFloatOpen((open) => !open)}
+                  >
+                    {SOCIAL_FLOAT_CHIP}
+                  </button>
+                ) : null}
+                <WaveButton
+                  className="hud-btn hud-btn-ghost first-wave"
+                  testId="first-wave"
+                  moduleName="first-screen-social"
+                  label={FIRST_WAVE_LABEL}
+                  disabled={!selfName}
+                  onWave={() => emote("wave")}
+                />
+                {CO_PRESENCE_ENABLED ? (
+                  <CoPresenceToggle
+                    on={coOn}
+                    onToggle={(on) => {
+                      setCoOn(on);
+                      writeCoPresenceToggle(on);
+                    }}
+                  />
+                ) : null}
+              </div>
+            ) : CO_PRESENCE_ENABLED ? (
               <CoPresenceToggle
                 on={coOn}
                 onToggle={(on) => {
@@ -2659,6 +2695,7 @@ export function VillagePage({ initial }: Props) {
           document.querySelector<HTMLInputElement>("[data-testid='reduce-motion-toggle']")?.focus();
         }}
       />
+      <div className="drawer-wall" data-testid="drawer-wall">
       <ComfortSettings
         comfort={comfort}
         selfName={selfName}
@@ -2821,6 +2858,7 @@ export function VillagePage({ initial }: Props) {
         }}
       />
       </VillageDrawer>
+      </div>
 
       <div className="thumb-bar" data-testid="thumb-bar" data-guest={selfName ? "0" : "1"}>
         <button
@@ -2841,7 +2879,7 @@ export function VillagePage({ initial }: Props) {
         </button>
       </div>
 
-      <section className="hud-panel overflow-hidden">
+      <section className="hud-panel roster-board overflow-hidden" data-testid="roster-board">
         <div className="hud-title">田亩名册</div>
         {people.length === 0 && error ? (
           <div className="space-y-2 px-3 py-6 text-center text-sm text-[#4a3a28]">
@@ -2867,7 +2905,7 @@ export function VillagePage({ initial }: Props) {
                   data-roster-item
                   data-roster-name={person.name}
                   data-bond={String(familiarity[person.name] ?? 0)}
-                  aria-label={`${person.name}，${person.scored ? "有分" : "未评分"}`}
+                  aria-label={`${person.name}，${person.scored ? "有分" : unscoredAction()}`}
                   aria-expanded={active}
                   aria-controls="signal-card-dialog"
                   aria-current={active ? "true" : undefined}
@@ -2888,7 +2926,7 @@ export function VillagePage({ initial }: Props) {
                         {"●".repeat(familiarity[person.name] ?? 0)}
                       </i>
                     ) : null}
-                    {person.scored ? STATE_LABELS[person.state] : "未评分"}
+                    {person.scored ? STATE_LABELS[person.state] : unscoredAction()}
                   </span>
                 </button>
               );
@@ -2897,7 +2935,7 @@ export function VillagePage({ initial }: Props) {
         )}
       </section>
 
-      <section className="space-y-2 pb-8">
+      <section className="page-foot space-y-2 pb-8">
         <h2 className="text-sm font-medium text-[#4a3a28]">动画怎么来的</h2>
         <div className="flex flex-wrap gap-2">
           {STATE_ORDER.map((state) => (
@@ -2986,7 +3024,7 @@ function moveRosterFocus(event: KeyboardEvent<HTMLButtonElement>, index: number)
 }
 
 function rosterLine(person: PersonWithState, hideScores: boolean, isSelf: boolean): string {
-  if (!person.scored) return "未评分";
+  if (!person.scored) return unscoredStatus();
   if (hideScores && !isSelf) return "分数已收起";
   return `工 ${person.work.toFixed(2)} · 鱼 ${person.fish.toFixed(2)} · 专注 ${person.on_task.toFixed(2)} · ${person.msgs} 条`;
 }

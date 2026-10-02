@@ -37,12 +37,15 @@ test("PV-PM-057 eases home onto the roof and keeps the warm wash brief", () => {
   assert.equal(HOME_SETTLE_TOAST.length <= 24, true);
 });
 
-test("PV-D-013 shows 回家 beside 找我 after an identity is chosen", () => {
+test("PV-D-013 keeps a home control beside 找我, and the spoken word stays on the thumb bar", () => {
   const scene = readFileSync(new URL("../../components/village-scene.tsx", import.meta.url), "utf8");
+  const page = readFileSync(new URL("../../components/village-page.tsx", import.meta.url), "utf8");
   const findAt = scene.indexOf('data-testid="find-me"');
   const homeAt = scene.indexOf('data-testid="map-home"');
   assert.equal(findAt > 0, true);
   assert.equal(homeAt > findAt, true);
   assert.match(scene, /thumbShowsHome\(Boolean\(life\.selfName\)\)/);
-  assert.match(scene, />\s*回家\s*</);
+  assert.match(scene, /mapHomeFace\(\)/);
+  assert.equal(/>\s*回家\s*</.test(scene), false);
+  assert.match(page, /data-testid="thumb-home"[\s\S]*回家/);
 });
