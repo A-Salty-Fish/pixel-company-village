@@ -68,6 +68,8 @@ import { MAP_HUD_FOLD_ENABLED, hitToy } from "@/features/map-hud-fold/map-hud-fo
 import type { ToyId } from "@/features/yard-toy-focus/yard-toy-focus";
 import { IDENTITY_LAND_ENABLED, IDENTITY_LAND_MS } from "@/features/identity-land/identity-land";
 import { HOME_SETTLE_ENABLED, HOME_SETTLE_MS, homeSettleFrame, roofFocus } from "@/features/home-settle/home-settle";
+import { landmarkSettleFrame, landmarkSettleMode, landmarkSettleNarrow } from "@/features/landmark-settle/landmark-settle";
+import { WaveButton } from "@/features/wave-gift/wave-button";
 import { thumbShowsHome } from "@/features/thumb-identity/thumb-identity";
 import { MoreDiscoverDot } from "@/features/more-discover/more-cue";
 import { selfRecognizeMark } from "@/features/self-recognize/self-recognize";
@@ -221,14 +223,39 @@ export function VillageScene({
     if (!mapAim?.token) return;
     userCam.current = true;
     const nextZoom = 3;
+    const focus = clampCamera(mapAim.x - WORLD_W / nextZoom / 2, mapAim.y - WORLD_H / nextZoom / 2, nextZoom);
+    const mode = landmarkSettleMode({ quiet: Boolean(life.quiet), reduced: Boolean(life.reduceMotion) });
     zoomRef.current = nextZoom;
     setZoom(nextZoom);
-    const focus = clampCamera(mapAim.x - WORLD_W / nextZoom / 2, mapAim.y - WORLD_H / nextZoom / 2, nextZoom);
-    camRef.current = focus;
-    setCamMark({ x: Math.round(focus.x), y: Math.round(focus.y), zoom: nextZoom });
-    aimHoldRef.current = Date.now() + 1800;
-    kickRef.current?.();
-  }, [mapAim]);
+    if (mode !== "ease") {
+      camRef.current = focus;
+      setCamMark({ x: focus.x, y: focus.y, zoom: nextZoom });
+      aimHoldRef.current = Date.now() + 1800;
+      kickRef.current?.();
+      return;
+    }
+    const narrow = landmarkSettleNarrow(hostRef.current?.clientWidth || window.innerWidth);
+    const from = clampCamera(camRef.current.x, camRef.current.y, nextZoom);
+    camRef.current = from;
+    const started = performance.now();
+    let raf = 0;
+    const step = (now: number) => {
+      const frame = landmarkSettleFrame({ elapsedMs: now - started, narrow, from, to: focus });
+      camRef.current = clampCamera(frame.x, frame.y, zoomRef.current);
+      aimHoldRef.current = Date.now() + 400;
+      kickRef.current?.();
+      if (!frame.done) {
+        raf = requestAnimationFrame(step);
+        return;
+      }
+      camRef.current = focus;
+      setCamMark({ x: focus.x, y: focus.y, zoom: nextZoom });
+      aimHoldRef.current = Date.now() + 1800;
+      kickRef.current?.();
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [mapAim, life.quiet, life.reduceMotion]);
 
   useEffect(() => {
     if (!homePulse || !life.selfName) return;
@@ -775,6 +802,9 @@ export function VillageScene({
   const readMark = nightReadMark(Boolean(NIGHT_WASH_V2_ENABLED && life.sessionNight));
   const plateView = viewportMode(life.showAllPlates, zoom);
   const toyPulse = toyPulseMark(life.mapAim && (life.mapAim.kind === "lantern" || life.mapAim.kind === "scarecrow" || life.mapAim.kind === "pebble") ? life.mapAim.kind : null);
+  const landmarkMode = life.mapAim
+    ? landmarkSettleMode({ quiet: Boolean(life.quiet), reduced: Boolean(life.reduceMotion) })
+    : "off";
 
   return (
     <div
@@ -795,6 +825,7 @@ export function VillageScene({
       data-festival-skin={life.festivalId ?? ""}
       data-show-all={life.showAllPlates ? "1" : "0"}
       data-quiet={life.quiet ? "1" : "0"}
+      data-landmark-settle={landmarkMode}
       data-particle-budget={particleAllowance(Boolean(life.quiet), Boolean(life.festivalId))}
       data-camera-x={camMark.x}
       data-camera-y={camMark.y}
@@ -970,9 +1001,7 @@ export function VillageScene({
             <button type="button" className="hud-btn hud-btn-ghost" onClick={() => onEmote("clap")}>
               鼓掌
             </button>
-            <button type="button" className="hud-btn hud-btn-ghost" data-testid="header-wave" onClick={() => onEmote("wave")}>
-              挥手
-            </button>
+            <WaveButton className="hud-btn hud-btn-ghost" testId="header-wave" label="挥手" onWave={() => onEmote("wave")} />
           </div>
         ) : null}
       </div>

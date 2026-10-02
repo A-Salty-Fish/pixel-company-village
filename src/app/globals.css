@@ -2385,3 +2385,102 @@ body:has(.farm-page[data-focal-village="village"]) {
     inset -1px -1px 0 #2a1a10;
 }
 /* PV-PM-099 end */
+/* CARD_OPEN_SQUASH — card edge squash. 64ms sits inside 40–80ms. Quiet stays still. */
+.signal-card[data-card-squash="squash"] {
+  transform-origin: center top;
+  animation: card-edge-squash 64ms cubic-bezier(0.22, 0.9, 0.28, 1.25);
+}
+
+.signal-card[data-card-squash="still"],
+.signal-card[data-card-squash="off"] {
+  animation: none;
+  transform: none;
+}
+
+@keyframes card-edge-squash {
+  0% {
+    transform: scaleX(1.018) scaleY(0.94);
+  }
+  55% {
+    transform: scaleX(0.992) scaleY(1.018);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signal-card[data-card-squash="squash"] {
+    animation: none;
+    transform: none;
+  }
+}
+
+/* WAVE_GIFT — wave press, and a receipt that opens like a gift instead of a toast. */
+.farm-page[data-wave-gift="gift"]:not([data-micro-still="1"]) [data-wave-press] {
+  transition:
+    transform 40ms linear,
+    background-color 40ms linear,
+    box-shadow 40ms linear;
+}
+
+.farm-page[data-wave-gift="gift"] [data-wave-press="down"] {
+  transform: translateY(2px) scale(0.96);
+  background-color: #ffe7a3;
+  color: #3a2208;
+  box-shadow: inset 0 0 0 3px #c4843a;
+}
+
+.farm-page[data-micro-still="1"] [data-wave-press="down"] {
+  transition: none;
+}
+
+.farm-page[data-wave-gift="gift"] .wave-gift-note[data-header-wave="receipt"] {
+  display: inline-block;
+  margin: 0.15rem 0.25rem 0;
+  padding: 0.2rem 0.55rem;
+  border: 2px solid #c4843a;
+}
+
+.farm-page[data-wave-gift="gift"] .wave-gift-note[data-gift="open"],
+.farm-page[data-wave-gift="gift"] .wave-gift-note[data-gift="hold"],
+.farm-page[data-wave-gift="gift"] .wave-gift-note[data-gift="fade"],
+.farm-page[data-wave-gift="gift"] .wave-gift-note[data-gift="still"] {
+  background: #fff1c8;
+  color: #2a1a10;
+  border-color: #c4843a;
+}
+
+.farm-page[data-wave-gift="gift"] .wave-gift-note[data-gift="open"] {
+  transform-origin: 18% 100%;
+  animation: wave-gift-open 260ms cubic-bezier(0.2, 0.85, 0.2, 1.05) both;
+}
+
+.farm-page[data-wave-gift="gift"] .wave-gift-note[data-gift="fade"] {
+  animation: wave-gift-fade 420ms ease-out forwards;
+}
+
+.farm-page[data-micro-still="1"] .wave-gift-note,
+.farm-page[data-wave-gift="gift"] .wave-gift-note[data-gift="still"] {
+  animation: none;
+  transform: none;
+  opacity: 1;
+}
+
+@keyframes wave-gift-open {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes wave-gift-fade {
+  to {
+    opacity: 0;
+    transform: translateY(-3px) scale(0.98);
+  }
+}
