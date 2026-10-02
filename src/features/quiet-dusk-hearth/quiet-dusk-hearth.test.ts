@@ -19,7 +19,7 @@ const base = {
   now: 0,
 };
 
-test("PV-PM-101 quiet keeps dusk windows and reduced motion does not put them out", () => {
+test("#52 quiet dusk keeps dusk windows and reduced motion does not put them out", () => {
   assert.equal(QUIET_KEEPS_DUSK_ENABLED, true);
   assert.equal(quietKeepsDuskOn(), true);
   assert.equal(quietKeepsDuskOn(false), false);

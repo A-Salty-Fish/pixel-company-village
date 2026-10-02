@@ -1,5 +1,5 @@
 /**
- * PV-PM-101 — a quiet village keeps the evening windows.
+ * #52 非挡合改刀 / quiet dusk — a quiet village keeps the evening windows.
  * Quiet still cuts motion and noise. It does not clear dusk.
  * Reduced motion is a separate switch and does not enter here.
  * Set QUIET_KEEPS_DUSK_ENABLED to false to let quiet blank dusk again.
