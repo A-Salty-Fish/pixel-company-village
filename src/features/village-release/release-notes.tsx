@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import { markSloganSeen, sloganRestSnapshot, subscribeSloganRest, syncSloganRest } from "@/features/slogan-rest/slogan-rest";
 import {
   APP_VERSION,
   RELEASE_BOARD_INTRO,
@@ -32,6 +33,7 @@ function subscribe(listener: () => void) {
 export function openReleaseNotes() {
   sheetOpen = true;
   emit();
+  if (typeof window !== "undefined") markSloganSeen(window.localStorage);
 }
 
 export function closeReleaseNotes() {
@@ -45,6 +47,10 @@ function sheetSnapshot() {
 
 /** Header plaque. Brand stays 「像素公司村」; the ship name shares this 44px chip. */
 export function ReleaseChip() {
+  const rest = useSyncExternalStore(subscribeSloganRest, sloganRestSnapshot, () => false);
+  useLayoutEffect(() => {
+    syncSloganRest(window.localStorage);
+  }, []);
   if (!releaseUiVisible()) return null;
   const title = shipTitle();
   return (
@@ -54,11 +60,12 @@ export function ReleaseChip() {
       data-testid="village-version"
       data-version={APP_VERSION}
       data-module="village-release"
+      data-slogan={rest ? "rest" : "show"}
       aria-controls="release-notes"
       onClick={openReleaseNotes}
     >
       <span className={styles.chipVersion}>{versionLabel()}</span>
-      {title ? (
+      {title && !rest ? (
         <span className={styles.chipTitle} data-testid="ship-title">
           {title}
         </span>

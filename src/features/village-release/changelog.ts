@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.11.3";
+export const APP_VERSION = "1.12.0";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,21 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.12.0",
+    date: "2026-10-02",
+    title: "名册安静点",
+    notes: [
+      "没打分的人，名册上「未评分」只写一次。按钮改成「还没分」。",
+      "「回家」只留在底下的大按钮。地图上改成「屋」。",
+      "第一次进村，先选定我是谁，再去找我或看村口。减动在体贴设置里。",
+      "地图还没铺好时，先看见「田还在」，不是一块空板。",
+      "本周还空着时，页头有一句邀请。点两下就能做一件小事。",
+      "手机上名册抬到设置和日志前面。抽屉先合着。",
+      "看过更新日志，或第二次进村，页头只留村子的名字。",
+      "选定自己之后，挥手和相伴收成一颗「招呼」。",
+    ],
+  },
   {
     version: "1.11.3",
     date: "2026-10-02",

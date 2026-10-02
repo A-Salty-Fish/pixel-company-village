@@ -13,6 +13,7 @@ import {
   readFirstVisitStep,
   subscribeFirstVisit,
 } from "@/features/first-visit-one-hint/first-visit-one-hint";
+import { softenFirstTip } from "@/features/play-first-tip/play-first-tip";
 
 const listeners = new Set<() => void>();
 
@@ -108,7 +109,8 @@ function OneVisitHint({ flags, onShowMotion }: { flags: VisitFlags; onShowMotion
     return () => window.removeEventListener("storage", onStorage);
   }, [flags]);
   if (visitComplete(flags)) return null;
-  const tip = firstVisitTip(step);
+  const raw = firstVisitTip(step);
+  const tip = raw == null ? null : softenFirstTip(raw, step);
   if (!tip) return null;
   const motion = tip.includes("减动开关");
   return (

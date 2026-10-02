@@ -53,8 +53,10 @@ test("回家落到屋檐，并留下一句回执", async ({ page }) => {
   const tools = page.getByTestId("map-tools");
   await expect(tools.getByTestId("find-me")).toBeVisible();
   await expect(tools.getByTestId("map-home")).toBeVisible();
-  await expect(tools.getByTestId("map-home")).toHaveText("回家");
+  await expect(tools.getByTestId("map-home")).toHaveText("屋");
   await expect(page.getByTestId("thumb-home")).toBeVisible();
+  await expect(page.getByTestId("thumb-home")).toHaveText("回家");
+  await expect(page.getByText("回家", { exact: true })).toHaveCount(1);
   const settle = page.waitForFunction(
     () => document.querySelector(".farm-page")?.getAttribute("data-home-settle") === "1",
   );
@@ -82,7 +84,8 @@ test("宽屏选定身份后，底栏同时有找我和回家", async ({ page }) 
   const home = tools.getByTestId("map-home");
   await expect(tools.getByTestId("find-me")).toBeVisible();
   await expect(home).toBeVisible();
-  await expect(home).toHaveText("回家");
+  await expect(home).toHaveText("屋");
+  await expect(home).not.toHaveText("回家");
   await home.click();
   const line = page.getByTestId("home-village-line");
   await expect(line).toBeVisible();

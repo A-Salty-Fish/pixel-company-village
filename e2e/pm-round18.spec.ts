@@ -62,6 +62,10 @@ test("a 375px map does not stack the extra actions down the left", async ({ page
   await expect(page.getByTestId("emote-bar")).toBeHidden();
   await expect(page.getByTestId("toggle-plates")).toBeHidden();
   await expect(page.getByTestId("name-legend")).toBeHidden();
+  await expect(page.getByTestId("social-float-chip")).toBeVisible();
+  await expect(page.getByTestId("first-wave")).toBeHidden();
+  await expect(page.getByTestId("co-presence-toggle")).toBeHidden();
+  await page.getByTestId("social-float-chip").click();
   await expect(page.getByTestId("co-presence-toggle")).toBeVisible();
   await expect(page.getByTestId("first-wave")).toBeVisible();
   await expect(page.getByTestId("first-wave")).toHaveText("挥手");

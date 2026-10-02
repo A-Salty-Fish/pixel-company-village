@@ -87,6 +87,10 @@ test("first-run guide names 减动开关 and stays dismissed", async ({ page }) 
   await expect(guide).toBeVisible();
   await expect(guide).toHaveAttribute("data-blocks-map", "0");
   await expect(guide).toContainText("先选定「我是谁」。");
+  await expect(guide).toContainText("先在地图上找我，或去看村口。");
+  await expect(guide).not.toContainText("减动");
+  await expect(guide).not.toContainText("安静");
+  await expect(guide).not.toContainText("减少动作");
   await expect(guide.getByRole("button", { name: "知道了" })).toHaveCount(1);
   await page.getByTestId("first-run-dismiss").click();
   const visit = await page.evaluate(() => window.localStorage.getItem("village:visit-v1"));

@@ -1,5 +1,6 @@
 "use client";
 
+import { drawerHomeSwitch, mapHomeAria, mapHomeFace } from "@/features/one-home-word/one-home-word";
 import { LANE_ACTS, type LaneActId } from "@/lib/lane";
 import { YARD_ACTS, type YardActId } from "@/lib/yard";
 import {
@@ -78,7 +79,7 @@ export function WaveDPanel(props: Props) {
                   onChange={(event) => props.onToggle(id, event.target.checked)}
                   data-wave-toggle={id}
                 />
-                <span>{WAVE_LABELS[id]}</span>
+                <span>{id === "home" ? drawerHomeSwitch() : WAVE_LABELS[id]}</span>
               </label>
             ))}
           </div>
@@ -205,8 +206,8 @@ export function WaveDPanel(props: Props) {
           <button type="button" className="hud-btn hud-btn-ghost" disabled={!props.selfName} onClick={props.onBench} data-testid="sit-bench">
             {props.wave.sit ? "起身" : "坐长椅"}
           </button>
-          <button type="button" className="hud-btn" disabled={!props.selfName} onClick={props.onHome} data-testid="go-home">
-            回家
+          <button type="button" className="hud-btn" disabled={!props.selfName} onClick={props.onHome} data-testid="go-home" aria-label={mapHomeAria()}>
+            {mapHomeFace()}
           </button>
           <button type="button" className="hud-btn hud-btn-ghost" onClick={props.onPostcard} data-testid="save-postcard">
             存明信片
