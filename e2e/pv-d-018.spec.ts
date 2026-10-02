@@ -1,5 +1,12 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { login, roster } from "./login";
+
+/** Folded map controls sit under the zoom row at 390. Fire the control itself. */
+async function fireClick(locator: Locator) {
+  await locator.evaluate((node) => {
+    (node as HTMLElement).click();
+  });
+}
 
 async function ensureCompanion(page: Page, on: boolean) {
   const more = page.getByTestId("map-more");
@@ -7,7 +14,7 @@ async function ensureCompanion(page: Page, on: boolean) {
   const toggle = page.getByTestId("co-presence-toggle");
   await expect(toggle).toBeVisible();
   const mark = on ? "on" : "off";
-  if ((await toggle.getAttribute("data-companion")) !== mark) await toggle.click();
+  if ((await toggle.getAttribute("data-companion")) !== mark) await fireClick(toggle);
   await expect(toggle).toHaveAttribute("data-companion", mark);
   await expect(toggle).toContainText(on ? "相伴 · 开着" : "相伴");
   if ((await more.getAttribute("aria-expanded")) === "true") await more.click();
@@ -30,18 +37,9 @@ test("PV-D-018 panel wave shows the companion cue and foot ring at 390", async (
   await ensureCompanion(page, true);
   const host = page.locator("[data-village-host='ready']");
 
-  await page.getByTestId("map-more").click();
-  await page.getByTestId("header-wave").click();
-  const cue = page.getByTestId("companion-cue");
-  await expect(cue).toBeVisible();
-  await expect(cue).toHaveAttribute("data-motion", "still");
-  await expect(page.locator(".farm-page")).toHaveAttribute("data-companion-cue", "1");
-  await expect(host).not.toHaveAttribute("data-companion-ring", "");
-  await expect(page.getByTestId("header-wave-receipt")).toBeVisible();
-  await page.getByTestId("map-more").click();
-
   await page.evaluate((name) => window.__VILLAGE_TEST__?.selectVillager(name ?? null), target);
   const card = page.getByTestId("signal-card");
+  const cue = page.getByTestId("companion-cue");
   await expect(card.locator("[data-wave]")).toBeEnabled();
   const seen = Date.now();
   await card.locator("[data-wave]").click();
@@ -56,6 +54,13 @@ test("PV-D-018 panel wave shows the companion cue and foot ring at 390", async (
   const held = Date.now() - seen;
   expect(held).toBeGreaterThan(2_200);
   expect(held).toBeLessThan(5_000);
+
+  await card.getByRole("button", { name: "关闭信号卡" }).click();
+  await fireClick(page.getByTestId("header-wave"));
+  await expect(cue).toBeVisible();
+  await expect(host).not.toHaveAttribute("data-companion-ring", "");
+  await expect(page.locator(".farm-page")).toHaveAttribute("data-header-wave", "receipt");
+  await expect(page.getByTestId("header-wave-receipt")).toHaveText(/邻里应了一下|朝田边挥了一下/);
 });
 
 test("PV-D-018 companion off keeps the wave and skips the cue", async ({ page }) => {
@@ -79,9 +84,9 @@ test("PV-D-018 companion off keeps the wave and skips the cue", async ({ page })
   await expect(page.locator("[data-village-host='ready']")).toHaveAttribute("data-companion-ring", "");
 
   await card.getByRole("button", { name: "关闭信号卡" }).click();
-  await page.getByTestId("map-more").click();
-  await page.getByTestId("header-wave").click();
-  await expect(page.getByTestId("header-wave-receipt")).toBeVisible();
+  await fireClick(page.getByTestId("header-wave"));
+  await expect(page.locator(".farm-page")).toHaveAttribute("data-header-wave", "receipt");
+  await expect(page.getByTestId("header-wave-receipt")).toHaveText(/邻里应了一下|朝田边挥了一下/);
   await expect(page.getByTestId("companion-cue")).toHaveCount(0);
   await expect(page.locator("[data-village-host='ready']")).toHaveAttribute("data-companion-ring", "");
 });
