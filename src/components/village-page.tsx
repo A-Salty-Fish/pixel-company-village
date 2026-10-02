@@ -16,8 +16,9 @@ import {
 } from "@/lib/interactions";
 import type { KindnessMenuId } from "@/lib/copy";
 import { ComfortSettings } from "@/components/comfort-settings";
-import { FirstRunGuide } from "@/components/first-run-guide";
-import { emptyVisit, readVisit, VISIT_KEY, type VisitFlags } from "@/lib/first-run";
+import { FirstRunGuide, forgetFirstVisit } from "@/components/first-run-guide";
+import { emptyVisit, readVisit, visitForIdentity, VISIT_KEY, type VisitFlags } from "@/lib/first-run";
+import { firstVisitIdentityDropped } from "@/features/first-visit-one-hint/first-visit-one-hint";
 import { HeaderRitual } from "@/components/header-ritual";
 import { PlayShelf } from "@/components/play-shelf";
 import { VillageLoopsPanel } from "@/components/village-loops-panel";
@@ -263,6 +264,7 @@ import {
   kindnessDays,
   kindnessOnDay,
   kindnessStatus,
+  loadSelf,
   localScoreHistory,
   motionGovernor,
   nextFestival,
@@ -327,6 +329,8 @@ export function VillagePage({ initial }: Props) {
   const [choreBook, setChoreBook] = useState<ReadonlyMap<string, ViewerChoreFlags>>(() => new Map());
   const [waveLine, setWaveLine] = useState<string | null>(null);
   const [visitFlags, setVisitFlags] = useState<VisitFlags>(emptyVisit);
+  const [visitReady, setVisitReady] = useState(false);
+  const trackedSelf = useRef<string | null | undefined>(undefined);
   const [loopLine, setLoopLine] = useState<{ viewer: string; text: string } | null>(null);
   const loopSnap = useSyncExternalStore(subscribeLoops, getLoopSnapshot, getServerLoopSnapshot);
   const [nookLine, setNookLine] = useState<{ viewer: string; text: string } | null>(null);
@@ -638,26 +642,43 @@ export function VillagePage({ initial }: Props) {
   }, [selfName, clock.weekKey]);
 
   useLayoutEffect(() => {
+    let loaded = emptyVisit();
     try {
-      const raw = window.localStorage.getItem(VISIT_KEY);
-      if (raw) setVisitFlags(readVisit(raw));
+      loaded = readVisit(window.localStorage.getItem(VISIT_KEY));
     } catch {
       /* storage blocked */
     }
+    const hasSelf = Boolean(loadSelf().name);
+    if (firstVisitIdentityDropped(loaded.self, hasSelf)) {
+      forgetFirstVisit();
+      setVisitFlags(emptyVisit());
+      setVisitReady(true);
+      return;
+    }
+    setVisitFlags(visitForIdentity(loaded, hasSelf));
+    setVisitReady(true);
   }, []);
 
   useEffect(() => {
+    if (!visitReady) return;
     try {
       window.localStorage.setItem(VISIT_KEY, JSON.stringify(visitFlags));
     } catch {
       /* private mode */
     }
-  }, [visitFlags]);
+  }, [visitFlags, visitReady]);
 
   useEffect(() => {
-    if (!selfName) return;
-    setVisitFlags((current) => (current.self ? current : { ...current, self: true }));
-  }, [selfName, visitFlags]);
+    if (prefs.rev === 0) return;
+    const previous = trackedSelf.current;
+    trackedSelf.current = selfName;
+    if (previous && !selfName) {
+      forgetFirstVisit();
+      setVisitFlags(emptyVisit());
+      return;
+    }
+    setVisitFlags((current) => visitForIdentity(current, Boolean(selfName)));
+  }, [selfName, prefs.rev]);
 
   useEffect(() => {
     recordGarden(payload.date, people);
