@@ -81,7 +81,7 @@ import { selfGhostSuppressed } from "@/features/self-plate-ghost/self-plate-ghos
 import { plateClearBottom } from "@/features/zoom-plate-lift/zoom-plate-lift";
 import { findMePathMark } from "@/features/find-me-path/find-me-path";
 import { selfInFrame } from "@/features/find-me-one-line/find-me-one-line";
-import { drawnLandmark } from "@/features/first-glance/first-glance";
+import { drawnLandmark, openingCoversGate, openingGate, openingGlanceCamera } from "@/features/first-glance/first-glance";
 import { nightPlateMark } from "@/features/night-plate-contrast/night-plate-contrast";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
@@ -469,7 +469,18 @@ export function VillageScene({
       const rawW = Math.floor(host.clientWidth);
       const rawH = Math.floor(host.clientHeight);
       if (!fitted.current && !userCam.current && rawW > 0 && rawH > 0) {
-        const next = narrowFillCamera({ people: villagersRef.current, cssW: rawW, cssH: rawH });
+        const filled = narrowFillCamera({ people: villagersRef.current, cssW: rawW, cssH: rawH });
+        const gate = openingGate();
+        const next =
+          filled && openingCoversGate(window.__VILLAGE_GLANCE_MENU__ === "1")
+            ? openingGlanceCamera({
+                x: filled.x,
+                y: filled.y,
+                zoom: filled.zoom,
+                landmarkX: gate.x,
+                landmarkY: gate.y,
+              })
+            : filled;
         if (next) {
           fitted.current = true;
           zoomRef.current = next.zoom;

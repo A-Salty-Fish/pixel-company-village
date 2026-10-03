@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { PLAY_FIRST_TIP } from "@/features/play-first-tip/play-first-tip";
 import { APP_VERSION } from "@/features/village-release/changelog";
+import { narrowFillCamera } from "@/features/narrow-map-fill/narrow-map-fill";
+import { viewSpan } from "@/lib/pixel-scene";
 import {
   FIRST_GLANCE_ENABLED,
   GLANCE_FIND_LINE,
@@ -14,6 +16,9 @@ import {
   greetOnPerson,
   drawnLandmark,
   landmarkInOpeningFrame,
+  openingCoversGate,
+  openingGate,
+  openingGlanceCamera,
   pickGlancePlace,
   placeAim,
   todayBarHidden,
@@ -128,4 +133,58 @@ test("a cropped landmark is not drawn on the current field", () => {
     drawnLandmark({ x: lantern.x, y: lantern.y, camX: 700, camY: 200, spanW: 400, spanH: 400 }),
     { x: 852, y: 336 },
   );
+});
+
+test("opening camera already holds 村口, and a crop still draws nothing on the field", () => {
+  const gate = openingGate();
+  assert.equal(gate.label, "村口");
+  assert.equal(gate.x, 88);
+  assert.equal(gate.y, 120);
+  assert.equal(openingCoversGate(false), true);
+  assert.equal(openingCoversGate(true), false);
+  assert.equal(openingCoversGate(false, false), false);
+
+  const people = [];
+  for (let index = 0; index < 12; index += 1) {
+    const col = index % 6;
+    const row = Math.floor(index / 6);
+    people.push({ x: 400 + col * 80, y: 360 + row * 70 });
+  }
+  const field = narrowFillCamera({ people, cssW: 390, cssH: 700 });
+  assert.ok(field);
+  const span = viewSpan(field.zoom);
+  assert.equal(
+    landmarkInOpeningFrame({ x: gate.x, y: gate.y, camX: field.x, camY: field.y, spanW: span.w, spanH: span.h }),
+    false,
+  );
+  assert.equal(drawnLandmark({ x: gate.x, y: gate.y, camX: field.x, camY: field.y, spanW: span.w, spanH: span.h }), null);
+  const standIn = { x: field.x + span.w * 0.58, y: field.y + span.h * 0.62 };
+  assert.equal(standIn.x === gate.x && standIn.y === gate.y, false);
+
+  const opened = openingGlanceCamera({
+    x: field.x,
+    y: field.y,
+    zoom: field.zoom,
+    landmarkX: gate.x,
+    landmarkY: gate.y,
+  });
+  assert.equal(opened.zoom, field.zoom);
+  const openSpan = viewSpan(opened.zoom);
+  assert.equal(
+    landmarkInOpeningFrame({ x: gate.x, y: gate.y, camX: opened.x, camY: opened.y, spanW: openSpan.w, spanH: openSpan.h }),
+    true,
+  );
+  assert.deepEqual(
+    drawnLandmark({ x: gate.x, y: gate.y, camX: opened.x, camY: opened.y, spanW: openSpan.w, spanH: openSpan.h }),
+    { x: gate.x, y: gate.y },
+  );
+
+  const held = openingGlanceCamera({
+    x: opened.x,
+    y: opened.y,
+    zoom: opened.zoom,
+    landmarkX: gate.x,
+    landmarkY: gate.y,
+  });
+  assert.deepEqual(held, opened);
 });

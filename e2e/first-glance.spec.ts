@@ -29,60 +29,76 @@ test("first glance is the field, a name, and one glowing place", async ({ page }
   await expect(page.locator("[data-village-host='ready']")).toHaveAttribute("data-map-fill", "village");
 
   const place = page.getByTestId("glance-place");
-  const read = await page.evaluate(() => {
-    const host = document.querySelector("[data-village-host='ready']");
-    const canvas = document.querySelector("canvas[data-testid='village-map']");
-    const node = document.querySelector("[data-testid='glance-place']");
-    if (!host || !canvas || !(node instanceof HTMLElement)) return null;
-    const zoom = Number(host.getAttribute("data-camera-zoom"));
-    const camX = Number(host.getAttribute("data-camera-x"));
-    const camY = Number(host.getAttribute("data-camera-y"));
-    const spanW = Math.max(1, Math.floor(1216 / zoom));
-    const spanH = Math.max(1, Math.floor(1120 / zoom));
-    const id = node.getAttribute("data-place-id") ?? "";
-    const box = node.getBoundingClientRect();
-    const frame = canvas.getBoundingClientRect();
-    return {
-      id,
-      hidden: node.hidden,
-      camX,
-      camY,
-      spanW,
-      spanH,
-      text: (node.textContent ?? "").trim(),
-      // Bottom center is the landmark after translate(-50%, -100%).
-      markX: box.left + box.width / 2,
-      markY: box.bottom,
-      frameLeft: frame.left,
-      frameTop: frame.top,
-      frameW: frame.width,
-      frameH: frame.height,
-    };
-  });
-  expect(read).toBeTruthy();
-  const spot = LANDMARKS[read?.id ?? ""];
-  expect(spot).toBeTruthy();
-  const inFrame =
-    spot.x >= (read?.camX ?? 0) &&
-    spot.y >= (read?.camY ?? 0) &&
-    spot.x <= (read?.camX ?? 0) + (read?.spanW ?? 0) &&
-    spot.y <= (read?.camY ?? 0) + (read?.spanH ?? 0);
+  const readPlace = () =>
+    page.evaluate(() => {
+      const host = document.querySelector("[data-village-host='ready']");
+      const canvas = document.querySelector("canvas[data-testid='village-map']");
+      const node = document.querySelector("[data-testid='glance-place']");
+      if (!host || !canvas || !(node instanceof HTMLElement)) return null;
+      const zoom = Number(host.getAttribute("data-camera-zoom"));
+      const camX = Number(host.getAttribute("data-camera-x"));
+      const camY = Number(host.getAttribute("data-camera-y"));
+      const spanW = Math.max(1, Math.floor(1216 / zoom));
+      const spanH = Math.max(1, Math.floor(1120 / zoom));
+      const id = node.getAttribute("data-place-id") ?? "";
+      const box = node.getBoundingClientRect();
+      const frame = canvas.getBoundingClientRect();
+      return {
+        id,
+        hidden: node.hidden,
+        camX,
+        camY,
+        spanW,
+        spanH,
+        text: (node.textContent ?? "").trim(),
+        // Bottom center is the landmark after translate(-50%, -100%).
+        markX: box.left + box.width / 2,
+        markY: box.bottom,
+        frameLeft: frame.left,
+        frameTop: frame.top,
+        frameW: frame.width,
+        frameH: frame.height,
+      };
+    });
 
-  if (!inFrame) {
-    await expect(place).toBeHidden();
-    await expect(page.getByRole("button", { name: "村口" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "灯笼" })).toHaveCount(0);
-  } else {
-    await expect(place).toBeVisible();
-    expect(read?.text.startsWith("去看")).toBe(false);
-    const projectedX = (read?.frameLeft ?? 0) + ((spot.x - (read?.camX ?? 0)) / (read?.spanW ?? 1)) * (read?.frameW ?? 1);
-    const projectedY = (read?.frameTop ?? 0) + ((spot.y - (read?.camY ?? 0)) / (read?.spanH ?? 1)) * (read?.frameH ?? 1);
-    expect(Math.hypot((read?.markX ?? 0) - projectedX, (read?.markY ?? 0) - projectedY)).toBeLessThan(28);
-    await place.click();
-    await expect
-      .poll(async () => page.locator("[data-village-host='ready']").getAttribute("data-next-id"))
-      .toMatch(/^(gate|pond|bench|lantern|lantern-frame)$/);
-  }
+  const gate = LANDMARKS.gate;
+  await expect.poll(async () => {
+    const read = await readPlace();
+    if (!read || read.hidden || read.id !== "gate" || read.text !== "村口") return false;
+    return (
+      gate.x >= read.camX &&
+      gate.y >= read.camY &&
+      gate.x <= read.camX + read.spanW &&
+      gate.y <= read.camY + read.spanH
+    );
+  }).toBe(true);
+
+  const read = await readPlace();
+  expect(read?.text.startsWith("去看")).toBe(false);
+  const projectedX = (read?.frameLeft ?? 0) + ((gate.x - (read?.camX ?? 0)) / (read?.spanW ?? 1)) * (read?.frameW ?? 1);
+  const projectedY = (read?.frameTop ?? 0) + ((gate.y - (read?.camY ?? 0)) / (read?.spanH ?? 1)) * (read?.frameH ?? 1);
+  expect(Math.hypot((read?.markX ?? 0) - projectedX, (read?.markY ?? 0) - projectedY)).toBeLessThan(28);
+  const standInX = (read?.frameLeft ?? 0) + 0.58 * (read?.frameW ?? 0);
+  const standInY = (read?.frameTop ?? 0) + 0.62 * (read?.frameH ?? 0);
+  expect(Math.hypot((read?.markX ?? 0) - standInX, (read?.markY ?? 0) - standInY)).toBeGreaterThan(28);
+
+  await place.click();
+  await expect
+    .poll(async () => page.locator("[data-village-host='ready']").getAttribute("data-next-id"))
+    .toBe("gate");
+  await expect.poll(async () => {
+    const stuck = await readPlace();
+    if (!stuck || stuck.hidden || stuck.text !== "村口") return 999;
+    const x = stuck.frameLeft + ((gate.x - stuck.camX) / stuck.spanW) * stuck.frameW;
+    const y = stuck.frameTop + ((gate.y - stuck.camY) / stuck.spanH) * stuck.frameH;
+    const inFrame =
+      gate.x >= stuck.camX &&
+      gate.y >= stuck.camY &&
+      gate.x <= stuck.camX + stuck.spanW &&
+      gate.y <= stuck.camY + stuck.spanH;
+    if (!inFrame) return 999;
+    return Math.hypot(stuck.markX - x, stuck.markY - y);
+  }).toBeLessThan(28);
 
   const name = await page.evaluate(() => window.__VILLAGE_TEST__?.getState().rosterNames[0] ?? null);
   expect(name).toBeTruthy();

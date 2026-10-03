@@ -2,10 +2,12 @@
  * First glance draft. The field, nearby names, and one glowing place
  * stay out. Header, today strip, and the bottom tools wait in a small menu.
  * Set FIRST_GLANCE_ENABLED to false to bring the current first glance back.
- * This is not the camera-leaves-the-home-field change.
+ * The opening camera already includes the village gate. The word stays on that point.
  */
 
 import { PLAY_FIRST_TIP } from "@/features/play-first-tip/play-first-tip";
+import { NEXT_BEATS } from "@/features/week-next-beat/next-beat";
+import { clampCamera, viewSpan } from "@/lib/pixel-scene";
 
 export const FIRST_GLANCE_ENABLED = true;
 
@@ -116,6 +118,46 @@ export function pickGlancePlace(input: {
 /** The click on a place uses the same aim as the old floating invite. */
 export function placeAim(place: GlancePlace) {
   return { kind: place.id, x: place.x, y: place.y };
+}
+
+/** Village gate. The opening word is this place, not a point in the current field. */
+export function openingGate() {
+  return NEXT_BEATS.find((beat) => beat.id === "gate") ?? NEXT_BEATS[0];
+}
+
+/**
+ * First glance opens on the gate. The old menu (tests that force it) keeps
+ * the field camera. A missing flag is the real first glance, menu closed.
+ */
+export function openingCoversGate(menuForcedOpen: boolean, enabled = FIRST_GLANCE_ENABLED) {
+  return enabled && !menuForcedOpen;
+}
+
+/**
+ * Shift the opening camera just enough that the landmark sits inside the
+ * frame. Zoom stays. The marker is still the landmark, never a stand-in.
+ */
+export function openingGlanceCamera(input: {
+  x: number;
+  y: number;
+  zoom: number;
+  landmarkX: number;
+  landmarkY: number;
+}) {
+  const span = viewSpan(input.zoom);
+  const margin = Math.min(48, Math.floor(span.w / 6), Math.floor(span.h / 6));
+  let x = input.x;
+  let y = input.y;
+  const minX = input.landmarkX - span.w + margin;
+  const maxX = input.landmarkX - margin;
+  if (x < minX) x = minX;
+  if (x > maxX) x = maxX;
+  const minY = input.landmarkY - span.h + margin;
+  const maxY = input.landmarkY - margin;
+  if (y < minY) y = minY;
+  if (y > maxY) y = maxY;
+  const cam = clampCamera(x, y, input.zoom);
+  return { x: cam.x, y: cam.y, zoom: input.zoom };
 }
 
 /**
