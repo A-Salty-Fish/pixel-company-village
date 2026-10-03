@@ -479,6 +479,8 @@ export function VillageScene({
                 zoom: filled.zoom,
                 landmarkX: gate.x,
                 landmarkY: gate.y,
+                cssW: rawW,
+                cssH: rawH,
               })
             : filled;
         if (next) {

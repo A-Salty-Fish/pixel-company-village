@@ -2,7 +2,7 @@
  * First glance draft. The field, nearby names, and one glowing place
  * stay out. Header, today strip, and the bottom tools wait in a small menu.
  * Set FIRST_GLANCE_ENABLED to false to bring the current first glance back.
- * The opening camera already includes the village gate. The word stays on that point.
+ * The opening camera stands in front of the village gate. The word stays on that point.
  */
 
 import { PLAY_FIRST_TIP } from "@/features/play-first-tip/play-first-tip";
@@ -134,8 +134,10 @@ export function openingCoversGate(menuForcedOpen: boolean, enabled = FIRST_GLANC
 }
 
 /**
- * Shift the opening camera just enough that the landmark sits inside the
- * frame. Zoom stays. The marker is still the landmark, never a stand-in.
+ * Cold start stands in front of the gate. Zoom 2 keeps that point in the
+ * corner and the rest of the picture is the far field, so the opening zoom
+ * is closer than 2. The projection stays at least a quarter of the short
+ * side in from the left and the top. The marker is still the landmark.
  */
 export function openingGlanceCamera(input: {
   x: number;
@@ -143,21 +145,42 @@ export function openingGlanceCamera(input: {
   zoom: number;
   landmarkX: number;
   landmarkY: number;
+  cssW?: number;
+  cssH?: number;
 }) {
-  const span = viewSpan(input.zoom);
-  const margin = Math.min(48, Math.floor(span.w / 6), Math.floor(span.h / 6));
-  let x = input.x;
-  let y = input.y;
-  const minX = input.landmarkX - span.w + margin;
-  const maxX = input.landmarkX - margin;
-  if (x < minX) x = minX;
-  if (x > maxX) x = maxX;
-  const minY = input.landmarkY - span.h + margin;
-  const maxY = input.landmarkY - margin;
-  if (y < minY) y = minY;
-  if (y > maxY) y = maxY;
-  const cam = clampCamera(x, y, input.zoom);
-  return { x: cam.x, y: cam.y, zoom: input.zoom };
+  const cssW = input.cssW && input.cssW > 0 ? input.cssW : 390;
+  const cssH = input.cssH && input.cssH > 0 ? input.cssH : 844;
+  const short = Math.min(cssW, cssH);
+  const minEdge = short / 4;
+  const stand = (zoom: number) => {
+    const span = viewSpan(zoom);
+    const maxX = input.landmarkX - (minEdge * span.w) / cssW;
+    const maxY = input.landmarkY - (minEdge * span.h) / cssH;
+    // In front of the gate: centered when the map edge allows it, and a
+    // little above the middle so the ground before the gate stays in frame.
+    const idealX = input.landmarkX - span.w * 0.5;
+    const idealY = input.landmarkY - span.h * 0.42;
+    const cam = clampCamera(Math.min(idealX, maxX), Math.min(idealY, maxY), zoom);
+    const left = ((input.landmarkX - cam.x) / span.w) * cssW;
+    const top = ((input.landmarkY - cam.y) / span.h) * cssH;
+    const inside =
+      input.landmarkX >= cam.x &&
+      input.landmarkY >= cam.y &&
+      input.landmarkX <= cam.x + span.w &&
+      input.landmarkY <= cam.y + span.h;
+    return {
+      x: cam.x,
+      y: cam.y,
+      zoom,
+      ok: inside && left >= minEdge - 1e-6 && top >= minEdge - 1e-6,
+    };
+  };
+  for (const zoom of [5, 6, 7, 8, 4, 3]) {
+    const frame = stand(zoom);
+    if (frame.ok) return { x: frame.x, y: frame.y, zoom: frame.zoom };
+  }
+  const fallback = clampCamera(0, 0, 5);
+  return { x: fallback.x, y: fallback.y, zoom: 5 };
 }
 
 /**

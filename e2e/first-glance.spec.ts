@@ -43,14 +43,24 @@ test("first glance is the field, a name, and one glowing place", async ({ page }
       const id = node.getAttribute("data-place-id") ?? "";
       const box = node.getBoundingClientRect();
       const frame = canvas.getBoundingClientRect();
+      const before = getComputedStyle(node, "::before");
+      const lightH = Number.parseFloat(before.height) || 0;
+      const gap = Number.parseFloat(before.marginBottom) || 0;
+      const textH = Math.max(0, box.height - lightH - gap);
       return {
         id,
         hidden: node.hidden,
+        zoom,
         camX,
         camY,
         spanW,
         spanH,
         text: (node.textContent ?? "").trim(),
+        lightX: box.left + box.width / 2,
+        lightY: box.top + lightH / 2,
+        textX: box.left + box.width / 2,
+        textY: box.top + lightH + gap + textH / 2,
+        lightColor: before.backgroundColor,
         // Bottom center is the landmark after translate(-50%, -100%).
         markX: box.left + box.width / 2,
         markY: box.bottom,
@@ -75,9 +85,17 @@ test("first glance is the field, a name, and one glowing place", async ({ page }
 
   const read = await readPlace();
   expect(read?.text.startsWith("去看")).toBe(false);
+  expect(read?.text).toBe("村口");
+  expect(read?.zoom ?? 0).toBeGreaterThan(2);
   const projectedX = (read?.frameLeft ?? 0) + ((gate.x - (read?.camX ?? 0)) / (read?.spanW ?? 1)) * (read?.frameW ?? 1);
   const projectedY = (read?.frameTop ?? 0) + ((gate.y - (read?.camY ?? 0)) / (read?.spanH ?? 1)) * (read?.frameH ?? 1);
+  const short = Math.min(read?.frameW ?? 0, read?.frameH ?? 0);
+  expect(projectedX - (read?.frameLeft ?? 0)).toBeGreaterThanOrEqual(short / 4);
+  expect(projectedY - (read?.frameTop ?? 0)).toBeGreaterThanOrEqual(short / 4);
   expect(Math.hypot((read?.markX ?? 0) - projectedX, (read?.markY ?? 0) - projectedY)).toBeLessThan(28);
+  expect(read?.lightColor).toContain("242");
+  expect(Math.hypot((read?.textX ?? 0) - projectedX, (read?.textY ?? 0) - projectedY)).toBeLessThan(28);
+  expect(Math.hypot((read?.lightX ?? 0) - projectedX, (read?.lightY ?? 0) - projectedY)).toBeLessThan(36);
   const standInX = (read?.frameLeft ?? 0) + 0.58 * (read?.frameW ?? 0);
   const standInY = (read?.frameTop ?? 0) + 0.62 * (read?.frameH ?? 0);
   expect(Math.hypot((read?.markX ?? 0) - standInX, (read?.markY ?? 0) - standInY)).toBeGreaterThan(28);
