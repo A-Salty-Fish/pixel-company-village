@@ -1,8 +1,11 @@
 import type { Page } from "@playwright/test";
 
-export async function login(page: Page) {
+export async function login(page: Page, opts?: { glance?: "closed" }) {
   const password = process.env.SITE_PASSWORD;
   if (!password || password.length < 4) throw new Error("SITE_PASSWORD is missing");
+  await page.addInitScript((closed: boolean) => {
+    (window as Window & { __VILLAGE_GLANCE_MENU__?: "0" | "1" }).__VILLAGE_GLANCE_MENU__ = closed ? "0" : "1";
+  }, opts?.glance === "closed");
   await page.goto("/login");
   await page.getByTestId("login-password").fill(password);
   await Promise.all([
@@ -45,4 +48,11 @@ export async function roster(page: Page) {
     date: string;
     people: { name: string; scored: boolean }[];
   };
+}
+
+/** Tests that log in by hand still open the old chrome. First glance stays closed unless this runs. */
+export async function keepOldGlance(page: Page) {
+  await page.addInitScript(() => {
+    (window as Window & { __VILLAGE_GLANCE_MENU__?: "0" | "1" }).__VILLAGE_GLANCE_MENU__ = "1";
+  });
 }

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, roster, openVillageDrawer } from "./login";
+import { login, roster, openVillageDrawer, keepOldGlance } from "./login";
 
 test("show-all nameplates flip a host flag", async ({ page }) => {
   await login(page);
@@ -130,6 +130,7 @@ test("atlas failure shows recovery instead of a blank page", async ({ page }) =>
   await page.route("**/village-atlas.json", (route) => route.abort());
   await page.route("**/village-atlas.png", (route) => route.abort());
   const password = process.env.SITE_PASSWORD ?? "";
+  await keepOldGlance(page);
   await page.goto("/login");
   await page.getByTestId("login-password").fill(password);
   await page.getByTestId("login-submit").click();
@@ -162,6 +163,7 @@ test("narrow split can open the map or the card", async ({ page }) => {
 });
 
 test("a cleared profile keeps quiet village checked", async ({ page }) => {
+  await keepOldGlance(page);
   await page.goto("/login");
   await page.evaluate(() => {
     window.localStorage.clear();

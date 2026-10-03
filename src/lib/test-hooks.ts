@@ -30,6 +30,7 @@ export type VillageTestApi = {
 declare global {
   interface Window {
     __VILLAGE_TEST__?: VillageTestApi;
+    __VILLAGE_GLANCE_MENU__?: "0" | "1";
   }
 }
 

@@ -1,3 +1,4 @@
+import { keepOldGlance } from "./login";
 import { expect, test } from "@playwright/test";
 import { isSolarPlaceholder } from "./solar-banlist";
 
@@ -5,6 +6,7 @@ test("login, roster, and one scored card", async ({ page }) => {
   const password = process.env.SITE_PASSWORD;
   if (!password || password.length < 4) throw new Error("SITE_PASSWORD is missing");
 
+  await keepOldGlance(page);
   await page.goto("/login");
   await page.getByTestId("login-password").fill(password);
   await expect(page.getByTestId("login-password")).toHaveValue(password);

@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { login, roster } from "./login";
+import { login, roster, keepOldGlance } from "./login";
 
 test("today hint sits on the map corner with the three lines, then leaves after a person", async ({ page }) => {
+  await keepOldGlance(page);
   await page.goto("/login");
   await page.evaluate(() => {
     window.sessionStorage.setItem("village:today-hint-start-v1", "1");
