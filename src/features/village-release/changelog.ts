@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.17.1";
+export const APP_VERSION = "1.17.2";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,12 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.17.2",
+    date: "2026-10-04",
+    title: "夜里不画小点",
+    notes: ["窄屏的夜里，北路上不再画出看不清的小点。"],
+  },
   {
     version: "1.17.1",
     date: "2026-10-04",
