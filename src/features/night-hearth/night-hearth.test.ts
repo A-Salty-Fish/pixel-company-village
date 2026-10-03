@@ -3,11 +3,17 @@ import test from "node:test";
 import { POND_SLAB_ENABLED } from "@/features/night-readability/night-readability";
 import { NARROW_MAP_FILL_ENABLED, narrowFillCamera, narrowMapFillMark } from "@/features/narrow-map-fill/narrow-map-fill";
 import { viewSpan } from "@/lib/pixel-scene";
+import { portraitMap } from "@/features/narrow-map-fill/narrow-map-fill";
 import {
   NIGHT_HEARTH_ENABLED,
+  NORTH_PATH_STONES,
+  isNorthPathStone,
+  nightHearthDrawPixels,
+  nightHearthHidesStones,
   nightHearthMark,
   nightHearthOn,
   nightHearthPixels,
+  paintNightHearth,
 } from "@/features/night-hearth/night-hearth";
 
 function plotPeople(count: number) {
@@ -54,4 +60,76 @@ test("PV-PM-072 warms a few night windows and does not paint a navy slab", () =>
   assert.equal(narrowMapFillMark(cam.zoom), "village");
   const span = viewSpan(cam.zoom);
   assert.ok(cam.y + span.h < 700);
+});
+
+test("portrait night hides the five north-path stones and wide night keeps them", () => {
+  assert.equal(portraitMap(390, 596), true);
+  assert.equal(nightHearthHidesStones(390, 596), true);
+  assert.equal(portraitMap(1280, 720), false);
+  assert.equal(nightHearthHidesStones(1280, 720), false);
+
+  const stones = nightHearthPixels(true).filter(isNorthPathStone);
+  assert.deepEqual(
+    stones.map((pixel) => [pixel.x, pixel.y, pixel.w, pixel.h, pixel.color]),
+    NORTH_PATH_STONES.map((pixel) => [pixel.x, pixel.y, pixel.w, pixel.h, pixel.color]),
+  );
+
+  const narrowNight = nightHearthDrawPixels(true, 390, 596);
+  assert.equal(narrowNight.some(isNorthPathStone), false);
+  assert.equal(narrowNight.length, nightHearthPixels(true).length - NORTH_PATH_STONES.length);
+  assert.equal(nightHearthDrawPixels(false, 390, 596).length, 0);
+
+  const wideNight = nightHearthDrawPixels(true, 1280, 720);
+  assert.equal(wideNight.filter(isNorthPathStone).length, NORTH_PATH_STONES.length);
+
+  const worldW = 1216;
+  const worldH = 1120;
+  const cam = { viewW: worldW, viewH: worldH, camX: 0, camY: 0, worldW, worldH };
+  const calls: { x: number; y: number; w: number; h: number; color: string }[] = [];
+  const ctx = {
+    globalAlpha: 1,
+    fillStyle: "",
+    save() {},
+    restore() {},
+    fillRect(x: number, y: number, w: number, h: number) {
+      calls.push({ x, y, w, h, color: this.fillStyle });
+    },
+  };
+  const paint = (night: boolean, cssW: number, cssH: number) => {
+    calls.length = 0;
+    return paintNightHearth(ctx as unknown as CanvasRenderingContext2D, {
+      ...cam,
+      cssW,
+      cssH,
+      night,
+      reduced: false,
+    });
+  };
+
+  const narrowDay = paint(false, 390, 700);
+  assert.equal(narrowDay.mode, "off");
+  assert.equal(calls.length, 0);
+
+  const narrow = paint(true, 390, 700);
+  assert.equal(narrow.mode, "warm");
+  assert.equal(calls.some((call) => call.color === "#e7c48a"), false);
+  const windowColors = calls.map((call) => call.color);
+  assert.equal(windowColors.includes("#fff6d8"), true);
+  assert.equal(windowColors.includes("#f2d15c"), true);
+  assert.equal(calls.length, 4);
+
+  const wide = paint(true, 1280, 720);
+  assert.equal(wide.mode, "warm");
+  const painted = calls.filter((call) => call.color === "#e7c48a");
+  assert.equal(painted.length, 5);
+  for (const stone of NORTH_PATH_STONES) {
+    const sx = ((stone.x - cam.camX) / worldW) * cam.viewW;
+    const sy = ((stone.y - cam.camY) / worldH) * cam.viewH;
+    const sw = Math.max(2, (stone.w / worldW) * cam.viewW);
+    const sh = Math.max(2, (stone.h / worldH) * cam.viewH);
+    assert.equal(sw, 3);
+    assert.equal(sh, 2);
+    const hit = painted.find((call) => call.x === sx && call.y === sy && call.w === sw && call.h === sh);
+    assert.ok(hit, `missing stone ${stone.x},${stone.y}`);
+  }
 });

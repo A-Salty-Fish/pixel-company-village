@@ -1724,6 +1724,8 @@ export function paintVillage(
     camY,
     worldW: span.w,
     worldH: span.h,
+    cssW: viewW / Math.max(1, dpr),
+    cssH: viewH / Math.max(1, dpr),
     night: Boolean(NIGHT_WASH_V2_ENABLED && life?.sessionNight),
     reduced: Boolean(life?.reduceMotion),
   });
