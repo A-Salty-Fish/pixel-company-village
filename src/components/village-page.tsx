@@ -125,7 +125,16 @@ import {
   chooseNextSentence,
   oneNextSentenceMark,
   sentenceSpeaks,
+  type NextSentenceId,
 } from "@/features/one-next-sentence/one-next-sentence";
+import { fieldNearReadMark, fieldNearReadOn, lampPorchAfterSelf } from "@/features/field-near-read/field-near-read";
+import {
+  findMeCoversSentence,
+  findMeOneLineMark,
+  findMeSentence,
+  type FindSentence,
+} from "@/features/find-me-one-line/find-me-one-line";
+import { settingsTitleRoomMark } from "@/features/settings-title-room/settings-title-room";
 import { tipFollowsMark, tipFollowsOn } from "@/features/tip-follows-content/tip-follows-content";
 import { rosterMoreLabel, rosterShortList, rosterShortMark } from "@/features/roster-short-cut/roster-short-cut";
 import { HEADER_LEAN_ENABLED, headerLeanMark, showScoreSourceButton } from "@/features/header-lean/header-lean";
@@ -421,6 +430,7 @@ export function VillagePage({ initial }: Props) {
   const [welcomeOn, setWelcomeOn] = useState(false);
   const [findPathAt, setFindPathAt] = useState<number | null>(null);
   const [findReceipt, setFindReceipt] = useState("");
+  const [findHold, setFindHold] = useState<FindSentence>("silent");
   const [homeLine, setHomeLine] = useState("");
   const [phoneField, setPhoneField] = useState(false);
   const [finishedNext, setFinishedNext] = useState<string[]>([]);
@@ -1688,15 +1698,29 @@ export function VillagePage({ initial }: Props) {
   }, [returnOn]);
 
   useEffect(() => {
-    if (!mapReady || dawnSeen.current) return;
+    if (!mapReady) return;
     if (!dawnPorchOffer({ hour: clock.hour, alreadyShown: false })) return;
     if (returnShowing.current) return;
-    dawnSeen.current = true;
     const placed = selfName ? placeVillagers(people).find((person) => person.name === selfName) ?? null : null;
     const spot = pickDawnSpot(clock.ymd);
-    const target = dawnPanTarget(spot, placed ? { homeX: placed.homeX, homeY: placed.homeY } : null);
-    setDawnSpot({ ...spot, x: target.x, y: target.y });
-    setDawnOn(true);
+    const roof = placed ? { homeX: placed.homeX, homeY: placed.homeY } : null;
+    const target = dawnPanTarget(spot, roof);
+    const next = { ...spot, x: target.x, y: target.y };
+    const step = lampPorchAfterSelf({
+      id: spot.id,
+      seen: dawnSeen.current,
+      hasRoof: Boolean(roof),
+      enabled: fieldNearReadOn(),
+    });
+    if (step === "keep") return;
+    if (step === "arm") dawnSeen.current = true;
+    setDawnSpot((current) => {
+      if (current && current.id === next.id && current.x === next.x && current.y === next.y && current.label === next.label) {
+        return current;
+      }
+      return next;
+    });
+    if (step === "arm") setDawnOn(true);
   }, [mapReady, clock.hour, clock.ymd, returnOn, selfName, people]);
 
   useEffect(() => {
@@ -1878,9 +1902,11 @@ export function VillagePage({ initial }: Props) {
     hold: nextHold,
     done: finishedNext,
   });
-  const showWeekInvite = !guestQuiet && weekInvite && sentenceSpeaks(nextSentence, "week");
+  const findCovers = findReceipt.length > 0 && findMeCoversSentence(findHold);
+  const mapSentence = (id: NextSentenceId) => !findCovers && sentenceSpeaks(nextSentence, id);
+  const showWeekInvite = !guestQuiet && weekInvite && mapSentence("week");
   const showTouch =
-    (todayTouch === "open" || todayTouch === "done") && !guestQuiet && sentenceSpeaks(nextSentence, "touch");
+    (todayTouch === "open" || todayTouch === "done") && !guestQuiet && mapSentence("touch");
   const todayFace = showWeekInvite ? WEEK_INVITE_LINE : todayEntryLabel(tally.done, tally.total, waveState.toggles.weekBoard);
   const rosterCut = rosterShortList(people, selfName, rosterOpen);
   const pickerNames = (rosterMode === "empty" ? payload.people : people).map((person) => person.name);
@@ -1964,6 +1990,9 @@ export function VillagePage({ initial }: Props) {
       data-one-invite={oneFieldInviteMark()}
       data-one-next={oneNextSentenceMark()}
       data-next-sentence={nextSentence}
+      data-find-one-line={findMeOneLineMark()}
+      data-field-near={fieldNearReadMark()}
+      data-title-room={settingsTitleRoomMark()}
       data-tip-follows={tipFollowsMark()}
       data-roster-short={rosterShortMark()}
       data-header-lean={headerLeanMark()}
@@ -2309,7 +2338,7 @@ export function VillagePage({ initial }: Props) {
             onTogglePlates={() => saveComfort({ ...comfort, showAllPlates: !comfort.showAllPlates })}
             onEmote={selfName ? emote : undefined}
             homePulse={homePulse}
-            onFindMe={() => {
+            onFindMe={(framed) => {
               noteToday("person");
               markGesture("find");
               visitOwnGate();
@@ -2317,7 +2346,9 @@ export function VillagePage({ initial }: Props) {
               if (FIND_FOOTPRINTS_ENABLED) setFindPrintAt(Date.now());
               if (FIND_ME_PATH_ENABLED) {
                 setFindPathAt(Date.now());
-                setFindReceipt(FIND_ME_RECEIPT);
+                const mode = findMeSentence({ framed });
+                setFindHold(mode);
+                setFindReceipt(mode === "silent" ? "" : FIND_ME_RECEIPT);
               } else {
                 const home = selfName ? placeVillagers(people).find((person) => person.name === selfName) : null;
                 noteFeedback({
@@ -2369,14 +2400,21 @@ export function VillagePage({ initial }: Props) {
           </VillageScene>
           <FeedbackStrip beat={feedback} />
           {findReceipt ? (
-            <p className="find-me-receipt" data-testid="find-me-receipt" data-module="find-me-path" role="status">
+            <p
+              className="find-me-receipt"
+              data-testid="find-me-receipt"
+              data-module="find-me-path"
+              data-sentence-strip="1"
+              data-find-hold={findHold}
+              role="status"
+            >
               <span>{findReceipt}</span>
               <button type="button" className="hud-icon" aria-label="收起" onClick={() => setFindReceipt("")}>
                 ×
               </button>
             </p>
           ) : null}
-          {homeLine && sentenceSpeaks(nextSentence, "home") ? (
+          {homeLine && mapSentence("home") ? (
             <p className="home-village-line" data-testid="home-village-line" data-module="home-village-line" data-sentence-strip="1" role="status">
               <span>{homeLine}</span>
               <button type="button" className="hud-icon" aria-label="收起" onClick={() => setHomeLine("")}>
@@ -2384,7 +2422,7 @@ export function VillagePage({ initial }: Props) {
               </button>
             </p>
           ) : null}
-          {welcomeOn && sentenceSpeaks(nextSentence, "welcome") ? (
+          {welcomeOn && mapSentence("welcome") ? (
             <p
               className="village-welcome"
               data-sentence-strip="1"
@@ -2420,7 +2458,7 @@ export function VillagePage({ initial }: Props) {
               </p>
             )
           ) : null}
-          {sentenceSpeaks(nextSentence, "share") ? (
+          {mapSentence("share") ? (
             <ShareVillage
               facts={{
                 date: clock.ymd,
@@ -2432,7 +2470,7 @@ export function VillagePage({ initial }: Props) {
               onOpenChange={onShareOpen}
             />
           ) : null}
-          {mapBeat && sentenceSpeaks(nextSentence, "gate") ? (
+          {mapBeat && mapSentence("gate") ? (
             <button
               type="button"
               className="parchment-badge next-beat-first"
@@ -2445,7 +2483,7 @@ export function VillagePage({ initial }: Props) {
               {nextBeatLabel(mapBeat)}
             </button>
           ) : null}
-          {beatSuggest && sentenceSpeaks(nextSentence, "suggest") ? (
+          {beatSuggest && mapSentence("suggest") ? (
             <div className="next-beat-suggest" data-sentence-strip="1" data-testid="next-beat-suggest" data-module="next-beat-path-glow" data-next-id={beatSuggest.id}>
               <button
                 type="button"
@@ -2470,7 +2508,7 @@ export function VillagePage({ initial }: Props) {
               </button>
             </div>
           ) : null}
-          {line === "return" && sentenceSpeaks(nextSentence, "line") ? (
+          {line === "return" && mapSentence("line") ? (
             <SoftLineChip
               testId="return-warm"
               module="return-warm"
@@ -2486,7 +2524,7 @@ export function VillagePage({ initial }: Props) {
               }}
             />
           ) : null}
-          {line === "dawn" && dawnSpot && sentenceSpeaks(nextSentence, "line") ? (
+          {line === "dawn" && dawnSpot && mapSentence("line") ? (
             <SoftLineChip
               testId="dawn-porch"
               module="dawn-porch"
@@ -2499,7 +2537,7 @@ export function VillagePage({ initial }: Props) {
               onClose={() => setDawnOn(false)}
             />
           ) : null}
-          {line === "night" && nightSpot && sentenceSpeaks(nextSentence, "line") ? (
+          {line === "night" && nightSpot && mapSentence("line") ? (
             <SoftLineChip
               testId="night-linger"
               module="night-linger"
@@ -2519,7 +2557,7 @@ export function VillagePage({ initial }: Props) {
               onClose={() => setNightOn(false)}
             />
           ) : null}
-          {line === "dusk" && sentenceSpeaks(nextSentence, "line") ? (
+          {line === "dusk" && mapSentence("line") ? (
             <div
               className="dusk-lantern-chip"
               data-sentence-strip="1"

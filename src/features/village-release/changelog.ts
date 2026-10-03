@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.14.0";
+export const APP_VERSION = "1.15.0";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,18 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.15.0",
+    date: "2026-10-03",
+    title: "身边认得出",
+    notes: [
+      "站在自己的田里，最近的两个人能看清名字。两个字就够。",
+      "更远的人还可以只有一个字，或者不挂牌。",
+      "点下一步，或者再拉近一次，画面里的人不会变成无名。",
+      "人已经在画面里，再点「找我」不会再贴一句。",
+      "减少动作那一句让开「体贴设置」。四个字看得全，也不盖住村里。",
+    ],
+  },
   {
     version: "1.14.0",
     date: "2026-10-03",
