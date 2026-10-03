@@ -114,6 +114,16 @@ type Props = {
   legendShut?: number;
   sheetExtra?: ReactNode;
   children?: ReactNode;
+  glancePlace?: { id: string; x: number; y: number; label: string } | null;
+  onGlancePlace?: () => void;
+  glanceFind?: string | null;
+  showGlanceMenu?: boolean;
+  glanceMenuOpen?: boolean;
+  onGlanceMenu?: () => void;
+  showTodayMark?: boolean;
+  onTodayMark?: () => void;
+  greetAt?: { x: number; y: number } | null;
+  onGreet?: () => void;
 };
 
 const MIN_ZOOM = 1;
@@ -148,6 +158,16 @@ export function VillageScene({
   legendShut = 0,
   sheetExtra = null,
   children,
+  glancePlace = null,
+  onGlancePlace,
+  glanceFind = null,
+  showGlanceMenu = false,
+  glanceMenuOpen = false,
+  onGlanceMenu,
+  showTodayMark = false,
+  onTodayMark,
+  greetAt = null,
+  onGreet,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -175,6 +195,16 @@ export function VillageScene({
   const teachNarrowRef = useRef<boolean | null>(null);
   const stageRef = useRef<LoadStage>("terrain");
   const onSpotRef = useRef(onSpot);
+  const glancePlaceRef = useRef(glancePlace);
+  const onGlancePlaceRef = useRef(onGlancePlace);
+  const greetAtRef = useRef(greetAt);
+  const placeBtnRef = useRef<HTMLButtonElement>(null);
+  const greetBtnRef = useRef<HTMLButtonElement>(null);
+  const pinGlanceRef = useRef<(() => void) | null>(null);
+  const glanceAnchorRef = useRef<{ id: string; x: number; y: number } | null>(null);
+  glancePlaceRef.current = glancePlace;
+  onGlancePlaceRef.current = onGlancePlace;
+  greetAtRef.current = greetAt;
   const onEmptyRef = useRef(onEmpty);
   const onToyTapRef = useRef(onToyTap);
   const forceRef = useRef(forceTimeout);
@@ -712,6 +742,16 @@ export function VillageScene({
       const moved = drag.current?.moved ?? false;
       drag.current = null;
       if (moved) return;
+      const placeHit = glancePlaceRef.current;
+      if (!found && placeHit) {
+        const dx = world.x - placeHit.x;
+        const dy = world.y - placeHit.y;
+        if (dx * dx + dy * dy <= 36 * 36) {
+          drag.current = null;
+          onGlancePlaceRef.current?.();
+          return;
+        }
+      }
       if (found) {
         tapRef.current = { name: found.name, at: Date.now() };
         if (lifeRef.current) {
@@ -767,9 +807,61 @@ export function VillageScene({
     let focusStarted = 0;
     let focusTimer = 0;
     const decorative = () => lifeRef.current.reduceMotion || document.hidden;
+    const pinGlance = () => {
+      const canvasNode = canvasRef.current;
+      const hostNode = hostRef.current;
+      if (!canvasNode || !hostNode) return;
+      const hostRect = hostNode.getBoundingClientRect();
+      const rect = canvasNode.getBoundingClientRect();
+      const span = viewSpan(zoomRef.current);
+      const project = (world: { x: number; y: number }) => ({
+        x: rect.left - hostRect.left + ((world.x - camRef.current.x) / span.w) * rect.width,
+        y: rect.top - hostRect.top + ((world.y - camRef.current.y) / span.h) * rect.height,
+      });
+      const inFrame = (world: { x: number; y: number }) => {
+        const pad = 28;
+        return (
+          world.x >= camRef.current.x + pad &&
+          world.y >= camRef.current.y + pad &&
+          world.x <= camRef.current.x + span.w - pad &&
+          world.y <= camRef.current.y + span.h - pad
+        );
+      };
+      const pin = (node: HTMLButtonElement | null, world: { x: number; y: number } | null) => {
+        if (!node) return;
+        if (!world || rect.width < 8 || rect.height < 8) {
+          node.hidden = true;
+          return;
+        }
+        const spot = project(world);
+        node.hidden = false;
+        node.style.left = `${spot.x}px`;
+        node.style.top = `${spot.y}px`;
+      };
+      const place = glancePlaceRef.current;
+      let placeWorld = place;
+      if (place) {
+        const anchor = glanceAnchorRef.current;
+        if (inFrame(place)) {
+          glanceAnchorRef.current = { id: place.id, x: place.x, y: place.y };
+        } else if (!anchor || anchor.id !== place.id || !inFrame(anchor)) {
+          glanceAnchorRef.current = {
+            id: place.id,
+            x: camRef.current.x + span.w * 0.58,
+            y: camRef.current.y + span.h * 0.62,
+          };
+        }
+        placeWorld = glanceAnchorRef.current;
+      }
+      pin(placeBtnRef.current, placeWorld);
+      pin(greetBtnRef.current, greetAtRef.current);
+    };
+    pinGlanceRef.current = pinGlance;
+
     const paintSafe = (now: number) => {
       try {
         paint(now, decorative() ? now : start);
+        pinGlance();
         return true;
       } catch (error) {
         console.error(error);
@@ -813,8 +905,13 @@ export function VillageScene({
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerUp);
       canvas.removeEventListener("wheel", onWheel);
+      pinGlanceRef.current = null;
     };
   }, [people, bootAttempt]);
+
+  useEffect(() => {
+    pinGlanceRef.current?.();
+  });
 
   const applyZoom = (next: number) => {
     userCam.current = true;
@@ -992,7 +1089,7 @@ export function VillageScene({
           {loadStageLabel(shownStage)}
         </p>
       ) : null}
-      {ready && hintOpen && !life.quiet ? (
+      {ready && hintOpen && !life.quiet && !(showGlanceMenu && !glanceMenuOpen) ? (
         <p
           ref={hintRef}
           data-testid="map-hint"
@@ -1066,6 +1163,57 @@ export function VillageScene({
         ) : null}
       </div>
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-gradient-to-b from-[#2a1a10]/20 to-transparent" />
+      {showGlanceMenu ? (
+        <button
+          type="button"
+          className="glance-menu"
+          data-testid="glance-menu"
+          aria-label="菜单"
+          aria-expanded={glanceMenuOpen}
+          onClick={() => onGlanceMenu?.()}
+        >
+          ·
+        </button>
+      ) : null}
+      {showTodayMark ? (
+        <button
+          type="button"
+          className="today-mark"
+          data-testid="today-mark"
+          aria-label="今日"
+          onClick={() => onTodayMark?.()}
+        />
+      ) : null}
+      {glanceFind ? (
+        <p className="glance-find" data-testid="glance-find">
+          {glanceFind}
+        </p>
+      ) : null}
+      {glancePlace ? (
+        <button
+          type="button"
+          ref={placeBtnRef}
+          className="glance-place"
+          data-testid="glance-place"
+          data-place-id={glancePlace.id}
+          hidden
+          onClick={() => onGlancePlace?.()}
+        >
+          {glancePlace.label}
+        </button>
+      ) : null}
+      {greetAt ? (
+        <button
+          type="button"
+          ref={greetBtnRef}
+          className="glance-greet"
+          data-testid="glance-greet"
+          hidden
+          onClick={() => onGreet?.()}
+        >
+          招呼
+        </button>
+      ) : null}
       <div className="map-tools absolute bottom-3 left-3 z-10 flex gap-1" data-testid="map-tools">
         <button type="button" className="hud-icon" onClick={() => applyZoom(zoom - 1)} aria-label="拉远">
           −

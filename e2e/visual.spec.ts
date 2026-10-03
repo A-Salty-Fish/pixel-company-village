@@ -1,11 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { login, roster } from "./login";
+import { login, roster, keepOldGlance } from "./login";
 
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
 });
 
 test("login wall @visual", async ({ page }) => {
+  await keepOldGlance(page);
   await page.goto("/login");
   await expect(page.getByTestId("login-form")).toBeVisible();
   await expect(page.getByTestId("login-form")).toHaveScreenshot("login-wall.png", { animations: "disabled" });

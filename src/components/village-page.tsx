@@ -138,6 +138,13 @@ import { settingsTitleRoomMark } from "@/features/settings-title-room/settings-t
 import { lanternInviteFollow, lanternInviteFrameMark } from "@/features/lantern-invite-frame/lantern-invite-frame";
 import { zoomPlateLiftMark } from "@/features/zoom-plate-lift/zoom-plate-lift";
 import { sheetYieldsMark } from "@/features/sheet-yields/sheet-yields";
+import {
+  GLANCE_FIND_LINE,
+  findLineShows,
+  firstGlanceMark,
+  firstGlanceOn,
+  pickGlancePlace,
+} from "@/features/first-glance/first-glance";
 import { tipFollowsMark, tipFollowsOn } from "@/features/tip-follows-content/tip-follows-content";
 import { rosterMoreLabel, rosterShortList, rosterShortMark } from "@/features/roster-short-cut/roster-short-cut";
 import { HEADER_LEAN_ENABLED, headerLeanMark, showScoreSourceButton } from "@/features/header-lean/header-lean";
@@ -436,6 +443,9 @@ export function VillagePage({ initial }: Props) {
   const [findHold, setFindHold] = useState<FindSentence>("silent");
   const [homeLine, setHomeLine] = useState("");
   const [phoneField, setPhoneField] = useState(false);
+  const [glanceMenu, setGlanceMenu] = useState(false);
+  const [metPerson, setMetPerson] = useState(false);
+  const [todayPeek, setTodayPeek] = useState(false);
   const [finishedNext, setFinishedNext] = useState<string[]>([]);
   const [nextHold, setNextHold] = useState(false);
   const [beatDone, setBeatDone] = useState(false);
@@ -659,6 +669,11 @@ export function VillagePage({ initial }: Props) {
     sync();
     media.addEventListener("change", sync);
     return () => media.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!firstGlanceOn()) return;
+    if (window.__VILLAGE_GLANCE_MENU__ === "1") setGlanceMenu(true);
   }, []);
 
   useEffect(() => {
@@ -1201,6 +1216,7 @@ export function VillagePage({ initial }: Props) {
   }
 
   function selectOnly(name: string | null) {
+    if (name) setMetPerson(true);
     setSelectedName(name);
   }
 
@@ -1210,6 +1226,7 @@ export function VillagePage({ initial }: Props) {
       return;
     }
     noteToday("person");
+    setMetPerson(true);
     const now = nowMs();
     if (name === lastTap.current.name && !acceptTap(lastTap.current.at, now)) return;
     lastTap.current = { name, at: now };
@@ -1907,6 +1924,19 @@ export function VillagePage({ initial }: Props) {
   });
   const findCovers = findReceipt.length > 0 && findMeCoversSentence(findHold);
   const mapSentence = (id: NextSentenceId) => !findCovers && sentenceSpeaks(nextSentence, id);
+  const glanceOn = firstGlanceOn();
+  const glanceTarget = pickGlancePlace({
+    menuOpen: glanceMenu,
+    beat: mapBeat,
+    beatSpeaks: Boolean(mapBeat && mapSentence("gate")),
+    lantern: toyAnchor("lantern"),
+    lanternSpeaks: line === "dusk" && mapSentence("line"),
+    enabled: glanceOn,
+  });
+  const greetSpot =
+    glanceOn && !glanceMenu && selectedName
+      ? placeVillagers(people).find((person) => person.name === selectedName) ?? null
+      : null;
   const showWeekInvite = !guestQuiet && weekInvite && mapSentence("week");
   const showTouch =
     (todayTouch === "open" || todayTouch === "done") && !guestQuiet && mapSentence("touch");
@@ -2004,6 +2034,9 @@ export function VillagePage({ initial }: Props) {
       data-header-lean={headerLeanMark()}
       data-human-footer={humanFooterMark()}
       data-more-lean={moreLeanMark()}
+      data-first-glance={firstGlanceMark()}
+      data-glance-menu={glanceMenu ? "1" : "0"}
+      data-today-peek={todayPeek ? "1" : "0"}
     >
       <LightSfxBridge muted={comfort.sfxMuted} reduceMotion={motion.reduced} />
       <div className="village-hero" data-testid="village-hero">
@@ -2388,6 +2421,38 @@ export function VillagePage({ initial }: Props) {
                 pebbles: loopPebbles,
               });
               noteFeedback({ toast: copy.toast, targetId: id, state: copy.state, x: spot.x, y: spot.y });
+            }}
+            glancePlace={glanceTarget}
+            onGlancePlace={() => {
+              if (!glanceTarget) return;
+              if (glanceTarget.kind === "lantern") {
+                setDuskCue(false);
+                const follow = lanternInviteFollow();
+                if (follow.openYard) setYardOpen(true);
+                aimMap(follow.aimKind, glanceTarget.x, glanceTarget.y);
+                return;
+              }
+              const beat = NEXT_BEATS.find((item) => item.id === glanceTarget.id);
+              if (beat) runNextBeat(beat, tally.complete);
+            }}
+            glanceFind={findLineShows(metPerson, glanceMenu) ? GLANCE_FIND_LINE : null}
+            showGlanceMenu={glanceOn}
+            glanceMenuOpen={glanceMenu}
+            onGlanceMenu={() => setGlanceMenu((open) => !open)}
+            showTodayMark={glanceOn && !glanceMenu}
+            onTodayMark={() => {
+              setTodayPeek((open) => {
+                const next = !open;
+                if (next) {
+                  setTodayOpen(true);
+                  advanceLoop("today");
+                }
+                return next;
+              });
+            }}
+            greetAt={greetSpot ? { x: greetSpot.x, y: greetSpot.y } : null}
+            onGreet={() => {
+              if (selfName) emote("wave");
             }}
             onEmpty={(x, y) => {
               if (!selfName) return;

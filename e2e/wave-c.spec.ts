@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { login, roster, openVillageDrawer } from "./login";
+import { login, roster, openVillageDrawer, keepOldGlance } from "./login";
 
 test("password wall rejects a wrong password and accepts Enter", async ({ page }) => {
+  await keepOldGlance(page);
   await page.goto("/login");
   await page.getByTestId("login-password").fill("not-the-site-password");
   await page.getByTestId("login-submit").click();

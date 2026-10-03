@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, roster } from "./login";
+import { login, roster, keepOldGlance } from "./login";
 
 test("escape closes the signal card and returns to that roster row", async ({ page }) => {
   await login(page);
@@ -23,6 +23,7 @@ test("escape closes the signal card and returns to that roster row", async ({ pa
 
 test("the password field is at least 44px tall", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  await keepOldGlance(page);
   await page.goto("/login");
   const field = page.getByTestId("login-password");
   await expect(field).toBeVisible();

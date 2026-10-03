@@ -1,3 +1,4 @@
+import { keepOldGlance } from "./login";
 import { expect, test } from "@playwright/test";
 
 test("production read-only smoke @prod", async ({ page }) => {
@@ -8,6 +9,7 @@ test("production read-only smoke @prod", async ({ page }) => {
   page.on("request", (request) => {
     if (request.method() === "POST") writes.push(request.url());
   });
+  await keepOldGlance(page);
   await page.goto("/login");
   await page.screenshot({ path: "tmp/prod-smoke/01-gate.png", fullPage: true });
   await page.getByTestId("login-password").fill(password);

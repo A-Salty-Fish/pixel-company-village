@@ -2747,3 +2747,104 @@ body:has(.farm-page[data-focal-village="village"]) {
     overflow: visible;
   }
 }
+
+/* First glance. Closed menu keeps the field clear. Open menu returns the old chrome. */
+.farm-page[data-first-glance="1"][data-glance-menu="0"] .village-header,
+.farm-page[data-first-glance="1"][data-glance-menu="0"] .map-tools,
+.farm-page[data-first-glance="1"][data-glance-menu="0"] .split-bar,
+.farm-page[data-first-glance="1"][data-glance-menu="0"] .thumb-bar,
+.farm-page[data-first-glance="1"][data-glance-menu="0"] .social-float-fold,
+.farm-page[data-first-glance="1"][data-glance-menu="0"] .map-corner,
+.farm-page[data-first-glance="1"][data-glance-menu="0"] .next-beat-first,
+.farm-page[data-first-glance="1"][data-glance-menu="0"] .next-beat-suggest,
+.farm-page[data-first-glance="1"][data-glance-menu="0"] .dusk-lantern-chip,
+.farm-page[data-first-glance="1"][data-glance-menu="0"] .soft-line-chip,
+.farm-page[data-first-glance="1"][data-glance-menu="0"] .first-visit-hint,
+.farm-page[data-first-glance="1"][data-glance-menu="0"] [data-sentence-strip="1"],
+.farm-page[data-first-glance="1"][data-glance-menu="0"] [data-testid="map-hint"]:not(.sr-only) {
+  display: none !important;
+}
+
+.farm-page[data-first-glance="1"][data-glance-menu="0"]:not([data-today-peek="1"]) .narrow-today {
+  display: none !important;
+}
+
+.glance-menu,
+.today-mark {
+  position: absolute;
+  z-index: 16;
+  width: 16px;
+  height: 16px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 2px solid #6a3d18;
+  background: rgba(90, 50, 20, 0.55);
+  color: #fff6d8;
+  font-size: 10px;
+  line-height: 12px;
+  box-shadow: none;
+}
+
+.glance-menu {
+  top: 6px;
+  right: 6px;
+}
+
+.today-mark {
+  top: 6px;
+  left: 6px;
+  border-radius: 50%;
+}
+
+.glance-find {
+  position: absolute;
+  z-index: 15;
+  top: 8px;
+  left: 28px;
+  max-width: 42%;
+  margin: 0;
+  pointer-events: none;
+  color: #fff6d8;
+  font-size: 11px;
+  text-shadow: 0 1px 0 #2a1a10;
+}
+
+.glance-place,
+.glance-greet {
+  position: absolute;
+  z-index: 12;
+  transform: translate(-50%, -100%);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff6d8;
+  font-size: 12px;
+  line-height: 1.1;
+  text-shadow: 0 0 6px #f2d15c, 0 1px 0 #2a1a10;
+  cursor: pointer;
+}
+
+.glance-place::before {
+  content: "";
+  display: block;
+  width: 12px;
+  height: 8px;
+  margin: 0 auto 2px;
+  background: #f2d15c;
+  box-shadow: 0 0 10px 4px rgba(242, 209, 92, 0.9);
+}
+
+.glance-greet {
+  z-index: 13;
+  min-width: 0;
+  padding: 1px 4px;
+  border: 2px solid #6a3d18;
+  background: rgba(42, 26, 16, 0.72);
+  font-size: 11px;
+}
+
+.farm-page[data-reduce-motion="1"] .glance-place::before {
+  box-shadow: none;
+}
