@@ -5,20 +5,22 @@ test("version chip opens the player changelog", async ({ page }) => {
   await login(page);
   const chip = page.getByTestId("village-version");
   await expect(chip).toBeVisible();
-  await expect(chip).toHaveAttribute("data-version", "1.17.1");
-  await expect(chip).toContainText("v1.17.1");
+  await expect(chip).toHaveAttribute("data-version", "1.17.2");
+  await expect(chip).toContainText("v1.17.2");
   const onMap = await chip.evaluate((el) => Boolean(el.closest("[data-village-host], canvas")));
   expect(onMap).toBe(false);
-  await expect(page).toHaveTitle("像素公司村 · 名牌认得出");
+  await expect(page).toHaveTitle("像素公司村 · 夜里不画小点");
   const header = page.getByTestId("village-header");
   await expect(header.getByTestId("village-brand")).toHaveText("像素公司村");
-  await expect(header.getByTestId("ship-title")).toHaveText("名牌认得出");
+  await expect(header.getByTestId("ship-title")).toHaveText("夜里不画小点");
 
   await chip.click();
   const notes = page.getByTestId("release-notes");
   await expect(notes).toHaveJSProperty("open", true);
   await expect(notes).toBeVisible();
   await expect(notes).toContainText("更新日志");
+  await expect(notes).toContainText("v1.17.2 · 夜里不画小点");
+  await expect(notes).toContainText("不再画出看不清的小点");
   await expect(notes).toContainText("v1.17.1 · 名牌认得出");
   await expect(notes).toContainText("至少两个字");
   await expect(notes).toContainText("跟着镜头走");
