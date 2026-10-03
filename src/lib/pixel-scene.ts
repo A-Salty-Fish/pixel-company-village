@@ -1724,6 +1724,7 @@ export function paintVillage(
     camY,
     worldW: span.w,
     worldH: span.h,
+    dpr,
     night: Boolean(NIGHT_WASH_V2_ENABLED && life?.sessionNight),
     reduced: Boolean(life?.reduceMotion),
   });
