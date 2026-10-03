@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.16.0";
+export const APP_VERSION = "1.17.0";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,15 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.17.0",
+    date: "2026-10-04",
+    title: "镜头到村口",
+    notes: [
+      "点「去看村口」，镜头离开自己的田和屋顶，停在村口。",
+      "到了仍说「镜头到了。」自己的名牌不在这一帧。",
+    ],
+  },
   {
     version: "1.16.0",
     date: "2026-10-03",

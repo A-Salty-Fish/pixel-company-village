@@ -136,6 +136,7 @@ import {
 } from "@/features/find-me-one-line/find-me-one-line";
 import { settingsTitleRoomMark } from "@/features/settings-title-room/settings-title-room";
 import { lanternInviteFollow, lanternInviteFrameMark } from "@/features/lantern-invite-frame/lantern-invite-frame";
+import { GATE_ARRIVE_ZOOM, gateArriveMark } from "@/features/gate-arrive/gate-arrive";
 import { zoomPlateLiftMark } from "@/features/zoom-plate-lift/zoom-plate-lift";
 import { sheetYieldsMark } from "@/features/sheet-yields/sheet-yields";
 import { tipFollowsMark, tipFollowsOn } from "@/features/tip-follows-content/tip-follows-content";
@@ -1997,6 +1998,8 @@ export function VillagePage({ initial }: Props) {
       data-field-near={fieldNearReadMark()}
       data-title-room={settingsTitleRoomMark()}
       data-lantern-frame={lanternInviteFrameMark()}
+      data-gate-arrive={gateArriveMark()}
+      data-gate-zoom={GATE_ARRIVE_ZOOM}
       data-zoom-plate-lift={zoomPlateLiftMark()}
       data-sheet-yield={sheetYieldsMark()}
       data-tip-follows={tipFollowsMark()}

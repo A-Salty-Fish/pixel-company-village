@@ -56,7 +56,8 @@ test("PV-PM-024 a finished week offers one map beat without the accordion", asyn
   await beat.click();
   await expect(host).toHaveAttribute("data-next-beat", "aimed");
   await expect(host).toHaveAttribute("data-next-id", beatId ?? "");
-  await expect(host).toHaveAttribute("data-camera-zoom", "3");
+  const gateZoom = (await page.locator(".farm-page").getAttribute("data-gate-zoom")) ?? "3";
+  await expect(host).toHaveAttribute("data-camera-zoom", beatId === "gate" ? gateZoom : "3");
   await expect(page.locator("body")).not.toContainText("聊天原文");
 });
 

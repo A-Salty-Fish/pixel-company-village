@@ -82,6 +82,7 @@ import { plateClearBottom } from "@/features/zoom-plate-lift/zoom-plate-lift";
 import { findMePathMark } from "@/features/find-me-path/find-me-path";
 import { selfInFrame } from "@/features/find-me-one-line/find-me-one-line";
 import { nightPlateMark } from "@/features/night-plate-contrast/night-plate-contrast";
+import { gateArriveFor, gateArriveHolds } from "@/features/gate-arrive/gate-arrive";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
 
@@ -100,7 +101,7 @@ type Props = {
   homePulse?: number;
   onEmpty?: (x: number, y: number) => void;
   onFindMe?: (framed: boolean) => void;
-  mapAim?: { token: number; x: number; y: number } | null;
+  mapAim?: { token: number; kind?: string; x: number; y: number } | null;
   ambientOn?: boolean;
   onSfxMute?: (muted: boolean) => void;
   onAmbient?: (on: boolean) => void;
@@ -196,6 +197,7 @@ export function VillageScene({
   const glowUntilRef = useRef(0);
   const idleAtRef = useRef(Date.now());
   const aimHoldRef = useRef(0);
+  const gateHeldRef = useRef(false);
   const onMapReadyRef = useRef(onMapReady);
 
   useEffect(() => {
@@ -230,8 +232,12 @@ export function VillageScene({
   useEffect(() => {
     if (!mapAim?.token) return;
     userCam.current = true;
-    const nextZoom = 3;
-    const focus = clampCamera(mapAim.x - WORLD_W / nextZoom / 2, mapAim.y - WORLD_H / nextZoom / 2, nextZoom);
+    const arrived = gateArriveFor(mapAim.kind);
+    gateHeldRef.current = gateArriveHolds(mapAim.kind);
+    const nextZoom = arrived?.zoom ?? 3;
+    const focus = arrived
+      ? { x: arrived.x, y: arrived.y }
+      : clampCamera(mapAim.x - WORLD_W / nextZoom / 2, mapAim.y - WORLD_H / nextZoom / 2, nextZoom);
     const mode = landmarkSettleMode({ quiet: Boolean(life.quiet), reduced: Boolean(life.reduceMotion) });
     zoomRef.current = nextZoom;
     setZoom(nextZoom);
@@ -492,7 +498,7 @@ export function VillageScene({
       const list = villagersRef.current;
       for (const v of list) updateVillager(v, t);
       const selected = list.find((v) => v.name === selectedRef.current);
-      if (selected && !drag.current && Date.now() > aimHoldRef.current) {
+      if (selected && !drag.current && !gateHeldRef.current && Date.now() > aimHoldRef.current) {
         const target = cameraFocus(selected, zoomRef.current);
         camRef.current.x += (target.x - camRef.current.x) * EASING.camera;
         camRef.current.y += (target.y - camRef.current.y) * EASING.camera;
