@@ -2569,7 +2569,7 @@ body:has(.farm-page[data-focal-village="village"]) {
 
 /* PV-PM-109 — first tip clears the bottom bar, under the signal sheet. */
 @media (max-width: 899px) {
-  .farm-page[data-tip-above-bar="1"] .first-visit-hint {
+  .farm-page[data-tip-above-bar="1"]:not([data-tip-follows="1"]) .first-visit-hint {
     position: fixed;
     left: 0.5rem;
     right: 0.5rem;
@@ -2577,6 +2577,34 @@ body:has(.farm-page[data-focal-village="village"]) {
     margin: 0;
     bottom: calc(5.25rem + env(safe-area-inset-bottom));
   }
+}
+
+/* PV-PM-117 — the tip travels with the map, above the tools, clear of the split. */
+.farm-page[data-tip-follows="1"] .first-visit-hint {
+  position: absolute;
+  left: 0.45rem;
+  right: 0.45rem;
+  bottom: 4.8rem;
+  z-index: 13;
+  margin: 0;
+}
+
+.farm-page[data-tip-follows="1"] .comfort-with-discover {
+  position: relative;
+}
+
+.farm-page[data-tip-follows="1"] .comfort-with-discover > [data-testid="settings-discover"] {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.4rem;
+  left: 0.4rem;
+  z-index: 3;
+  margin: 0;
+  pointer-events: none;
+}
+
+.farm-page[data-tip-follows="1"] .comfort-with-discover > [data-testid="settings-discover"] button {
+  pointer-events: auto;
 }
 
 /* PV-PM-111 — name picker on the current screen. */

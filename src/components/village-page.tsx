@@ -121,6 +121,12 @@ import { tipAboveBarMark } from "@/features/tip-above-bar/tip-above-bar";
 import { WHO_ON_SCREEN_ENABLED, whoOnScreenMark } from "@/features/who-on-screen/who-on-screen";
 import { WhoSheet } from "@/features/who-on-screen/who-sheet";
 import { guestInvitesQuiet, oneFieldInviteMark } from "@/features/one-field-invite/one-field-invite";
+import {
+  chooseNextSentence,
+  oneNextSentenceMark,
+  sentenceSpeaks,
+} from "@/features/one-next-sentence/one-next-sentence";
+import { tipFollowsMark, tipFollowsOn } from "@/features/tip-follows-content/tip-follows-content";
 import { rosterMoreLabel, rosterShortList, rosterShortMark } from "@/features/roster-short-cut/roster-short-cut";
 import { HEADER_LEAN_ENABLED, headerLeanMark, showScoreSourceButton } from "@/features/header-lean/header-lean";
 import { HUMAN_FOOTER_ENABLED, footerLine, humanFooterMark } from "@/features/human-footer/human-footer";
@@ -144,7 +150,7 @@ import { welcomeLine, WELCOME_DELAY_MS, WELCOME_HOLD_MS } from "@/features/villa
 import { skyWashBand } from "@/features/sky-wash/sky-wash";
 import { ShareVillage } from "@/features/share-village/share-card";
 import { SHARE_SOLO_DETAILS, shareSoloActive, shareSoloMark } from "@/features/share-solo-layer/share-solo-layer";
-import { firstScreenBeat, narrowTeachOn, nextBeatFirstScreen } from "@/features/narrow-teach-copy/narrow-teach-copy";
+import { NARROW_TEACH_PX, firstScreenBeat, narrowTeachOn, nextBeatFirstScreen, teachIsNarrow } from "@/features/narrow-teach-copy/narrow-teach-copy";
 import { FIRST_SCREEN_SOCIAL_ENABLED, FIRST_WAVE_LABEL, firstScreenSocialOn } from "@/features/first-screen-social/first-screen-social";
 import { NEXT_BEAT_GLOW_MS, nextBeatGlowOn, nextBeatSuggestion } from "@/features/next-beat-path-glow/next-beat-path-glow";
 import { APP_VERSION } from "@/features/village-release/changelog";
@@ -416,6 +422,9 @@ export function VillagePage({ initial }: Props) {
   const [findPathAt, setFindPathAt] = useState<number | null>(null);
   const [findReceipt, setFindReceipt] = useState("");
   const [homeLine, setHomeLine] = useState("");
+  const [phoneField, setPhoneField] = useState(false);
+  const [finishedNext, setFinishedNext] = useState<string[]>([]);
+  const [nextHold, setNextHold] = useState(false);
   const [beatDone, setBeatDone] = useState(false);
   const [stayCooled, setStayCooled] = useState<Record<string, number>>({});
   const [stayHeld, setStayHeld] = useState<string[]>([]);
@@ -630,6 +639,19 @@ export function VillagePage({ initial }: Props) {
   useEffect(() => {
     setRitualMark(loadRitual(selfName, clock.ymd));
   }, [selfName, clock.ymd]);
+
+  useLayoutEffect(() => {
+    const media = window.matchMedia(`(max-width: ${NARROW_TEACH_PX}px)`);
+    const sync = () => setPhoneField(teachIsNarrow(window.innerWidth));
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    setFinishedNext([]);
+    setNextHold(false);
+  }, [selfName]);
 
   useEffect(() => {
     if (!selfName || !SAME_DAY_AGAIN_ENABLED) return;
@@ -1070,6 +1092,7 @@ export function VillagePage({ initial }: Props) {
   }
 
   function onShareOpen(open: boolean) {
+    if (!open) finishNext("share");
     const width = typeof window === "undefined" ? 900 : window.innerWidth;
     const solo = shareSoloActive(open, width);
     setShareSolo(solo);
@@ -1099,13 +1122,20 @@ export function VillagePage({ initial }: Props) {
       y: beat.y,
     });
     if (!sent) aimMap(beat.id, beat.x, beat.y);
+    finishNext("gate");
     if (!nextBeatGlowOn()) return;
+    setNextHold(true);
     setBeatSuggest(null);
     if (suggestTimer.current != null) window.clearTimeout(suggestTimer.current);
     const follow = nextBeatSuggestion(beat.id);
     suggestTimer.current = window.setTimeout(() => {
       setBeatSuggest(follow);
+      setNextHold(false);
     }, NEXT_BEAT_GLOW_MS);
+  }
+
+  function finishNext(id: string) {
+    setFinishedNext((current) => (current.includes(id) ? current : [...current, id]));
   }
 
   function noteFeedback(input: { toast: string; targetId: string; state: string; x?: number; y?: number; aim?: boolean }) {
@@ -1835,7 +1865,23 @@ export function VillagePage({ initial }: Props) {
   const visitorLine = visitorCopy(selfName, waveState.toggles.visitor);
   const guestQuiet = guestInvitesQuiet(Boolean(selfName));
   const weekInvite = weekInviteShows(tally.done, waveState.toggles.weekBoard);
-  const todayFace = !guestQuiet && weekInvite ? WEEK_INVITE_LINE : todayEntryLabel(tally.done, tally.total, waveState.toggles.weekBoard);
+  const nextSentence = chooseNextSentence({
+    hasSelf: Boolean(selfName),
+    home: homeLine.length > 0,
+    line: line != null,
+    suggest: beatSuggest != null,
+    gate: Boolean(mapBeat) && phoneField,
+    welcome: welcomeOn,
+    share: true,
+    week: weekInvite,
+    touch: todayTouch === "open" || todayTouch === "done",
+    hold: nextHold,
+    done: finishedNext,
+  });
+  const showWeekInvite = !guestQuiet && weekInvite && sentenceSpeaks(nextSentence, "week");
+  const showTouch =
+    (todayTouch === "open" || todayTouch === "done") && !guestQuiet && sentenceSpeaks(nextSentence, "touch");
+  const todayFace = showWeekInvite ? WEEK_INVITE_LINE : todayEntryLabel(tally.done, tally.total, waveState.toggles.weekBoard);
   const rosterCut = rosterShortList(people, selfName, rosterOpen);
   const pickerNames = (rosterMode === "empty" ? payload.people : people).map((person) => person.name);
   const yardShown = yardOpen || Boolean(mapAim && isToyId(mapAim.kind));
@@ -1916,6 +1962,9 @@ export function VillagePage({ initial }: Props) {
       data-tip-above-bar={tipAboveBarMark()}
       data-who-on-screen={whoOnScreenMark()}
       data-one-invite={oneFieldInviteMark()}
+      data-one-next={oneNextSentenceMark()}
+      data-next-sentence={nextSentence}
+      data-tip-follows={tipFollowsMark()}
       data-roster-short={rosterShortMark()}
       data-header-lean={headerLeanMark()}
       data-human-footer={humanFooterMark()}
@@ -1951,7 +2000,7 @@ export function VillagePage({ initial }: Props) {
                 selfName,
               })}
             </p>
-            {todayTouch === "open" || todayTouch === "done" ? (
+            {showTouch ? (
               <p className="today-touch" data-testid="today-touch" data-module="today-touch" data-today-touch={todayTouch}>
                 {TODAY_TOUCH_LINE}
                 {todayTouch === "done" ? " ✓" : ""}
@@ -2041,13 +2090,14 @@ export function VillagePage({ initial }: Props) {
             className="narrow-today-summary"
             data-testid="today-entry"
             aria-expanded={todayOpen}
-            data-week-invite={weekInvite && !guestQuiet ? "1" : "0"}
+            data-week-invite={showWeekInvite ? "1" : "0"}
             onClick={() => {
               const opening = !todayOpen;
               setTodayOpen(opening);
               if (opening) advanceLoop("today");
-              if (weekInviteOpensList(opening, weekInvite && !guestQuiet)) {
+              if (weekInviteOpensList(opening, showWeekInvite)) {
                 setParchment("week");
+                finishNext("week");
               }
             }}
           >
@@ -2326,17 +2376,18 @@ export function VillagePage({ initial }: Props) {
               </button>
             </p>
           ) : null}
-          {homeLine ? (
-            <p className="home-village-line" data-testid="home-village-line" data-module="home-village-line" role="status">
+          {homeLine && sentenceSpeaks(nextSentence, "home") ? (
+            <p className="home-village-line" data-testid="home-village-line" data-module="home-village-line" data-sentence-strip="1" role="status">
               <span>{homeLine}</span>
               <button type="button" className="hud-icon" aria-label="收起" onClick={() => setHomeLine("")}>
                 ×
               </button>
             </p>
           ) : null}
-          {welcomeOn ? (
+          {welcomeOn && sentenceSpeaks(nextSentence, "welcome") ? (
             <p
               className="village-welcome"
+              data-sentence-strip="1"
               data-testid="village-welcome"
               data-module="village-welcome"
               data-motion={motion.reduced ? "still" : "in"}
@@ -2369,20 +2420,23 @@ export function VillagePage({ initial }: Props) {
               </p>
             )
           ) : null}
-          <ShareVillage
-            facts={{
-              date: clock.ymd,
-              scored: scoredCount,
-              messages: messageCount,
-              names: people.map((person) => person.name),
-              version: APP_VERSION,
-            }}
-            onOpenChange={onShareOpen}
-          />
-          {mapBeat ? (
+          {sentenceSpeaks(nextSentence, "share") ? (
+            <ShareVillage
+              facts={{
+                date: clock.ymd,
+                scored: scoredCount,
+                messages: messageCount,
+                names: people.map((person) => person.name),
+                version: APP_VERSION,
+              }}
+              onOpenChange={onShareOpen}
+            />
+          ) : null}
+          {mapBeat && sentenceSpeaks(nextSentence, "gate") ? (
             <button
               type="button"
               className="parchment-badge next-beat-first"
+              data-sentence-strip="1"
               data-testid="next-beat-first"
               data-next-id={mapBeat.id}
               data-week-gate="0"
@@ -2391,8 +2445,8 @@ export function VillagePage({ initial }: Props) {
               {nextBeatLabel(mapBeat)}
             </button>
           ) : null}
-          {beatSuggest ? (
-            <div className="next-beat-suggest" data-testid="next-beat-suggest" data-module="next-beat-path-glow" data-next-id={beatSuggest.id}>
+          {beatSuggest && sentenceSpeaks(nextSentence, "suggest") ? (
+            <div className="next-beat-suggest" data-sentence-strip="1" data-testid="next-beat-suggest" data-module="next-beat-path-glow" data-next-id={beatSuggest.id}>
               <button
                 type="button"
                 className="next-beat-suggest-go"
@@ -2403,12 +2457,20 @@ export function VillagePage({ initial }: Props) {
               >
                 {beatSuggest.line}
               </button>
-              <button type="button" className="hud-icon" aria-label="收起" onClick={() => setBeatSuggest(null)}>
+              <button
+                type="button"
+                className="hud-icon"
+                aria-label="收起"
+                onClick={() => {
+                  setBeatSuggest(null);
+                  finishNext("suggest");
+                }}
+              >
                 ×
               </button>
             </div>
           ) : null}
-          {line === "return" ? (
+          {line === "return" && sentenceSpeaks(nextSentence, "line") ? (
             <SoftLineChip
               testId="return-warm"
               module="return-warm"
@@ -2424,7 +2486,7 @@ export function VillagePage({ initial }: Props) {
               }}
             />
           ) : null}
-          {line === "dawn" && dawnSpot ? (
+          {line === "dawn" && dawnSpot && sentenceSpeaks(nextSentence, "line") ? (
             <SoftLineChip
               testId="dawn-porch"
               module="dawn-porch"
@@ -2437,7 +2499,7 @@ export function VillagePage({ initial }: Props) {
               onClose={() => setDawnOn(false)}
             />
           ) : null}
-          {line === "night" && nightSpot ? (
+          {line === "night" && nightSpot && sentenceSpeaks(nextSentence, "line") ? (
             <SoftLineChip
               testId="night-linger"
               module="night-linger"
@@ -2457,9 +2519,10 @@ export function VillagePage({ initial }: Props) {
               onClose={() => setNightOn(false)}
             />
           ) : null}
-          {line === "dusk" ? (
+          {line === "dusk" && sentenceSpeaks(nextSentence, "line") ? (
             <div
               className="dusk-lantern-chip"
+              data-sentence-strip="1"
               data-testid="dusk-lantern"
               data-module="dusk-lantern"
               data-motion={motion.reduced ? "still" : "pulse"}
@@ -2560,6 +2623,19 @@ export function VillagePage({ initial }: Props) {
           </div>
           </>
           )}
+          {tipFollowsOn() ? (
+            <FirstRunGuide
+              flags={visitFlags}
+              hasSelf={Boolean(selfName)}
+              onShowMotion={() => {
+                const drawer = document.querySelector<HTMLDetailsElement>("[data-testid='village-drawer']");
+                if (drawer) drawer.open = true;
+                const panel = document.querySelector<HTMLDetailsElement>("[data-testid='wave-d-panel']");
+                if (panel) panel.open = true;
+                document.querySelector<HTMLInputElement>("[data-testid='reduce-motion-toggle']")?.focus();
+              }}
+            />
+          ) : null}
         </div>
         <div
           className="split-bar"
@@ -2702,16 +2778,19 @@ export function VillagePage({ initial }: Props) {
         </div>
       ) : null}
       {shelfLine ? <p className="px-1 text-xs text-[#6a3d18]">{shelfLine}</p> : null}
-      <FirstRunGuide
-        flags={visitFlags}
-        onShowMotion={() => {
-          const drawer = document.querySelector<HTMLDetailsElement>("[data-testid='village-drawer']");
-          if (drawer) drawer.open = true;
-          const panel = document.querySelector<HTMLDetailsElement>("[data-testid='wave-d-panel']");
-          if (panel) panel.open = true;
-          document.querySelector<HTMLInputElement>("[data-testid='reduce-motion-toggle']")?.focus();
-        }}
-      />
+      {tipFollowsOn() ? null : (
+        <FirstRunGuide
+          flags={visitFlags}
+          hasSelf={Boolean(selfName)}
+          onShowMotion={() => {
+            const drawer = document.querySelector<HTMLDetailsElement>("[data-testid='village-drawer']");
+            if (drawer) drawer.open = true;
+            const panel = document.querySelector<HTMLDetailsElement>("[data-testid='wave-d-panel']");
+            if (panel) panel.open = true;
+            document.querySelector<HTMLInputElement>("[data-testid='reduce-motion-toggle']")?.focus();
+          }}
+        />
+      )}
       <div className="drawer-wall" data-testid="drawer-wall">
       <ComfortSettings
         comfort={comfort}
@@ -3045,7 +3124,7 @@ function SoftLineChip({
   onClose: () => void;
 }) {
   return (
-    <div className="soft-line-chip" data-testid={testId} data-module={module} data-motion={motion}>
+    <div className="soft-line-chip" data-sentence-strip="1" data-testid={testId} data-module={module} data-motion={motion}>
       <button type="button" className="dusk-lantern-go" onClick={onGo}>
         {line}
       </button>

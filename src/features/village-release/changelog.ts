@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.13.0";
+export const APP_VERSION = "1.14.0";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,18 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.14.0",
+    date: "2026-10-03",
+    title: "一句就够",
+    notes: [
+      "选定自己之后，田上只留一句接下来要做的话。做完或关掉，下一句才来。",
+      "页头不再另写一句同样的邀请。",
+      "第一次的提示跟着页面走，不挡住分栏，也不盖住村里。",
+      "已经选定自己，这句提示就不再说先选定。",
+      "减少动作那一句停在体贴设置上。",
+    ],
+  },
   {
     version: "1.13.0",
     date: "2026-10-02",

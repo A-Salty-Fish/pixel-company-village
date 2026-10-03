@@ -29,6 +29,7 @@ export function ComfortSettings({
   return (
     <>
     {/* compact-settings-discover checkpoint */}
+    <div className="comfort-with-discover">
     <SettingsDiscover />
     <details
       className="hud-panel"
@@ -164,6 +165,7 @@ export function ComfortSettings({
         </details>
       </div>
     </details>
+    </div>
     </>
   );
 }
