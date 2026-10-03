@@ -117,3 +117,35 @@ export function pickGlancePlace(input: {
 export function placeAim(place: GlancePlace) {
   return { kind: place.id, x: place.x, y: place.y };
 }
+
+/**
+ * The word sits on the landmark. If the opening camera crops that point,
+ * draw nothing — never a stand-in on the field in front of the camera.
+ */
+export function landmarkInOpeningFrame(input: {
+  x: number;
+  y: number;
+  camX: number;
+  camY: number;
+  spanW: number;
+  spanH: number;
+}) {
+  return (
+    input.x >= input.camX &&
+    input.y >= input.camY &&
+    input.x <= input.camX + input.spanW &&
+    input.y <= input.camY + input.spanH
+  );
+}
+
+export function drawnLandmark(input: {
+  x: number;
+  y: number;
+  camX: number;
+  camY: number;
+  spanW: number;
+  spanH: number;
+}): { x: number; y: number } | null {
+  if (!landmarkInOpeningFrame(input)) return null;
+  return { x: input.x, y: input.y };
+}

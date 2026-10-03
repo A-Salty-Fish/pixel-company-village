@@ -81,6 +81,7 @@ import { selfGhostSuppressed } from "@/features/self-plate-ghost/self-plate-ghos
 import { plateClearBottom } from "@/features/zoom-plate-lift/zoom-plate-lift";
 import { findMePathMark } from "@/features/find-me-path/find-me-path";
 import { selfInFrame } from "@/features/find-me-one-line/find-me-one-line";
+import { drawnLandmark } from "@/features/first-glance/first-glance";
 import { nightPlateMark } from "@/features/night-plate-contrast/night-plate-contrast";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
@@ -201,7 +202,6 @@ export function VillageScene({
   const placeBtnRef = useRef<HTMLButtonElement>(null);
   const greetBtnRef = useRef<HTMLButtonElement>(null);
   const pinGlanceRef = useRef<(() => void) | null>(null);
-  const glanceAnchorRef = useRef<{ id: string; x: number; y: number } | null>(null);
   glancePlaceRef.current = glancePlace;
   onGlancePlaceRef.current = onGlancePlace;
   greetAtRef.current = greetAt;
@@ -818,15 +818,6 @@ export function VillageScene({
         x: rect.left - hostRect.left + ((world.x - camRef.current.x) / span.w) * rect.width,
         y: rect.top - hostRect.top + ((world.y - camRef.current.y) / span.h) * rect.height,
       });
-      const inFrame = (world: { x: number; y: number }) => {
-        const pad = 28;
-        return (
-          world.x >= camRef.current.x + pad &&
-          world.y >= camRef.current.y + pad &&
-          world.x <= camRef.current.x + span.w - pad &&
-          world.y <= camRef.current.y + span.h - pad
-        );
-      };
       const pin = (node: HTMLButtonElement | null, world: { x: number; y: number } | null) => {
         if (!node) return;
         if (!world || rect.width < 8 || rect.height < 8) {
@@ -839,20 +830,16 @@ export function VillageScene({
         node.style.top = `${spot.y}px`;
       };
       const place = glancePlaceRef.current;
-      let placeWorld = place;
-      if (place) {
-        const anchor = glanceAnchorRef.current;
-        if (inFrame(place)) {
-          glanceAnchorRef.current = { id: place.id, x: place.x, y: place.y };
-        } else if (!anchor || anchor.id !== place.id || !inFrame(anchor)) {
-          glanceAnchorRef.current = {
-            id: place.id,
-            x: camRef.current.x + span.w * 0.58,
-            y: camRef.current.y + span.h * 0.62,
-          };
-        }
-        placeWorld = glanceAnchorRef.current;
-      }
+      const placeWorld = place
+        ? drawnLandmark({
+            x: place.x,
+            y: place.y,
+            camX: camRef.current.x,
+            camY: camRef.current.y,
+            spanW: span.w,
+            spanH: span.h,
+          })
+        : null;
       pin(placeBtnRef.current, placeWorld);
       pin(greetBtnRef.current, greetAtRef.current);
     };

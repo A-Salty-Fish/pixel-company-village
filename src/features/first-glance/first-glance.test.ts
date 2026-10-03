@@ -12,6 +12,8 @@ import {
   glanceChromeHidden,
   greetFloatHidden,
   greetOnPerson,
+  drawnLandmark,
+  landmarkInOpeningFrame,
   pickGlancePlace,
   placeAim,
   todayBarHidden,
@@ -104,5 +106,26 @@ test("a glowing place keeps the old aim and is not a floating sentence", () => {
       enabled: false,
     }),
     null,
+  );
+});
+
+test("a cropped landmark is not drawn on the current field", () => {
+  const gate = { x: 88, y: 120 };
+  const field = { camX: 400, camY: 400, spanW: 200, spanH: 180 };
+  assert.equal(landmarkInOpeningFrame({ ...gate, ...field }), false);
+  assert.equal(drawnLandmark({ ...gate, ...field }), null);
+  const standIn = { x: field.camX + field.spanW * 0.58, y: field.camY + field.spanH * 0.62 };
+  assert.equal(standIn.x === gate.x && standIn.y === gate.y, false);
+
+  const lantern = { x: 852, y: 336 };
+  assert.equal(drawnLandmark({ ...lantern, ...field }), null);
+
+  assert.deepEqual(
+    drawnLandmark({ x: gate.x, y: gate.y, camX: 0, camY: 0, spanW: 1216, spanH: 1120 }),
+    { x: 88, y: 120 },
+  );
+  assert.deepEqual(
+    drawnLandmark({ x: lantern.x, y: lantern.y, camX: 700, camY: 200, spanW: 400, spanH: 400 }),
+    { x: 852, y: 336 },
   );
 });
