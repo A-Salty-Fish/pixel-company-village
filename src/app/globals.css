@@ -2607,6 +2607,15 @@ body:has(.farm-page[data-focal-village="village"]) {
   pointer-events: auto;
 }
 
+/* PV-PM-120 — the motion line sits beside the four characters, still on the title bar. */
+.farm-page[data-tip-follows="1"][data-title-room="1"] .comfort-with-discover > [data-testid="settings-discover"] {
+  left: auto;
+  right: 0.35rem;
+  top: 0.2rem;
+  width: max-content;
+  max-width: calc(100% - 8.5rem);
+}
+
 /* PV-PM-111 — name picker on the current screen. */
 .who-sheet {
   position: fixed;

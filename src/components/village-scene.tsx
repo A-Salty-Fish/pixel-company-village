@@ -79,6 +79,7 @@ import { MoreDiscoverDot } from "@/features/more-discover/more-cue";
 import { selfRecognizeMark } from "@/features/self-recognize/self-recognize";
 import { selfGhostSuppressed } from "@/features/self-plate-ghost/self-plate-ghost";
 import { findMePathMark } from "@/features/find-me-path/find-me-path";
+import { selfInFrame } from "@/features/find-me-one-line/find-me-one-line";
 import { nightPlateMark } from "@/features/night-plate-contrast/night-plate-contrast";
 
 type SpotHit = { id: string; kind: "gather" | "view"; title: string };
@@ -97,7 +98,7 @@ type Props = {
   onEmote?: (kind: "stretch" | "sit" | "clap" | "wave") => void;
   homePulse?: number;
   onEmpty?: (x: number, y: number) => void;
-  onFindMe?: () => void;
+  onFindMe?: (framed: boolean) => void;
   mapAim?: { token: number; x: number; y: number } | null;
   ambientOn?: boolean;
   onSfxMute?: (muted: boolean) => void;
@@ -601,6 +602,13 @@ export function VillageScene({
       );
       host.dataset.plateCount = String(painted.plates);
       host.dataset.plateShort = String(painted.shortPlates);
+      host.dataset.plateRead = JSON.stringify(painted.reads);
+      const span = viewSpan(zoomRef.current);
+      host.dataset.viewSpanW = String(span.w);
+      host.dataset.viewSpanH = String(span.h);
+      host.dataset.peopleXy = JSON.stringify(
+        list.map((person) => ({ name: person.name, x: Math.round(person.x), y: Math.round(person.y) })),
+      );
       canvas.dataset.villageReady = "1";
       const sessionNight = Boolean(lifeRef.current?.sessionNight);
       const decorNight = Boolean(lifeRef.current?.decor?.night);
@@ -1071,7 +1079,17 @@ export function VillageScene({
           disabled={!life.selfName}
           onClick={() => {
             glowUntilRef.current = Date.now() + FIND_ME_HOLD_MS;
-            onFindMe?.();
+            const person = life.selfName ? villagersRef.current.find((v) => v.name === life.selfName) : undefined;
+            const span = viewSpan(zoomRef.current);
+            onFindMe?.(
+              selfInFrame({
+                self: person ? { x: person.x, y: person.y } : null,
+                camX: camRef.current.x,
+                camY: camRef.current.y,
+                spanW: span.w,
+                spanH: span.h,
+              }),
+            );
           }}
         >
           {FIND_ME_LABEL}

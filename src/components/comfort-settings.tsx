@@ -37,7 +37,9 @@ export function ComfortSettings({
       data-testid="comfort-settings"
       data-quota-source="local"
     >
-      <summary className="hud-title cursor-pointer">体贴设置</summary>
+      <summary className="hud-title cursor-pointer">
+        <span data-testid="comfort-title-text">体贴设置</span>
+      </summary>
       <div className="space-y-3 px-3 py-3">
         <p className="text-xs leading-5 text-[#6a3d18]">
           这些开关存在这台浏览器。我是谁：{selfName ?? "还没选定"}。善意、挥手、状态和田历都记在这个显示名上，换一台电脑不会跟着走。

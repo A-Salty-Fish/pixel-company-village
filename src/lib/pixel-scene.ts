@@ -24,6 +24,13 @@ import { seasonGroundProps } from "@/features/season-ground-props/season-ground-
 import { selfYardPixels } from "@/features/self-yard-marker/self-yard-marker";
 import { NIGHT_WASH_V2_ENABLED, paintNightWashV2 } from "@/features/night-wash-v2/night-wash-v2";
 import { plateGlyph, shortPlateNames } from "@/features/nameplate-mid/nameplate-mid";
+import {
+  fieldNearReadOn,
+  inCameraFrame,
+  nearFieldLabel,
+  nearestFieldMates,
+  plateTextReads,
+} from "@/features/field-near-read/field-near-read";
 import { glanceSpot, resonancePixels } from "@/features/post-week-presence/presence";
 import { autumnPaletteMark, paintAutumnPalette } from "@/features/autumn-palette/autumn-palette";
 import { afterglowAlpha, paintRitualAfterglow, type AfterglowBeat } from "@/features/ritual-afterglow/ritual-afterglow";
@@ -1615,16 +1622,16 @@ export function paintVillage(
   fx: VillageFx | null = null,
   life: SceneLife | null = null,
 ) {
-  if (!artReady()) return { plates: 0, shortPlates: 0 };
+  if (!artReady()) return { plates: 0, shortPlates: 0, reads: [] };
   ensureGround();
-  if (!groundCanvas) return { plates: 0, shortPlates: 0 };
+  if (!groundCanvas) return { plates: 0, shortPlates: 0, reads: [] };
   if (!worldCanvas) {
     worldCanvas = document.createElement("canvas");
     worldCanvas.width = WORLD_W;
     worldCanvas.height = WORLD_H;
   }
   const world = worldCanvas.getContext("2d");
-  if (!world) return { plates: 0, shortPlates: 0 };
+  if (!world) return { plates: 0, shortPlates: 0, reads: [] };
   world.imageSmoothingEnabled = false;
   world.clearRect(0, 0, WORLD_W, WORLD_H);
   world.drawImage(groundCanvas, 0, 0);
@@ -1814,6 +1821,46 @@ export function paintVillage(
 
 const FAMILIAR_RIM = ["", "#c4a060", "#d4a017", "#2f6a3a"];
 
+export type PlateRead = { name: string; text: string; kind: "full" | "short" | "near" };
+
+function fittedLabelScale(spriteW: number, spriteH: number, viewW: number, viewH: number, dpr: number) {
+  let scale = Math.max(1, Math.round(dpr));
+  const maxW = Math.max(24, Math.floor(viewW * 0.42));
+  const maxH = Math.max(16, Math.floor(viewH * 0.2));
+  while (scale > 1 && (spriteW * scale > maxW || spriteH * scale > maxH)) scale -= 1;
+  return scale;
+}
+
+function seekLabelBox(
+  anchor: { x: number; y: number; w: number; h: number },
+  placed: { x: number; y: number; w: number; h: number }[],
+  viewW: number,
+  viewH: number,
+) {
+  const shifts = [
+    { x: 0, y: 0 },
+    { x: 0, y: anchor.h + 4 },
+    { x: 0, y: -(anchor.h + 4) },
+    { x: anchor.w + 4, y: 0 },
+    { x: -(anchor.w + 4), y: 0 },
+    { x: 0, y: (anchor.h + 4) * 2 },
+    { x: anchor.w + 4, y: anchor.h + 4 },
+    { x: -(anchor.w + 4), y: anchor.h + 4 },
+  ];
+  for (const shift of shifts) {
+    let x = anchor.x + shift.x;
+    let y = anchor.y + shift.y;
+    if (x < 2) x = 2;
+    if (y < 2) y = 2;
+    if (x + anchor.w > viewW - 2) x = viewW - 2 - anchor.w;
+    if (y + anchor.h > viewH - 2) y = viewH - 2 - anchor.h;
+    if (x < 2 || y < 2) continue;
+    const box = { x, y, w: anchor.w, h: anchor.h };
+    if (!placed.some((other) => overlaps(box, other))) return box;
+  }
+  return null;
+}
+
 export function drawNameLabels(
   ctx: CanvasRenderingContext2D,
   villagers: PlacedVillager[],
@@ -1852,8 +1899,21 @@ export function drawNameLabels(
   );
   let drawn = 0;
   let shortDrawn = 0;
+  const reads: PlateRead[] = [];
   const clearOn = NAMEPLATE_CLEAR_ENABLED && !showAll;
   const selfPerson = life?.selfName ? villagers.find((person) => person.name === life?.selfName) : undefined;
+  const nearOn = fieldNearReadOn() && !showAll;
+  const nearMates = nearOn
+    ? nearestFieldMates({
+        people: villagers.map((person) => ({ name: person.name, x: person.x, y: person.y })),
+        self: selfPerson ? { name: selfPerson.name, x: selfPerson.x, y: selfPerson.y } : null,
+        camX,
+        camY,
+        spanW: viewWorldW,
+        spanH: viewWorldH,
+      })
+    : [];
+  const nearMateNames = new Set(nearMates.map((person) => person.name));
 
   const ordered = [...villagers].sort((a, b) => {
     const ah = emphasize.has(a.name) || pins.has(a.name) ? 0 : 1;
@@ -1948,6 +2008,7 @@ export function drawNameLabels(
     const nightRole = item.role === "self" ? "self" : item.role === "neighbor" ? "neighbor" : "far";
     const alpha = nightPlateAlpha(baseAlpha, nightRole, nightPlateMark(shanghaiClock().hour, quiet));
     blitLabel(ctx, item.sprite, box.x, box.y, item.scale, alpha);
+    reads.push({ name: item.name, text: item.name, kind: "full" });
     if (
       item.role === "self" &&
       selfPlateDash(selfRecognizeMark({ hasSelf: true, quiet, reduced: Boolean(life?.reduceMotion) }))
@@ -1971,7 +2032,7 @@ export function drawNameLabels(
   );
   const shortRoom = clearOn ? Math.max(0, NEAR_PLATE_CAP - drawn) : Number.POSITIVE_INFINITY;
   for (const person of ordered) {
-    if (!shortNames.has(person.name) || shortDrawn >= shortRoom) continue;
+    if (!shortNames.has(person.name) || shortDrawn >= shortRoom || nearMateNames.has(person.name)) continue;
     const glyph = plateGlyph(person.name);
     const sprite = getLabelSprite(glyph, "muted");
     if (!sprite) continue;
@@ -1989,9 +2050,46 @@ export function drawNameLabels(
     const fade = clearOn ? Math.max(0.4, 1 - Math.min(1, dist / 280) * 0.5) : 1;
     placed.push(box);
     blitLabel(ctx, sprite, x, y, shortScale, 0.86 * fade);
+    reads.push({ name: person.name, text: glyph, kind: "short" });
     shortDrawn += 1;
   }
-  return { plates: drawn, shortPlates: shortDrawn };
+
+  const paintFitted = (person: { name: string; x: number; y: number }, text: string, mode: LabelMode) => {
+    if (drawn >= NEAR_PLATE_CAP) return false;
+    if (reads.some((item) => item.name === person.name && plateTextReads(person.name, item.text))) return false;
+    const sprite = getLabelSprite(text, mode);
+    if (!sprite) return false;
+    const sx = ((person.x - camX) / viewWorldW) * viewW;
+    const sy = ((person.y - 28 - camY) / viewWorldH) * viewH;
+    for (let scale = fittedLabelScale(sprite.w, sprite.h, viewW, viewH, dpr); scale >= 1; scale -= 1) {
+      const dw = sprite.w * scale;
+      const dh = sprite.h * scale;
+      const box = seekLabelBox({ x: sx - dw / 2, y: sy - dh, w: dw, h: dh }, placed, viewW, viewH);
+      if (!box) continue;
+      placed.push(box);
+      blitLabel(ctx, sprite, box.x, box.y, scale, mode === "hot" ? 1 : 0.92);
+      reads.push({ name: person.name, text, kind: "near" });
+      drawn += 1;
+      return true;
+    }
+    return false;
+  };
+
+  if (nearOn) {
+    if (
+      selfPerson &&
+      inCameraFrame(selfPerson, camX, camY, viewWorldW, viewWorldH) &&
+      !reads.some((item) => item.name === selfPerson.name && plateTextReads(selfPerson.name, item.text))
+    ) {
+      paintFitted(selfPerson, selfPerson.name, "hot");
+    }
+    for (const mate of nearMates) {
+      const person = villagers.find((item) => item.name === mate.name);
+      if (!person) continue;
+      paintFitted(person, nearFieldLabel(person.name), person.scored ? "scored" : "muted");
+    }
+  }
+  return { plates: drawn, shortPlates: shortDrawn, reads };
 }
 
 function overlaps(
