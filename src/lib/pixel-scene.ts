@@ -25,6 +25,13 @@ import { selfYardPixels } from "@/features/self-yard-marker/self-yard-marker";
 import { NIGHT_WASH_V2_ENABLED, paintNightWashV2 } from "@/features/night-wash-v2/night-wash-v2";
 import { plateGlyph, shortPlateNames } from "@/features/nameplate-mid/nameplate-mid";
 import {
+  nameplateRecognizeOn,
+  nearPlateFollowBox,
+  nearPlatePeerScale,
+  plateParkedInCenter,
+  recognizePlateText,
+} from "@/features/nameplate-recognize/nameplate-recognize";
+import {
   fieldNearReadOn,
   inCameraFrame,
   nearFieldLabel,
@@ -1909,7 +1916,9 @@ export function drawNameLabels(
   const showAll = Boolean(life?.showAllPlates);
   let cssScale = zoom >= 3 ? 3 : 2;
   if (pitchCss < 72 || (showAll && zoom < 2)) cssScale = 1;
-  const scale = cssScale * Math.max(1, Math.round(dpr));
+  const bitmap = Math.max(1, Math.round(dpr));
+  // One scale for the frame. A private zoom boost made one plate a size larger.
+  const scale = nameplateRecognizeOn() && !showAll ? bitmap : cssScale * bitmap;
   const placed: { x: number; y: number; w: number; h: number }[] = [];
   const pins = new Set(life?.decor?.pins ?? []);
   const quiet = Boolean(life?.quiet);
@@ -2028,6 +2037,13 @@ export function drawNameLabels(
     }
     const box =
       !showAll && clearBottom != null && raw.y + raw.h > clearBottom ? liftPlateBox(raw, clearBottom, placed) : raw;
+    if (
+      nameplateRecognizeOn() &&
+      !showAll &&
+      plateParkedInCenter(box, item.box.x + item.box.w / 2, item.box.y + item.box.h / 2, viewW, viewH)
+    ) {
+      continue;
+    }
     placed.push(box);
     if (item.level > 0) {
       ctx.fillStyle = FAMILIAR_RIM[item.level] ?? FAMILIAR_RIM[1];
@@ -2062,7 +2078,7 @@ export function drawNameLabels(
   const shortRoom = clearOn ? Math.max(0, NEAR_PLATE_CAP - drawn) : Number.POSITIVE_INFINITY;
   for (const person of ordered) {
     if (!shortNames.has(person.name) || shortDrawn >= shortRoom || nearMateNames.has(person.name)) continue;
-    const glyph = plateGlyph(person.name);
+    const glyph = nameplateRecognizeOn() ? recognizePlateText(person.name) : plateGlyph(person.name);
     const sprite = getLabelSprite(glyph, "muted");
     if (!sprite) continue;
     const shortScale = Math.max(1, Math.round(dpr));
@@ -2088,11 +2104,41 @@ export function drawNameLabels(
     if (reads.some((item) => item.name === person.name && plateTextReads(person.name, item.text))) return false;
     const sprite = getLabelSprite(text, mode);
     if (!sprite) return false;
+    if (nameplateRecognizeOn()) {
+      const peerScale = nearPlatePeerScale([scale, Math.max(1, Math.round(dpr))]);
+      const followed = nearPlateFollowBox({
+        personX: person.x,
+        personY: person.y,
+        camX,
+        camY,
+        spanW: viewWorldW,
+        spanH: viewWorldH,
+        viewW,
+        viewH,
+        spriteW: sprite.w,
+        spriteH: sprite.h,
+        scale: peerScale,
+      });
+      if (!followed) return false;
+      if (placed.some((other) => overlaps(followed, other))) return false;
+      const box =
+        !showAll && clearBottom != null && followed.y + followed.h > clearBottom
+          ? liftPlateBox(followed, clearBottom, placed)
+          : followed;
+      const personSx = ((person.x - camX) / viewWorldW) * viewW;
+      const personSy = ((person.y - camY) / viewWorldH) * viewH;
+      if (plateParkedInCenter(box, personSx, personSy, viewW, viewH)) return false;
+      placed.push(box);
+      blitLabel(ctx, sprite, box.x, box.y, peerScale, mode === "hot" ? 1 : 0.92);
+      reads.push(plateRead(person.name, text, "near", box));
+      drawn += 1;
+      return true;
+    }
     const sx = ((person.x - camX) / viewWorldW) * viewW;
     const sy = ((person.y - 28 - camY) / viewWorldH) * viewH;
-    for (let scale = fittedLabelScale(sprite.w, sprite.h, viewW, viewH, dpr); scale >= 1; scale -= 1) {
-      const dw = sprite.w * scale;
-      const dh = sprite.h * scale;
+    for (let fitScale = fittedLabelScale(sprite.w, sprite.h, viewW, viewH, dpr); fitScale >= 1; fitScale -= 1) {
+      const dw = sprite.w * fitScale;
+      const dh = sprite.h * fitScale;
       const found = seekLabelBox({ x: sx - dw / 2, y: sy - dh, w: dw, h: dh }, placed, viewW, viewH);
       if (!found) continue;
       const box =
@@ -2100,7 +2146,7 @@ export function drawNameLabels(
           ? liftPlateBox(found, clearBottom, placed)
           : found;
       placed.push(box);
-      blitLabel(ctx, sprite, box.x, box.y, scale, mode === "hot" ? 1 : 0.92);
+      blitLabel(ctx, sprite, box.x, box.y, fitScale, mode === "hot" ? 1 : 0.92);
       reads.push(plateRead(person.name, text, "near", box));
       drawn += 1;
       return true;
@@ -2119,7 +2165,8 @@ export function drawNameLabels(
     for (const mate of nearMates) {
       const person = villagers.find((item) => item.name === mate.name);
       if (!person) continue;
-      paintFitted(person, nearFieldLabel(person.name), person.scored ? "scored" : "muted");
+      const nearText = nameplateRecognizeOn() ? recognizePlateText(person.name) : nearFieldLabel(person.name);
+      paintFitted(person, nearText, person.scored ? "scored" : "muted");
     }
   }
   return { plates: drawn, shortPlates: shortDrawn, reads };
