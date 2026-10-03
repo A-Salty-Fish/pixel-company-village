@@ -2607,6 +2607,15 @@ body:has(.farm-page[data-focal-village="village"]) {
   pointer-events: auto;
 }
 
+/* PV-PM-123 — while the first-run strip is up, the more sheet sits above it. */
+.farm-page[data-sheet-yield="1"][data-more-lean="1"][data-map-hud="fold"][data-tip-follows="1"]
+  .village-map-slot:has([data-testid="first-run-guide"])[data-map-more="1"]
+  .map-more-sheet {
+  top: 0.45rem;
+  bottom: auto;
+  height: max-content;
+}
+
 /* PV-PM-120 — the motion line sits beside the four characters, still on the title bar. */
 .farm-page[data-tip-follows="1"][data-title-room="1"] .comfort-with-discover > [data-testid="settings-discover"] {
   left: auto;

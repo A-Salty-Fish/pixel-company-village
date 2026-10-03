@@ -135,6 +135,9 @@ import {
   type FindSentence,
 } from "@/features/find-me-one-line/find-me-one-line";
 import { settingsTitleRoomMark } from "@/features/settings-title-room/settings-title-room";
+import { lanternInviteFollow, lanternInviteFrameMark } from "@/features/lantern-invite-frame/lantern-invite-frame";
+import { zoomPlateLiftMark } from "@/features/zoom-plate-lift/zoom-plate-lift";
+import { sheetYieldsMark } from "@/features/sheet-yields/sheet-yields";
 import { tipFollowsMark, tipFollowsOn } from "@/features/tip-follows-content/tip-follows-content";
 import { rosterMoreLabel, rosterShortList, rosterShortMark } from "@/features/roster-short-cut/roster-short-cut";
 import { HEADER_LEAN_ENABLED, headerLeanMark, showScoreSourceButton } from "@/features/header-lean/header-lean";
@@ -1993,6 +1996,9 @@ export function VillagePage({ initial }: Props) {
       data-find-one-line={findMeOneLineMark()}
       data-field-near={fieldNearReadMark()}
       data-title-room={settingsTitleRoomMark()}
+      data-lantern-frame={lanternInviteFrameMark()}
+      data-zoom-plate-lift={zoomPlateLiftMark()}
+      data-sheet-yield={sheetYieldsMark()}
       data-tip-follows={tipFollowsMark()}
       data-roster-short={rosterShortMark()}
       data-header-lean={headerLeanMark()}
@@ -2570,9 +2576,10 @@ export function VillagePage({ initial }: Props) {
                 className="dusk-lantern-go"
                 onClick={() => {
                   setDuskCue(false);
-                  setYardOpen(true);
                   const spot = toyAnchor("lantern");
-                  aimMap("lantern", spot.x, spot.y);
+                  const follow = lanternInviteFollow();
+                  if (follow.openYard) setYardOpen(true);
+                  aimMap(follow.aimKind, spot.x, spot.y);
                 }}
               >
                 {DUSK_LANTERN_LINE}

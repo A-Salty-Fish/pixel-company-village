@@ -129,6 +129,8 @@ export type SceneLife = {
   waveTarget?: string | null;
   /** PV-PM-090. Epoch ms when 找我 left path stones. Not a next-beat aim. */
   findPathAt?: number | null;
+  /** PV-PM-122. Canvas bitmap Y the nearest plates must stay above. Null when the strip is clear. */
+  plateClearBottom?: number | null;
 };
 
 export const DEFAULT_COMFORT: Comfort = {
