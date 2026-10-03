@@ -5,8 +5,8 @@ test("version chip opens the player changelog", async ({ page }) => {
   await login(page);
   const chip = page.getByTestId("village-version");
   await expect(chip).toBeVisible();
-  await expect(chip).toHaveAttribute("data-version", "1.16.1");
-  await expect(chip).toContainText("v1.16.1");
+  await expect(chip).toHaveAttribute("data-version", "1.17.1");
+  await expect(chip).toContainText("v1.17.1");
   const onMap = await chip.evaluate((el) => Boolean(el.closest("[data-village-host], canvas")));
   expect(onMap).toBe(false);
   await expect(page).toHaveTitle("像素公司村 · 名牌认得出");
@@ -19,7 +19,12 @@ test("version chip opens the player changelog", async ({ page }) => {
   await expect(notes).toHaveJSProperty("open", true);
   await expect(notes).toBeVisible();
   await expect(notes).toContainText("更新日志");
-  await expect(notes).toContainText("v1.16.1 · 名牌认得出");
+  await expect(notes).toContainText("v1.17.1 · 名牌认得出");
+  await expect(notes).toContainText("至少两个字");
+  await expect(notes).toContainText("跟着镜头走");
+  await expect(notes).toContainText("v1.17.0 · 镜头到村口");
+  await expect(notes).toContainText("停在村口");
+  await expect(notes).toContainText("自己的名牌不在这一帧");
   await expect(notes).toContainText("三张计数牌不再铺开");
   await expect(notes).toContainText("v1.16.0 · 跟着灯笼");
   await expect(notes).toContainText("直接拉近");
