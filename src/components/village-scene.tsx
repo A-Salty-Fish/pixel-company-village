@@ -78,6 +78,7 @@ import { mapHomeAria, mapHomeFace } from "@/features/one-home-word/one-home-word
 import { MoreDiscoverDot } from "@/features/more-discover/more-cue";
 import { selfRecognizeMark } from "@/features/self-recognize/self-recognize";
 import { selfGhostSuppressed } from "@/features/self-plate-ghost/self-plate-ghost";
+import { plateClearBottom } from "@/features/zoom-plate-lift/zoom-plate-lift";
 import { findMePathMark } from "@/features/find-me-path/find-me-path";
 import { selfInFrame } from "@/features/find-me-one-line/find-me-one-line";
 import { nightPlateMark } from "@/features/night-plate-contrast/night-plate-contrast";
@@ -584,7 +585,29 @@ export function VillageScene({
       }
       host.dataset.waveReply =
         activeFx && activeFx.kind === "wave" && nowMs - activeFx.startedAt < activeFx.duration ? "1" : "0";
-      if (lifeRef.current) lifeRef.current.selfHighlight = highlight;
+      if (lifeRef.current) {
+        lifeRef.current.selfHighlight = highlight;
+        const guide = document.querySelector("[data-testid='first-run-guide']");
+        const canvasRect = canvas.getBoundingClientRect();
+        const guideRect = guide instanceof HTMLElement ? guide.getBoundingClientRect() : null;
+        const guideStyle = guide instanceof HTMLElement ? getComputedStyle(guide) : null;
+        const guideHidden =
+          !guideRect ||
+          !guideStyle ||
+          guideStyle.display === "none" ||
+          guideStyle.visibility === "hidden" ||
+          Number(guideStyle.opacity) === 0 ||
+          guideRect.height <= 0;
+        lifeRef.current.plateClearBottom = guideHidden
+          ? null
+          : plateClearBottom({
+              canvasTop: canvasRect.top,
+              canvasHeight: canvasRect.height,
+              canvasBitmapH: canvas.height,
+              guideTop: guideRect.top,
+              guideHeight: guideRect.height,
+            });
+      }
       const painted = paintVillage(
         ctx,
         canvas.width,

@@ -72,6 +72,7 @@ import { selfPlateDash, selfRecognizeFeet, selfRecognizeMark } from "@/features/
 import { selfBracketPixels } from "@/features/self-plate-ghost/self-plate-ghost";
 import { findMeApproach, paintFindMePath } from "@/features/find-me-path/find-me-path";
 import { nightPlateAlpha, nightPlateMark } from "@/features/night-plate-contrast/night-plate-contrast";
+import { liftPlateBox } from "@/features/zoom-plate-lift/zoom-plate-lift";
 
 export const WORLD_W = 1216;
 export const WORLD_H = 1120;
@@ -1821,7 +1822,32 @@ export function paintVillage(
 
 const FAMILIAR_RIM = ["", "#c4a060", "#d4a017", "#2f6a3a"];
 
-export type PlateRead = { name: string; text: string; kind: "full" | "short" | "near" };
+export type PlateRead = {
+  name: string;
+  text: string;
+  kind: "full" | "short" | "near";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+function plateRead(
+  name: string,
+  text: string,
+  kind: PlateRead["kind"],
+  box: { x: number; y: number; w: number; h: number },
+): PlateRead {
+  return {
+    name,
+    text,
+    kind,
+    x: Math.round(box.x),
+    y: Math.round(box.y),
+    w: Math.round(box.w),
+    h: Math.round(box.h),
+  };
+}
 
 function fittedLabelScale(spriteW: number, spriteH: number, viewW: number, viewH: number, dpr: number) {
   let scale = Math.max(1, Math.round(dpr));
@@ -1914,6 +1940,7 @@ export function drawNameLabels(
       })
     : [];
   const nearMateNames = new Set(nearMates.map((person) => person.name));
+  const clearBottom = life?.plateClearBottom ?? null;
 
   const ordered = [...villagers].sort((a, b) => {
     const ah = emphasize.has(a.name) || pins.has(a.name) ? 0 : 1;
@@ -1994,11 +2021,13 @@ export function drawNameLabels(
   for (const item of pending) {
     const place = laid?.get(item.name);
     if (place && !place.draw) continue;
-    const box = place ? { x: place.x, y: place.y, w: place.w, h: place.h } : item.box;
+    const raw = place ? { x: place.x, y: place.y, w: place.w, h: place.h } : item.box;
     if (!place) {
-      const hit = placed.some((other) => overlaps(box, other));
+      const hit = placed.some((other) => overlaps(raw, other));
       if (hit && !showAll && !item.hot) continue;
     }
+    const box =
+      !showAll && clearBottom != null && raw.y + raw.h > clearBottom ? liftPlateBox(raw, clearBottom, placed) : raw;
     placed.push(box);
     if (item.level > 0) {
       ctx.fillStyle = FAMILIAR_RIM[item.level] ?? FAMILIAR_RIM[1];
@@ -2008,7 +2037,7 @@ export function drawNameLabels(
     const nightRole = item.role === "self" ? "self" : item.role === "neighbor" ? "neighbor" : "far";
     const alpha = nightPlateAlpha(baseAlpha, nightRole, nightPlateMark(shanghaiClock().hour, quiet));
     blitLabel(ctx, item.sprite, box.x, box.y, item.scale, alpha);
-    reads.push({ name: item.name, text: item.name, kind: "full" });
+    reads.push(plateRead(item.name, item.name, "full", box));
     if (
       item.role === "self" &&
       selfPlateDash(selfRecognizeMark({ hasSelf: true, quiet, reduced: Boolean(life?.reduceMotion) }))
@@ -2050,7 +2079,7 @@ export function drawNameLabels(
     const fade = clearOn ? Math.max(0.4, 1 - Math.min(1, dist / 280) * 0.5) : 1;
     placed.push(box);
     blitLabel(ctx, sprite, x, y, shortScale, 0.86 * fade);
-    reads.push({ name: person.name, text: glyph, kind: "short" });
+    reads.push(plateRead(person.name, glyph, "short", box));
     shortDrawn += 1;
   }
 
@@ -2064,11 +2093,15 @@ export function drawNameLabels(
     for (let scale = fittedLabelScale(sprite.w, sprite.h, viewW, viewH, dpr); scale >= 1; scale -= 1) {
       const dw = sprite.w * scale;
       const dh = sprite.h * scale;
-      const box = seekLabelBox({ x: sx - dw / 2, y: sy - dh, w: dw, h: dh }, placed, viewW, viewH);
-      if (!box) continue;
+      const found = seekLabelBox({ x: sx - dw / 2, y: sy - dh, w: dw, h: dh }, placed, viewW, viewH);
+      if (!found) continue;
+      const box =
+        !showAll && clearBottom != null && found.y + found.h > clearBottom
+          ? liftPlateBox(found, clearBottom, placed)
+          : found;
       placed.push(box);
       blitLabel(ctx, sprite, box.x, box.y, scale, mode === "hot" ? 1 : 0.92);
-      reads.push({ name: person.name, text, kind: "near" });
+      reads.push(plateRead(person.name, text, "near", box));
       drawn += 1;
       return true;
     }

@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.15.0";
+export const APP_VERSION = "1.16.0";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,17 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.16.0",
+    date: "2026-10-03",
+    title: "跟着灯笼",
+    notes: [
+      "点「灯笼该亮了」就去看灯笼。三张计数牌不再铺开，也不挡住名字和提示。",
+      "再点「去看村口」和「屋」，计数牌也不会留在地图上。",
+      "还在田里时直接拉近，最近两个名字停在提示上面，字还在。",
+      "点地图上的更多，那一块不切开第一次的提示。三个按钮也不互相压住。",
+    ],
+  },
   {
     version: "1.15.0",
     date: "2026-10-03",
