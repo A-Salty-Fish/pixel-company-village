@@ -128,6 +128,7 @@ import {
   type NextSentenceId,
 } from "@/features/one-next-sentence/one-next-sentence";
 import { fieldNearReadMark, fieldNearReadOn, lampPorchAfterSelf } from "@/features/field-near-read/field-near-read";
+import { nameplateRecognizeMark } from "@/features/nameplate-recognize/nameplate-recognize";
 import {
   findMeCoversSentence,
   findMeOneLineMark,
@@ -1995,6 +1996,7 @@ export function VillagePage({ initial }: Props) {
       data-next-sentence={nextSentence}
       data-find-one-line={findMeOneLineMark()}
       data-field-near={fieldNearReadMark()}
+      data-nameplate-recognize={nameplateRecognizeMark()}
       data-title-room={settingsTitleRoomMark()}
       data-lantern-frame={lanternInviteFrameMark()}
       data-zoom-plate-lift={zoomPlateLiftMark()}

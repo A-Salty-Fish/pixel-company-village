@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.16.0";
+export const APP_VERSION = "1.16.1";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,18 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.16.1",
+    date: "2026-10-04",
+    title: "名牌认得出",
+    notes: [
+      "画面里的名牌至少两个字。名字本来只有一个字，就还是这一个字。",
+      "不再出现只剩一个字的短牌。",
+      "近处的人名跟着镜头走。人离开画面，名牌也离开。",
+      "名牌不再停在画面正中，也不会比旁边的名牌大一圈。",
+      "点开全显名牌，看到的还是整名。",
+    ],
+  },
   {
     version: "1.16.0",
     date: "2026-10-03",
