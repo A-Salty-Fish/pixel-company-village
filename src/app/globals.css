@@ -2747,3 +2747,119 @@ body:has(.farm-page[data-focal-village="village"]) {
     overflow: visible;
   }
 }
+
+/* PV-FIX-1172 — 「我是谁」 is easy to find. WHO_ENTRY_ENABLED=false drops these classes. */
+.who-entry-wide {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .farm-page .who-entry-wide {
+    display: inline-flex;
+    align-self: flex-start;
+    margin: 0.35rem 0 0.15rem;
+  }
+}
+
+.farm-page .hud-btn.who-entry-strong,
+.farm-page .thumb-bar .hud-btn.who-entry-strong {
+  min-height: 48px;
+  padding: 0.5rem 1.1rem;
+  background: #6a3d18;
+  color: #fff6d8;
+  border-color: #2a1a10;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  opacity: 1;
+}
+
+@media (max-width: 899px) {
+  .farm-page[data-thumb-identity="1"] .thumb-bar .hud-btn.who-entry-strong {
+    min-height: 52px;
+    font-size: 16px;
+  }
+}
+
+.who-sheet-entry {
+  top: 10%;
+  max-height: calc(100dvh - 10% - 5.5rem);
+  overflow: hidden;
+}
+
+@media (min-width: 900px) {
+  .who-sheet-entry {
+    left: 50%;
+    right: auto;
+    width: min(28rem, calc(100vw - 1.5rem));
+    transform: translateX(-50%);
+  }
+}
+
+.who-sheet-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #2a1a10;
+}
+
+.who-sheet .who-search {
+  width: 100%;
+  min-height: 44px;
+  font-size: 16px;
+}
+
+.who-name-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  gap: 0.4rem;
+  min-height: 0;
+  max-height: 42dvh;
+  margin: 0;
+  padding: 0.1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.who-name-option {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.35rem 0.4rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #f3e1c0;
+  color: #2a1a10;
+  border: 2px solid #6a3d18;
+  font-size: 15px;
+}
+
+.who-name-option[aria-pressed="true"] {
+  background: #6a3d18;
+  color: #fff6d8;
+}
+
+.who-name-empty {
+  margin: 0;
+  font-size: 14px;
+  color: #6a3d18;
+}
+
+.who-picked {
+  position: fixed;
+  left: 50%;
+  bottom: calc(5rem + env(safe-area-inset-bottom));
+  z-index: 49;
+  margin: 0;
+  padding: 0.55rem 1rem;
+  transform: translateX(-50%);
+  background: #2a1a10;
+  color: #fff6d8;
+  border: 3px solid #f3d7a4;
+  box-shadow: 3px 3px 0 #3d2a1c;
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+}
