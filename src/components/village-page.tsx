@@ -120,6 +120,7 @@ import { rosterLiftMark } from "@/features/roster-lift/roster-lift";
 import { tipAboveBarMark } from "@/features/tip-above-bar/tip-above-bar";
 import { WHO_ON_SCREEN_ENABLED, whoOnScreenMark } from "@/features/who-on-screen/who-on-screen";
 import { WhoSheet } from "@/features/who-on-screen/who-sheet";
+import { WHO_ENTRY_ENABLED, WHO_ENTRY_LABEL, WHO_PICKED_MS, whoEntryLabel, whoPickedLine } from "@/features/who-entry/who-entry";
 import { guestInvitesQuiet, oneFieldInviteMark } from "@/features/one-field-invite/one-field-invite";
 import {
   chooseNextSentence,
@@ -385,6 +386,12 @@ export function VillagePage({ initial }: Props) {
   const [parchment, setParchment] = useState<null | "ritual" | "week" | "season">(null);
   const [headerFold, setHeaderFold] = useState(false);
   const [whoOpen, setWhoOpen] = useState(false);
+  const [whoPicked, setWhoPicked] = useState<{ name: string; at: number } | null>(null);
+  useEffect(() => {
+    if (!whoPicked) return;
+    const timer = window.setTimeout(() => setWhoPicked(null), WHO_PICKED_MS);
+    return () => window.clearTimeout(timer);
+  }, [whoPicked]);
   const [rosterOpen, setRosterOpen] = useState(false);
   const [todayOpen, setTodayOpen] = useState(false);
   const [mapMore, setMapMore] = useState(false);
@@ -2150,6 +2157,16 @@ export function VillagePage({ initial }: Props) {
           {visitorLine}
         </p>
       ) : null}
+      {WHO_ENTRY_ENABLED && WHO_ON_SCREEN_ENABLED && !selfName ? (
+        <button
+          type="button"
+          className="hud-btn who-entry-strong who-entry-wide"
+          data-testid="who-entry"
+          onClick={() => setWhoOpen(true)}
+        >
+          {WHO_ENTRY_LABEL}
+        </button>
+      ) : null}
       <div className="parchment-bar" data-testid="parchment-bar">
         <button
           type="button"
@@ -2853,6 +2870,7 @@ export function VillagePage({ initial }: Props) {
           const previous = selfName;
           saveSelf(name, name ? nextPreset : null);
           setWhoOpen(false);
+          if (WHO_ENTRY_ENABLED && name && name !== previous) setWhoPicked({ name, at: Date.now() });
           if (!identityLandDue({ previous, next: name })) return;
           setIdentityPulse((value) => value + 1);
           advanceLoop("who");
@@ -3021,7 +3039,12 @@ export function VillagePage({ initial }: Props) {
         >
           回家
         </button>
-        <button type="button" className="hud-btn hud-btn-ghost thumb-who" data-testid="thumb-who" onClick={() => {
+        <button
+          type="button"
+          className={`hud-btn hud-btn-ghost thumb-who${WHO_ENTRY_ENABLED && !selfName ? " who-entry-strong" : ""}`}
+          data-testid="thumb-who"
+          data-who-entry={WHO_ENTRY_ENABLED && !selfName ? "1" : "0"}
+          onClick={() => {
           if (WHO_ON_SCREEN_ENABLED) {
             setWhoOpen(true);
             return;
@@ -3029,9 +3052,14 @@ export function VillagePage({ initial }: Props) {
           document.querySelector<HTMLElement>("[data-testid='comfort-settings']")?.setAttribute("open", "");
           document.querySelector<HTMLElement>("[data-testid='self-picker']")?.focus();
         }}>
-          我是谁
+          {whoEntryLabel(Boolean(selfName))}
         </button>
       </div>
+      {WHO_ENTRY_ENABLED && whoPicked ? (
+        <p className="who-picked" role="status" data-testid="who-picked" key={whoPicked.at}>
+          {whoPickedLine(whoPicked.name)}
+        </p>
+      ) : null}
       {whoOpen && WHO_ON_SCREEN_ENABLED ? (
         <WhoSheet
           names={pickerNames}
@@ -3040,6 +3068,7 @@ export function VillagePage({ initial }: Props) {
             const previous = selfName;
             saveSelf(name, name ? preset : null);
             setWhoOpen(false);
+            if (WHO_ENTRY_ENABLED && name && name !== previous) setWhoPicked({ name, at: Date.now() });
             if (!identityLandDue({ previous, next: name })) return;
             setIdentityPulse((value) => value + 1);
             advanceLoop("who");
