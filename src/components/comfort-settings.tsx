@@ -6,6 +6,36 @@ import { SettingsDiscover } from "@/features/compact-settings-discover/discover-
 import { LIGHT_SFX_ENABLED } from "@/features/light-sfx/light-sfx";
 import { MAGIC_LEVELS, MAGIC_SETTING_ENABLED, MAGIC_TOWN_ENABLED, dailyMagicLine } from "@/features/magic-town/magic-town";
 import { shanghaiClock } from "@/lib/village-life";
+import { useEffect, useState } from "react";
+import { MAGIC_PLAY_ENABLED, PLAY_HOWTO, questLine, readProgress } from "@/features/magic-play/magic-play";
+
+/** Today's wizard quest, read from local counts after mount so the server render stays plain. */
+function MagicQuestLine({ off, still }: { off: boolean; still: boolean }) {
+  const [line, setLine] = useState("");
+  useEffect(() => {
+    const ymd = shanghaiClock().ymd;
+    let store: Storage | null = null;
+    try {
+      store = window.localStorage;
+    } catch {
+      store = null;
+    }
+    setLine(questLine(ymd, readProgress(store, ymd)));
+  }, []);
+  if (!MAGIC_PLAY_ENABLED || off) return null;
+  return (
+    <>
+      {line ? (
+        <p className="mt-1 text-xs leading-5 text-[#6a3d18]" data-testid="magic-quest">
+          {line}
+        </p>
+      ) : null}
+      <p className="mt-1 text-[11px] leading-4 text-[#7a5030]" data-testid="magic-howto">
+        {still ? "减少动作开着时，魔法互动先歇着。" : PLAY_HOWTO}
+      </p>
+    </>
+  );
+}
 
 type Props = {
   comfort: Comfort;
@@ -79,6 +109,7 @@ export function ComfortSettings({
               {comfort.magic === "off" ? "魔法已关。地图回到原来的样子。" : dailyMagicLine(shanghaiClock().ymd)}
               {comfort.magic !== "off" && motionReduced ? " 减少动作开着时，魔法只停成一张静图。" : ""}
             </p>
+            <MagicQuestLine off={comfort.magic === "off"} still={motionReduced} />
           </details>
         ) : null}
         <details className="comfort-group" data-testid="comfort-decor">

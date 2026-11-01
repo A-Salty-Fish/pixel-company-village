@@ -4,6 +4,8 @@
  * Weather and one-shot spells render live into small pixel frames at a capped rate.
  * Effects: pixelfx by patch-gg (MIT), vendored under src/vendor/pixelfx.
  */
+import { WIZARD_LOOK_ENABLED } from "@/features/wizard-look/wizard-look";
+import { PlayLayer } from "@/features/magic-play/play-layer";
 import type { FxCore, FxInstance, FxModule } from "./magic-registry";
 import {
   weatherIsSky,
@@ -344,6 +346,8 @@ export type MagicStats = {
   ms: number;
   /** True while the strain governor holds magic at the lighter budget. */
   lite?: boolean;
+  /** PV-MAGIC-PLAY-001 hand-drawn play marks on screen right now. */
+  play?: PlayLayer["counts"];
 };
 
 export class MagicLayer {
@@ -368,6 +372,8 @@ export class MagicLayer {
   private zoomAnchor = 0;
   private transitionAt = -99;
   private taps: number[] = [];
+  /** Beams, staff trails, the charge ring, summons and game pips (PV-MAGIC-PLAY-001). */
+  readonly play = new PlayLayer();
   stats: MagicStats = { ready: false, weather: [], auras: 0, spells: 0, landmarks: 0, baked: 0, ms: 0 };
 
   /** Queue a spell at world pixels. Plays once the effects bundle has loaded. */
@@ -406,6 +412,7 @@ export class MagicLayer {
     this.statuses = [];
     this.transitionNow = null;
     this.transitionQueue = [];
+    this.play.clear();
   }
 
   get liveSpells() {
@@ -425,6 +432,7 @@ export class MagicLayer {
     const rawGap = this.last < 0 ? 0 : Math.max(0, input.now - this.last);
     const dt = Math.min(0.05, rawGap);
     this.last = input.now;
+    this.play.tick(input.now);
     const time = budget.animate ? input.now : 0;
     // PV-MAGIC-002 strain governor: under ~24fps for a while, magic steps down; back over ~40fps, it steps up
     if (budget.animate && rawGap > 0 && rawGap < 0.5) this.gap = this.gap * 0.95 + rawGap * 0.05;
@@ -469,7 +477,7 @@ export class MagicLayer {
         const strip = stripFor(reg, ...auraStrip(aura));
         if (!strip) continue;
         const offset = (person.id % 7) * 0.53;
-        if (drawStrip(ctx, view, strip, person.x, person.y - 2, time + offset, auraScale(aura), aura.kind === "sleepy" || aura.kind === "dozing" ? 0.8 : 1)) auras += 1;
+        if (drawStrip(ctx, view, strip, person.x, person.y - 2 - auraLift(aura.kind), time + offset, auraScale(aura), aura.kind === "sleepy" || aura.kind === "dozing" ? 0.8 : 1)) auras += 1;
       }
     }
 
@@ -480,7 +488,7 @@ export class MagicLayer {
         const person = input.people.find((candidate) => candidate.name === status.name);
         if (!person || !onScreen(view, person.x, person.y, 40)) continue;
         const strip = stripFor(reg, status.id, { seed: 2 });
-        if (strip) drawStrip(ctx, view, strip, person.x, person.y - 2, time + status.offset, 0.6, 0.95);
+        if (strip) drawStrip(ctx, view, strip, person.x, person.y - 2 - (WIZARD_LOOK_ENABLED ? HAT_LIFT : 0), time + status.offset, 0.6, 0.95);
       }
     }
 
@@ -516,6 +524,11 @@ export class MagicLayer {
         );
       }
       this.spells = this.spells.filter((spell) => !spell.fx.done());
+      this.play.paint(ctx, view, this.strained, (id, x, y, scale, alpha, at) => {
+        if (!onScreen(view, x, y, LOOP_REACH * scale)) return false;
+        const strip = stripFor(reg, id, { seed: 3 });
+        return strip ? drawStrip(ctx, view, strip, Math.round(x), Math.round(y), at, scale, alpha) : false;
+      });
     } else {
       this.clear();
     }
@@ -549,6 +562,7 @@ export class MagicLayer {
       landmarks,
       baked: [...strips.values()].filter((value) => value !== "pending").length,
       ms: Math.round((performance.now() - t0) * 100) / 100,
+      play: this.play.counts,
     };
   }
 
@@ -741,6 +755,13 @@ function auraStrip(aura: Aura): [string, Record<string, unknown>] {
   if (aura.kind === "dozing") return ["status/sleep", { seed: 6 }];
   if (aura.kind === "popular") return ["status/charmed", { seed: 8 }];
   return ["village/sleepy-sparkle", { seed: 2 }];
+}
+
+/** Wizard hats are taller than cat ears: head-top auras ride above the hat tip. */
+const HAT_LIFT = 12;
+function auraLift(kind: Aura["kind"]) {
+  if (!WIZARD_LOOK_ENABLED) return 0;
+  return kind === "holy" || kind === "dozing" || kind === "popular" ? HAT_LIFT : 0;
 }
 
 function auraScale(aura: Aura) {

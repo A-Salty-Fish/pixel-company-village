@@ -108,3 +108,54 @@ export function syncAmbientBed(on: boolean): "live" | "off" {
     return "off";
   }
 }
+
+/* PV-MAGIC-PLAY-001 — tiny arpeggios for wizard play. Same gate as the gestures: mute or reduced motion is silence. */
+export const MAGIC_SFX_ENABLED = true;
+export const MAGIC_SFX_IDS = ["chain", "ultimate", "wish", "rune", "summon", "portal", "badge", "chorus", "charge"] as const;
+export type MagicSfxId = (typeof MAGIC_SFX_IDS)[number];
+/** Notes in Hz, one every `step` ms; gain stays at or under 0.03. */
+export const MAGIC_SFX_SPEC: Record<MagicSfxId, { notes: readonly number[]; step: number; gain: number; type: OscillatorType }> = {
+  chain: { notes: [784, 1175], step: 60, gain: 0.018, type: "square" },
+  ultimate: { notes: [392, 523, 659, 784], step: 70, gain: 0.022, type: "triangle" },
+  wish: { notes: [1047, 1319], step: 80, gain: 0.016, type: "sine" },
+  rune: { notes: [659, 880], step: 70, gain: 0.016, type: "triangle" },
+  summon: { notes: [523, 784, 659], step: 60, gain: 0.016, type: "square" },
+  portal: { notes: [880, 659, 440], step: 70, gain: 0.018, type: "sine" },
+  badge: { notes: [659, 784, 1047, 1319], step: 80, gain: 0.02, type: "triangle" },
+  chorus: { notes: [523, 659, 784, 1047], step: 90, gain: 0.018, type: "sine" },
+  charge: { notes: [262, 330], step: 90, gain: 0.012, type: "triangle" },
+};
+
+export function magicSfxSpec(id: MagicSfxId, allowed: boolean, enabled = MAGIC_SFX_ENABLED) {
+  return enabled && allowed ? MAGIC_SFX_SPEC[id] : null;
+}
+
+export function playMagicSfx(id: MagicSfxId, allowed: boolean): GestureAudio {
+  const spec = magicSfxSpec(id, allowed);
+  if (!spec) return "silent";
+  const ctx = audioContext();
+  if (!ctx) return "silent";
+  try {
+    const gain = ctx.createGain();
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    spec.notes.forEach((hz, i) => {
+      const osc = ctx.createOscillator();
+      const env = ctx.createGain();
+      const at = now + (i * spec.step) / 1000;
+      const end = at + Math.max(0.06, spec.step / 1000) * 1.4;
+      osc.type = spec.type;
+      osc.frequency.setValueAtTime(hz, at);
+      env.gain.setValueAtTime(0.0001, at);
+      env.gain.exponentialRampToValueAtTime(spec.gain, at + 0.006);
+      env.gain.exponentialRampToValueAtTime(0.0001, end);
+      osc.connect(env);
+      env.connect(gain);
+      osc.start(at);
+      osc.stop(end + 0.02);
+    });
+    return "played";
+  } catch {
+    return "silent";
+  }
+}
