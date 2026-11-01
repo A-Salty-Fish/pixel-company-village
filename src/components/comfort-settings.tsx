@@ -6,22 +6,28 @@ import { SettingsDiscover } from "@/features/compact-settings-discover/discover-
 import { LIGHT_SFX_ENABLED } from "@/features/light-sfx/light-sfx";
 import { MAGIC_LEVELS, MAGIC_SETTING_ENABLED, MAGIC_TOWN_ENABLED, dailyMagicLine } from "@/features/magic-town/magic-town";
 import { shanghaiClock } from "@/lib/village-life";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { MAGIC_PLAY_ENABLED, PLAY_HOWTO, questLine, readProgress } from "@/features/magic-play/magic-play";
 
-/** Today's wizard quest, read from local counts after mount so the server render stays plain. */
+function readQuestLine() {
+  const ymd = shanghaiClock().ymd;
+  let store: Storage | null = null;
+  try {
+    store = window.localStorage;
+  } catch {
+    store = null;
+  }
+  return questLine(ymd, readProgress(store, ymd));
+}
+
+function onStorage(change: () => void) {
+  window.addEventListener("storage", change);
+  return () => window.removeEventListener("storage", change);
+}
+
+/** Today's wizard quest, read from local counts on the client so the server render stays plain. */
 function MagicQuestLine({ off, still }: { off: boolean; still: boolean }) {
-  const [line, setLine] = useState("");
-  useEffect(() => {
-    const ymd = shanghaiClock().ymd;
-    let store: Storage | null = null;
-    try {
-      store = window.localStorage;
-    } catch {
-      store = null;
-    }
-    setLine(questLine(ymd, readProgress(store, ymd)));
-  }, []);
+  const line = useSyncExternalStore(onStorage, readQuestLine, () => "");
   if (!MAGIC_PLAY_ENABLED || off) return null;
   return (
     <>
