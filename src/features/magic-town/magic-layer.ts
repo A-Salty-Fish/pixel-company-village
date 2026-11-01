@@ -12,6 +12,7 @@ import {
   pickAuras,
   weatherBand,
   weatherPlan,
+  strainedBudget,
   type Aura,
   type AuraInput,
   type DailyMagic,
@@ -266,6 +267,8 @@ export type MagicStats = {
   landmarks: number;
   baked: number;
   ms: number;
+  /** True while the strain governor holds magic at the lighter budget. */
+  lite?: boolean;
 };
 
 export class MagicLayer {
@@ -279,6 +282,9 @@ export class MagicLayer {
   private weatherAt = -1;
   private last = -1;
   private seed = 1;
+  /** Smoothed seconds between paints. A slow phone drops to a lighter magic budget on its own. */
+  private gap = 1 / 60;
+  private strained = false;
   stats: MagicStats = { ready: false, weather: [], auras: 0, spells: 0, landmarks: 0, baked: 0, ms: 0 };
 
   /** Queue a spell at world pixels. Plays once the effects bundle has loaded. */
@@ -299,7 +305,7 @@ export class MagicLayer {
 
   render(ctx: CanvasRenderingContext2D, view: MagicView, input: MagicInput) {
     const t0 = performance.now();
-    const budget = input.budget;
+    let budget = input.budget;
     if (!budget.on) {
       this.clear();
       this.stats = { ...this.stats, weather: [], auras: 0, spells: 0, landmarks: 0, ms: 0 };
@@ -307,11 +313,17 @@ export class MagicLayer {
     }
     const reg = loadMagic();
     if (!reg) return;
-    const dt = this.last < 0 ? 0 : Math.min(0.05, Math.max(0, input.now - this.last));
+    const rawGap = this.last < 0 ? 0 : Math.max(0, input.now - this.last);
+    const dt = Math.min(0.05, rawGap);
     this.last = input.now;
     const time = budget.animate ? input.now : 0;
+    // PV-MAGIC-002 strain governor: under ~24fps for a while, magic steps down; back over ~40fps, it steps up
+    if (budget.animate && rawGap > 0 && rawGap < 0.5) this.gap = this.gap * 0.95 + rawGap * 0.05;
+    if (!this.strained && this.gap > 1 / 24) this.strained = true;
+    else if (this.strained && this.gap < 1 / 40) this.strained = false;
+    if (this.strained) budget = strainedBudget(budget);
 
-    drainBakes(reg, budget.animate ? 6 : 40);
+    drainBakes(reg, budget.animate ? (this.strained ? 2 : 6) : 40);
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
@@ -391,6 +403,7 @@ export class MagicLayer {
     ctx.restore();
     this.stats = {
       ready: true,
+      lite: this.strained,
       weather: plan,
       auras,
       spells: this.spells.length,

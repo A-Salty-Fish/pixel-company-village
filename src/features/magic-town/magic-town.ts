@@ -90,6 +90,18 @@ export function magicBudget(
   };
 }
 
+/** Lighter budget for a phone that has fallen under ~24fps: one weather layer, slower weather, fewer auras and spells. */
+export function strainedBudget(budget: MagicBudget): MagicBudget {
+  if (!budget.on || !budget.animate) return budget;
+  return {
+    ...budget,
+    weather: Math.min(budget.weather, 1),
+    weatherFps: Math.min(budget.weatherFps, 8),
+    auras: Math.min(budget.auras, 6),
+    spells: Math.min(budget.spells, 4),
+  };
+}
+
 /* ---------------------------------------------------------------- auras */
 
 export type AuraKind = "arcane" | "holy" | "fish" | "sleepy";

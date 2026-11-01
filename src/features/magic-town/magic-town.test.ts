@@ -16,6 +16,7 @@ import {
   groundSpell,
   hitLandmark,
   magicBudget,
+  strainedBudget,
   magicLevelFrom,
   magicOn,
   pickAuras,
@@ -54,6 +55,10 @@ test("budgets cap effects, shrink on phones and freeze for reduced motion", () =
   assert.equal(still.weather, 0);
   assert.equal(off.on, false);
   for (const budget of [many, phone, few]) assert.ok(budget.auras <= 18 && budget.spells <= 10 && budget.weather <= 2);
+  const slow = strainedBudget(phone);
+  assert.ok(slow.weather <= 1 && slow.weatherFps <= 8 && slow.auras <= 6 && slow.spells <= 4 && slow.landmarks === phone.landmarks);
+  assert.deepEqual(strainedBudget(still), still);
+  assert.deepEqual(strainedBudget(off), off);
 });
 
 test("auras come only from numbers", () => {

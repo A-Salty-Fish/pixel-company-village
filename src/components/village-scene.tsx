@@ -926,6 +926,19 @@ export function VillageScene({
         return true;
       },
       state: () => ({ ...(magicRef.current?.stats ?? { ready: false }), level: lifeRef.current?.magic ?? "off" }),
+      /** Client coordinates of a world point, for real taps in e2e. */
+      screen: (x: number, y: number) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return null;
+        const rect = canvas.getBoundingClientRect();
+        const span = viewSpan(zoomRef.current);
+        return {
+          x: rect.left + ((x - camRef.current.x) * rect.width) / span.w,
+          y: rect.top + ((y - camRef.current.y) * rect.height) / span.h,
+        };
+      },
+      /** World positions only; names stay out so the hook never needs more than the map shows. */
+      spots: (n: number) => villagersRef.current.slice(0, Math.max(0, n)).map((v) => ({ x: v.x, y: v.y })),
       look: (x: number, y: number, zoom: number) => {
         userCam.current = true;
         gateHeldRef.current = true;
