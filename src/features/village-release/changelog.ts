@@ -15,7 +15,7 @@
 export const RELEASE_NOTES_ENABLED = true;
 
 /** Displayed ship. Must match package.json and the first RELEASES entry. */
-export const APP_VERSION = "1.17.2";
+export const APP_VERSION = "1.18.0";
 
 /** The open log captures wheel, touch, and PageDown. Set false to leave page scroll alone. */
 export const RELEASE_SCROLL_ENABLED = true;
@@ -57,6 +57,20 @@ export type ReleaseNote = {
 
 /** Newest first. Prepend the next ship; do not rewrite older notes. */
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: "1.18.0",
+    date: "2026-11-01",
+    title: "魔法小镇",
+    notes: [
+      "村子变成魔法小镇：天黑有萤火虫和极光，白天跟着季节飘落叶、花瓣或雪。",
+      "广场亮起魔法阵，村口开了传送门，许愿泉、篝火和浮空灯都会动。",
+      "点一只猫会放一个随机小法术；点广场、村口、泉水、篝火或湖面，各有各的魔法。",
+      "挥手和关照时，对方身上会落下一道祝福光。",
+      "每只猫头上的小光只看分数和条数：干活多飘紫色光点，专注戴金色光环，摸鱼冒泡泡，还没分数的闪小星星。",
+      "每天换一种「今日魔法」，在「体贴设置」的魔法一栏看今天是哪种。",
+      "嫌眼花就在「魔法」里选「少」或「关」；开着「减少动作」时魔法只停成一张静图。",
+    ],
+  },
   {
     version: "1.17.2",
     date: "2026-10-29",
