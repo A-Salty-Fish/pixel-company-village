@@ -28,6 +28,14 @@
 - 光环只读 work、fish、on_task 和消息条数；没有任何聊天或飞书原文进来。
 - 四个天气效果（萤火虫、落叶、花瓣、雪）加了 `haze: false` 选项，跳过自带的暗色底，标了 `village patch`。
 - 测试钩子 `window.__VILLAGE_MAGIC__`（cast/state/look），和 `__VILLAGE_TEST__` 一样只在非生产或 `NEXT_PUBLIC_VILLAGE_TEST=1` 时装。
+- 扩到 126 个 pixelfx 效果（加 8 个村子自制 = 134）：天气 12、地标常驻 27、小动物 10、光环与状态 12、点人 48、关照 6、点自己 3、点地面/湖面 16、地标法术 11、今日魔法开场 13、转场 9、连击 1（有重叠，去重后总数如上）。`effectCatalog()` 出数，测试锁住 ≥120 个且不含战斗、血腥、伤害数字类效果。
+- 不用的类别和原因：moves/melee/projectiles（打斗）、大部分 impacts/shadow 和死亡类 spawn（血腥或阴沉）、负面状态（流血、中毒、诅咒、燃烧、石化、狂暴）、伤害/暴击数字和血条（会被误读成分数）、crt-off（灰屏）、骷髅和眼球小怪、核爆和手雷。
+- 新开关：`MAGIC_TRANSITIONS_ENABLED`、`MAGIC_CRITTERS_ENABLED`、`MAGIC_UI_FEEDBACK_ENABLED`。
+- 地标常驻 `LANDMARK_LOOPS` 移进 `magic-town.ts`，按优先级排，`budget.landmarkCap` 截断（多：电脑 44、手机 26；少 12；卡顿 14）。先按屏幕裁掉再烤，画面外的从不烘焙；烤好的小条裁到亮像素外框，LRU 上限手机 40、电脑 80。小动物用 `drift` 慢慢晃。
+- 状态：点人法术后挂 2–4 秒状态（`STATUS_AFTER`），跟着人走，最多 6 个。转场在屏幕空间画，只用 "lighter" 叠加 45%，黑的部分不加东西，地图不会变暗；只在「多」且不卡时放，同时最多 1 个。
+- 卡顿调速器：画帧间隔 EMA 超过 1/24 秒进入轻量预算，低于 1/40 秒恢复。手机天气 1 CSS 像素、棋盘格隔块画；电脑落叶和花瓣三块留二。
+- rain、blizzard 也加了 `haze: false`（跳过阴天底、地面水汽和雪雾）；storm、clouds 不改，当天空层叠加。动作类效果用一个猫形遮罩（只有轮廓，没有像素），不会画出默认小人。
+- 测试钩子加 `transition(id?)` 和 `statusOn(id, index)`，按位置不按名字。
 
 ### 1.17.2
 

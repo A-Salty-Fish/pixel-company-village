@@ -28,7 +28,7 @@ Sprites below are the ones drawn in the village. The Little Wilds zip is not red
 
 - patch-gg/pixelfx, MIT License, Copyright (c) 2026 Patch
 - https://github.com/patch-gg/pixelfx (commit a84159688af3ca37a4be05a0d422b94451b2e24e)
-- Vendored in `src/vendor/pixelfx/` with its `LICENSE` and `NOTICE.md`: the core painter and the weather, fire, water, arcane, holy, nature, ice, critter, firework, pickup and confetti effects the magic town draws. Four weather loops carry a small `haze: false` patch.
+- Vendored in `src/vendor/pixelfx/` with its `LICENSE` and `NOTICE.md`: the core painter and 126 effects the magic town draws, from the weather, arcane, critters, explosions (fireworks and cartoon pops only), fire, holy, ice, lightning, nature, pickups, scifi, shadow (hex-sigil only), spawn, status, transitions, ui and water categories, plus each category's `_lib.js`. Six weather loops carry a small `haze: false` patch.
 - Carried-over credits inside pixelfx: Sprite Fusion pixel art VFX by Hugo Duprez (MIT) and Hollow Crown by rehan-remade (MIT, `core/sim.js`, `core/act.js`); their file headers are kept as is.
 - The village's own effects in `src/features/magic-town/fx/` are written against the pixelfx core and say so at the top.
 - The Patch Pixel font is not covered by pixelfx's license and is not used or copied.

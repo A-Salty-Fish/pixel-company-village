@@ -15,5 +15,5 @@ https://github.com/rehan-remade/hollow-crown, Copyright (c) 2026 rehan-remade, M
 **Vendored into 像素公司村.** Copied from https://github.com/patch-gg/pixelfx at commit
 `a84159688af3ca37a4be05a0d422b94451b2e24e` (MIT, see `LICENSE` next to this file). Only `core/` and the effects the
 village draws are kept; the gallery, its fonts (Patch Pixel is not used here) and the other effects are not copied.
-Local changes: `fx/weather/{fireflies,falling-leaves,cherry-blossoms,snow}.js` take an extra `haze: false` option
+Local changes: `fx/weather/{fireflies,falling-leaves,cherry-blossoms,snow,rain,blizzard}.js` take an extra `haze: false` option
 that skips their dark backdrop so they can sit over a live map (marked `village patch`).
