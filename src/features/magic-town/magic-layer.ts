@@ -495,10 +495,12 @@ export class MagicLayer {
       });
     }
     // one weather pixel per world pixel, tiled; the tile's bottom strip (where leaves and snow settle) is cut off
-    // weather pixels are 2 CSS px everywhere: sparse and calm on a wide desk, never a blizzard on a phone
+    // weather pixels are 2 CSS px on a wide desk; phones get the sparser grid below
     const scaleX = view.viewW / view.spanW;
     const dprN = Math.max(1, view.dpr);
-    const px = (view.viewW / dprN < 600 ? 1.25 : 2) * dprN;
+    // phones: 1 CSS px pixels and only every other tile (checkerboard), so a small screen gets a light sprinkle, not a storm
+    const narrow = view.viewW / dprN < 600;
+    const px = (narrow ? 1 : 2) * dprN;
     const UH = 140;
     const tileW = W * px;
     const tileH = UH * px;
@@ -537,7 +539,8 @@ export class MagicLayer {
           const dw = Math.round(x + tileW) - dx;
           const dy = Math.round(y);
           const dh = Math.round(y + h) - dy;
-          if ((i + j) % 2 === 1) {
+          if (narrow && (i + j) % 2 === 1) continue;
+          if ((i + j) % 2 === 1 || (narrow && j % 4 === 2)) {
             ctx.save();
             ctx.translate(dx + dw, dy);
             ctx.scale(-1, 1);
