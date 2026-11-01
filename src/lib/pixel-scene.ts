@@ -63,6 +63,15 @@ import { paintNightHearth } from "@/features/night-hearth/night-hearth";
 import { paintNightWindowPulse } from "@/features/night-window-pulse/night-window-pulse";
 import { pathFocusPixels } from "@/features/path-focus/path-focus";
 import { tapDustPixels, tapHop } from "@/features/villager-tap-feedback/villager-tap-feedback";
+import {
+  WIZARD_LOOK_ENABLED,
+  wizardAnim,
+  wizardPose,
+  wizardProp,
+  wizardStyle,
+  type WizardStyle,
+} from "@/features/wizard-look/wizard-look";
+import { catHeadTop, drawWizard } from "@/features/wizard-look/wizard-paint";
 import { paintSkyWash } from "@/features/sky-wash/sky-wash";
 import { paintPathMicroGlow } from "@/features/path-micro-glow/path-micro-glow";
 import { isNextBeatAim, paintNextBeatPathGlow } from "@/features/next-beat-path-glow/next-beat-path-glow";
@@ -668,6 +677,19 @@ function catFrame(color: string, dir: Facing, anim: CatAnim, frame: number) {
   return `cat_${color}_down_idle_0`;
 }
 
+const wizardStyles = new WeakMap<PlacedVillager, WizardStyle>();
+function wizardFor(person: PlacedVillager) {
+  let style = wizardStyles.get(person);
+  if (!style) {
+    style = wizardStyle(
+      person.name,
+      person.scored ? { scored: true, work: person.work, fish: person.fish, on_task: person.on_task } : { scored: false },
+    );
+    wizardStyles.set(person, style);
+  }
+  return style;
+}
+
 function drawVillager(
   ctx: CanvasRenderingContext2D,
   person: PlacedVillager,
@@ -698,6 +720,8 @@ function drawVillager(
   }
   if ((onActor || onPartner) && fx?.kind === "pair") anim = "water";
   if (seated) anim = "sit";
+  const wizard = WIZARD_LOOK_ENABLED ? wizardFor(person) : null;
+  if (wizard) anim = wizardAnim(anim);
   const frame = Math.floor(t * fps * person.speed);
   const bob = selected && !life?.reduceMotion
     ? (Math.floor(t * 5) % 2 === 0 ? 1 : 0)
@@ -733,7 +757,29 @@ function drawVillager(
   const hop = tapHop(tapElapsed, Boolean(life?.reduceMotion));
   const dust = tapDustPixels(x, y, tapElapsed, Boolean(life?.reduceMotion));
   if (dust.length > 0) paintPixels(ctx, dust);
-  drawSprite(ctx, catFrame(color, person.dir, anim, frame), x, y - hop);
+  // things that float above the head clear the hat tip
+  const headY = wizard ? y - 10 : y;
+  const catName = catFrame(color, person.dir, anim, frame);
+  drawSprite(ctx, catName, x, y - hop);
+  if (wizard) {
+    const shown = catName.startsWith(`cat_${color}_${person.dir}_${anim}_`) ? anim : "idle";
+    const count = ANIM_FRAMES[anim];
+    const index = ((frame % count) + count) % count;
+    const reduced = Boolean(life?.reduceMotion);
+    drawWizard(
+      ctx,
+      wizard,
+      person.dir,
+      x,
+      y - hop,
+      catHeadTop(shown, person.dir, shown === anim ? index : 0),
+      shown === "sit",
+      wizardPose(t, wizard.phase, tapElapsed, reduced),
+      wizardProp(person.state, t),
+      t,
+      reduced,
+    );
+  }
   if (villagerSilhouetteOn()) paintPixels(ctx, villagerSilhouettePixels(x, y - hop));
   if (life?.waveTarget === person.name) paintPixels(ctx, waveCuePixels(x, y));
   if (!stood && !softGround && zoom < 2) {
@@ -752,12 +798,12 @@ function drawVillager(
     drawSprite(ctx, "crop_2_0_2", x + 20, y - 10 - rise * 14 - hop, { scale: 2 });
   }
   if (onActor && fx?.kind === "coffee") drawMug(ctx, x + 10, y - 36);
-  if (onActor && fx?.kind === "scare" && elapsed < 0.45) drawBang(ctx, x + 8, y - 40);
+  if (onActor && fx?.kind === "scare" && elapsed < 0.45) drawBang(ctx, x + 8, headY - 40);
   if (onActor && fx?.kind === "stretch") y -= life?.reduceMotion ? 2 : Math.sin(elapsed * 8) * 5;
-  if (onActor && fx?.kind === "wave") drawWave(ctx, x + 12, y - 46 - (life?.reduceMotion ? 0 : Math.sin(elapsed * 8) * 3));
+  if (onActor && fx?.kind === "wave") drawWave(ctx, x + 12, headY - 46 - (life?.reduceMotion ? 0 : Math.sin(elapsed * 8) * 3));
   if (fx && fx.partner === person.name && fx.kind === "wave") {
     const bob = life?.reduceMotion ? 0 : Math.sin(elapsed * 8) * 3;
-    drawWave(ctx, x - 16, y - 46 - bob);
+    drawWave(ctx, x - 16, headY - 46 - bob);
   }
   if (fx && fx.partner === person.name && isKindnessKind(fx.kind)) {
     ctx.fillStyle = "#6aaa3a";
@@ -776,7 +822,7 @@ function drawVillager(
   }
   if (life?.selfName === person.name && life.selfPreset) {
     drawStatusProp(ctx, life.selfPreset, x - 18, y - 28);
-    drawStatusBadge(ctx, life.selfPreset, x - 4, y - 46);
+    drawStatusBadge(ctx, life.selfPreset, x - 4, headY - 46);
   }
   const avail = availabilityFor(
     person,
