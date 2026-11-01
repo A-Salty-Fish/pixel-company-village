@@ -949,6 +949,21 @@ export function VillageScene({
         kickRef.current?.();
         return true;
       },
+      /** Play a screen transition sweep (a random one when no id is given). */
+      transition: (id?: string) => {
+        if (!magicRef.current) magicRef.current = new MagicLayer();
+        magicRef.current.transition(id);
+        kickRef.current?.();
+        return true;
+      },
+      /** Hang a short status on the n-th villager, by position in the list, so no name is needed. */
+      statusOn: (id: string, index: number, seconds = 3) => {
+        const person = villagersRef.current[index];
+        if (!person || !magicRef.current) return false;
+        magicRef.current.castOn(id, person.name, seconds);
+        kickRef.current?.();
+        return true;
+      },
       state: () => ({ ...(magicRef.current?.stats ?? { ready: false }), level: lifeRef.current?.magic ?? "off" }),
       /** Client coordinates of a world point, for real taps in e2e. */
       screen: (x: number, y: number) => {

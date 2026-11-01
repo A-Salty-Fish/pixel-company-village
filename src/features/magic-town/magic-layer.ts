@@ -701,6 +701,7 @@ export class MagicLayer {
         ctx.globalCompositeOperation = "source-over";
         return;
       }
+      const sparse = id === "weather/falling-leaves" || id === "weather/cherry-blossoms";
       // anchor tiles to the world so weather drifts with the camera instead of sticking to the glass
       const shiftX = -((((view.camX * scaleX) % tileW) + tileW) % tileW);
       let j = 0;
@@ -714,6 +715,8 @@ export class MagicLayer {
           const dy = Math.round(y);
           const dh = Math.round(y + h) - dy;
           if (narrow && (i + j) % 2 === 1) continue;
+          // big leaves and petals: a desk keeps two tiles in three, so a close zoom stays airy
+          if (!narrow && sparse && (i + 2 * j) % 3 === 2) continue;
           if ((i + j) % 2 === 1 || (narrow && j % 4 === 2)) {
             ctx.save();
             ctx.translate(dx + dw, dy);
