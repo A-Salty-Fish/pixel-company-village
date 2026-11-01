@@ -124,7 +124,7 @@ export function strainedBudget(budget: MagicBudget): MagicBudget {
     weatherFps: Math.min(budget.weatherFps, 8),
     auras: Math.min(budget.auras, 6),
     spells: Math.min(budget.spells, 4),
-    landmarkCap: Math.min(budget.landmarkCap, 14),
+    landmarkCap: Math.min(budget.landmarkCap, 8),
     transitions: false,
   };
 }
