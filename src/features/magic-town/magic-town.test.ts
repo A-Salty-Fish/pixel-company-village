@@ -14,6 +14,11 @@ import {
   dailyMagic,
   dailyMagicLine,
   groundSpell,
+  GROUND_SPELLS,
+  LANDMARK_LOOPS,
+  allEffects,
+  effectCatalog,
+  loopAt,
   hitLandmark,
   magicBudget,
   strainedBudget,
@@ -65,7 +70,10 @@ test("auras come only from numbers", () => {
   assert.equal(auraFor({ scored: false })?.kind, "sleepy");
   assert.equal(auraFor({ scored: true, work: 4, fish: 1, on_task: 0.5, msgs: 10 })?.kind, "arcane");
   assert.equal(auraFor({ scored: true, work: 1, fish: 1, on_task: 0.95, msgs: 10 })?.kind, "holy");
-  assert.equal(auraFor({ scored: true, work: 1, fish: 4, on_task: 0.2, msgs: 10 })?.kind, "fish");
+  assert.equal(auraFor({ scored: true, work: 1, fish: 3, on_task: 0.2, msgs: 10 })?.kind, "fish");
+  assert.equal(auraFor({ scored: true, work: 1, fish: 4.5, on_task: 0.2, msgs: 10 })?.kind, "dozing");
+  assert.equal(auraFor({ scored: true, work: 4.8, fish: 1, on_task: 0.2, msgs: 10 })?.kind, "charged");
+  assert.equal(auraFor({ scored: true, work: 1, fish: 1, on_task: 0.3, msgs: 999 })?.kind, "popular");
   assert.equal(auraFor({ scored: true, work: 1, fish: 1, on_task: 0.3, msgs: 10 }), null);
   assert.equal(sparkTier(0), 0);
   assert.equal(sparkTier(40), 1);
@@ -86,11 +94,36 @@ test("spells, landmarks and the ground give something to tap", () => {
   assert.equal(groundSpell(900, 900), "village/ground-glint");
 });
 
-test("at least twenty effects can be triggered", () => {
-  const all = triggerEffects();
-  assert.ok(all.length >= 20, `only ${all.length}`);
+test("ground taps vary by place and time of day", () => {
+  const day = new Set(Array.from({ length: 40 }, (_, i) => groundSpell(900, 900, i)));
+  const night = new Set(Array.from({ length: 40 }, (_, i) => groundSpell(900, 900, i, true)));
+  assert.ok(day.size >= 4 && night.size >= 3);
+  assert.ok(night.has("lightning/lightning-strike") || night.has("explosions/firework-burst"));
+  for (const id of day) assert.ok(GROUND_SPELLS.includes(id as (typeof GROUND_SPELLS)[number]));
+});
+
+test("over a hundred effects, every one registered once, grouped", () => {
+  const all = allEffects();
   assert.equal(new Set(all).size, all.length);
-  assert.ok(AMBIENT_EFFECTS.length >= 20);
+  assert.ok(all.length >= 120, `only ${all.length}`);
+  const trig = triggerEffects();
+  assert.ok(trig.length >= 60, `only ${trig.length} triggered`);
+  assert.ok(AMBIENT_EFFECTS.length >= 50, `only ${AMBIENT_EFFECTS.length} ambient`);
+  const c = effectCatalog();
+  assert.equal(c.weather.length, 12);
+  assert.ok(c.critters.length >= 8 && c.transitions.length >= 8 && c.landmarks.length >= 20);
+  // no combat, gore or score-looking numbers in the town
+  for (const id of all) assert.doesNotMatch(id, /^(moves|melee|projectiles)\/|damage-number|crit-number|health-bar|heart-lost|bleeding|poisoned|burning|cursed|soul-rise|disintegrate|nuke|crt-off/);
+});
+
+test("standing loops stay on the map and critters only sway", () => {
+  for (const [i, loop] of LANDMARK_LOOPS.entries()) {
+    for (const t of [0, 3.3, 9.1]) {
+      const at = loopAt(loop, t, i);
+      assert.ok(at.x >= 0 && at.x <= 1216 && at.y >= 0 && at.y <= 1120, `${loop.id} leaves the map`);
+      if (!loop.drift) assert.deepEqual(at, { x: loop.x, y: loop.y });
+    }
+  }
 });
 
 test("daily magic is stable per day and the copy stays clean", () => {

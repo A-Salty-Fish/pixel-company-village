@@ -18,10 +18,16 @@ import {
 import { isKindnessKind, type VillageFx } from "@/lib/interactions";
 import { testHooksEnabled } from "@/lib/test-hooks";
 import {
+  COMBO_SPELL,
+  COMBO_TAPS,
+  COMBO_WINDOW_MS,
   KIND_SPELLS,
   MAGIC_DAILY_ENABLED,
   MAGIC_SPELLS_ENABLED,
+  MAGIC_UI_FEEDBACK_ENABLED,
   PERSON_SPELLS,
+  SELF_SPELLS,
+  STATUS_AFTER,
   dailyMagic,
   groundSpell,
   hitLandmark,
@@ -343,6 +349,11 @@ export function VillageScene({
     setCamMark({ x: Math.round(focus.x), y: Math.round(focus.y), zoom: nextZoom });
     glowUntilRef.current = Date.now() + FIND_ME_HOLD_MS;
     aimHoldRef.current = Date.now() + IDENTITY_LAND_MS;
+    // landing on yourself: a star iris sweep and a level-up sparkle on your cat
+    if (magicRef.current && lifeRef.current?.magic && lifeRef.current.magic !== "off" && !lifeRef.current.reduceMotion) {
+      magicRef.current.transition("transitions/star-iris");
+      if (MAGIC_UI_FEEDBACK_ENABLED) magicRef.current.cast("ui/level-up", person.x, person.y);
+    }
     kickRef.current?.();
   }, [identityPulse, life.selfName]);
 
@@ -664,7 +675,10 @@ export function VillageScene({
               const target = list.find((v) => v.name === (activeFx.partner ?? activeFx.actor));
               if (target) {
                 roll.n += 1;
-                layer.cast(pickSpell(KIND_SPELLS, roll.n), target.x, target.y);
+                const spell = pickSpell(KIND_SPELLS, roll.n);
+                layer.cast(spell, target.x, target.y);
+                const after = STATUS_AFTER[spell];
+                if (after) layer.castOn(after.id, target.name, after.seconds);
               }
             }
           }
@@ -678,7 +692,11 @@ export function VillageScene({
             } catch {
               seen = false;
             }
-            if (!seen) layer.cast(daily.opener, PLAZA.x, PLAZA.y);
+            if (!seen) {
+              layer.cast(daily.opener, PLAZA.x, PLAZA.y);
+              // first visit of the day: a small achievement banner pops over the plaza
+              if (MAGIC_UI_FEEDBACK_ENABLED) layer.cast("ui/achievement", PLAZA.x, PLAZA.y - 70);
+            }
           }
           const span = viewSpan(zoomRef.current);
           layer.render(
@@ -801,15 +819,21 @@ export function VillageScene({
         roll.n += 1;
         const seed = roll.n * 7 + Math.floor(Math.random() * 1000);
         const mark = found ? null : hitLandmark(world.x, world.y);
+        const layer = magicRef.current;
         if (found) {
-          const spell = pickSpell(PERSON_SPELLS, seed, roll.last);
+          const self = found.name === lifeRef.current.selfName;
+          const spell = pickSpell(self && MAGIC_UI_FEEDBACK_ENABLED ? SELF_SPELLS : PERSON_SPELLS, seed, roll.last);
           roll.last = spell;
-          magicRef.current.cast(spell, found.x, found.y);
+          layer.cast(spell, found.x, found.y);
+          const after = STATUS_AFTER[spell];
+          if (after) layer.castOn(after.id, found.name, after.seconds);
         } else if (mark) {
-          magicRef.current.cast(mark.cast, mark.x, mark.y + (mark.castDy ?? 0));
+          layer.cast(mark.cast, mark.x, mark.y + (mark.castDy ?? 0));
         } else {
-          magicRef.current.cast(groundSpell(world.x, world.y), world.x, world.y);
+          layer.cast(groundSpell(world.x, world.y, seed, Boolean(lifeRef.current.sessionNight)), world.x, world.y);
         }
+        // five quick taps: a combo counter pops where the last one landed
+        if (MAGIC_UI_FEEDBACK_ENABLED && layer.noteTap(COMBO_WINDOW_MS, COMBO_TAPS, Date.now())) layer.cast(COMBO_SPELL, world.x, world.y - 24);
       }
       if (found) {
         tapRef.current = { name: found.name, at: Date.now() };

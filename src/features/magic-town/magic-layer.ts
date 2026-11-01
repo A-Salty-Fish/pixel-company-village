@@ -8,6 +8,11 @@ import type { FxCore, FxInstance, FxModule } from "./magic-registry";
 import {
   weatherIsSky,
   LANDMARKS,
+  LANDMARK_LOOPS,
+  TRANSITIONS,
+  MAGIC_CRITTERS_ENABLED,
+  loopAt,
+  loopIsCritter,
   auraFor,
   pickAuras,
   weatherBand,
@@ -45,12 +50,26 @@ export function magicReady() {
   return Boolean(registry);
 }
 
-/** A blank 24x38 actor so actor effects (halo, heal, blessing) draw no stock dummy over the cat. */
+/**
+ * A cat-shaped 24x38 actor mask with no pixels: actor effects (frozen, electrified, warp-in) get an outline
+ * to hug, but no stock dummy is drawn over the village cat.
+ */
+let catMask: Uint8Array | null = null;
 function blankActor() {
   const w = 24;
   const h = 38;
+  if (!catMask) {
+    catMask = new Uint8Array(w * h);
+    for (let y = 0; y < h; y += 1)
+      for (let x = 0; x < w; x += 1) {
+        const body = ((x - 12) / 9) ** 2 + ((y - 28) / 10) ** 2 <= 1;
+        const head = (x - 12) ** 2 + (y - 12) ** 2 <= 64;
+        const ear = y >= 2 && y <= 7 && (Math.abs(x - 6) <= (y - 2) / 2 || Math.abs(x - 18) <= (y - 2) / 2);
+        if (body || head || ear) catMask[y * w + x] = 1;
+      }
+  }
   return {
-    mask: { w, h, data: new Uint8Array(w * h) },
+    mask: { w, h, data: catMask },
     pixels: new Uint32Array(w * h),
     x: -12,
     y: -38,
@@ -59,6 +78,10 @@ function blankActor() {
     k: 2,
     head: [0, -38],
     chest: [0, -26],
+    eyes: [
+      [9, 11],
+      [15, 11],
+    ],
   };
 }
 
@@ -71,13 +94,38 @@ function makeCanvas(w: number, h: number): HTMLCanvasElement {
 
 /* ------------------------------------------------------------- baked loops */
 
-type Strip = { canvas: HTMLCanvasElement; w: number; h: number; ax: number; ay: number; frames: number; fps: number };
+type Strip = {
+  canvas: HTMLCanvasElement;
+  w: number;
+  h: number;
+  ax: number;
+  ay: number;
+  frames: number;
+  fps: number;
+  /** Paint tick this strip was last drawn on, for the LRU. */
+  used: number;
+};
 
 const strips = new Map<string, Strip | "pending">();
 const bakeQueue: { key: string; id: string; opts: Record<string, unknown> }[] = [];
 
 const BAKE_FPS = 12;
 const BAKE_MAX = 40;
+let paintTick = 0;
+/** Strips kept in memory; phones keep fewer. The least recently drawn go first. */
+function stripCap() {
+  return typeof window !== "undefined" && window.innerWidth < 600 ? 40 : 80;
+}
+function evictStrips() {
+  const cap = stripCap();
+  const ready = [...strips.entries()].filter((entry): entry is [string, Strip] => entry[1] !== "pending");
+  if (ready.length <= cap) return;
+  ready.sort((a, b) => a[1].used - b[1].used);
+  for (const [key, strip] of ready.slice(0, ready.length - cap)) {
+    if (strip.used >= paintTick - 1) break;
+    strips.delete(key);
+  }
+}
 
 function bake(reg: Registry, id: string, opts: Record<string, unknown>): Strip | null {
   const mod = reg.FX[id];
@@ -98,24 +146,55 @@ function bake(reg: Registry, id: string, opts: Record<string, unknown>): Strip |
     for (let s = 0; s < duration; s += 1 / 30) fx.update(1 / 30);
   }
   const frame = reg.CORE.createFrame(w, h, 0, 0);
-  const canvas = makeCanvas(w * frames, h);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
-  const image = ctx.createImageData(w, h);
+  // render every frame once, then keep only the box that ever lights up, so big canvases cost little memory
+  const images: Uint8ClampedArray[] = [];
+  let x0 = w;
+  let y0 = h;
+  let x1 = -1;
+  let y1 = -1;
   for (let i = 0; i < frames; i += 1) {
     reg.CORE.clearFrame(frame);
     fx.draw(frame);
-    reg.CORE.composite(frame, image.data, null, Number(opts.light ?? 1));
-    ctx.putImageData(image, i * w, 0);
+    const data = new Uint8ClampedArray(w * h * 4);
+    reg.CORE.composite(frame, data, null, Number(opts.light ?? 1));
+    for (let y = 0; y < h; y += 1)
+      for (let x = 0; x < w; x += 1)
+        if (data[(y * w + x) * 4 + 3] > 0) {
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+    images.push(data);
     fx.update(1 / fps);
   }
-  return { canvas, w, h, ax, ay, frames, fps };
+  if (x1 < 0) {
+    x0 = 0;
+    y0 = 0;
+    x1 = 0;
+    y1 = 0;
+  }
+  const cw = x1 - x0 + 1;
+  const ch = y1 - y0 + 1;
+  const canvas = makeCanvas(cw * frames, ch);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  const image = ctx.createImageData(cw, ch);
+  images.forEach((data, i) => {
+    for (let y = 0; y < ch; y += 1)
+      image.data.set(data.subarray(((y + y0) * w + x0) * 4, ((y + y0) * w + x0 + cw) * 4), y * cw * 4);
+    ctx.putImageData(image, i * cw, 0);
+  });
+  return { canvas, w: cw, h: ch, ax: ax - x0, ay: ay - y0, frames, fps, used: paintTick };
 }
 
 function stripFor(reg: Registry, id: string, opts: Record<string, unknown> = {}): Strip | null {
   const key = `${id}|${JSON.stringify(opts)}`;
   const got = strips.get(key);
-  if (got && got !== "pending") return got;
+  if (got && got !== "pending") {
+    got.used = paintTick;
+    return got;
+  }
   if (!got) {
     strips.set(key, "pending");
     bakeQueue.push({ key, id, opts });
@@ -133,6 +212,7 @@ function drainBakes(reg: Registry, budgetMs: number) {
     if (strip) strips.set(job.key, strip);
     else strips.delete(job.key);
   }
+  evictStrips();
 }
 
 /* ------------------------------------------------------------- view */
@@ -178,41 +258,12 @@ function drawStrip(
 
 /* ------------------------------------------------------------- landmarks */
 
-type Loop = { id: string; x: number; y: number; opts?: Record<string, unknown>; scale?: number; alpha?: number; night?: boolean; day?: boolean };
+/** Rough world-pixel reach of a loop, for culling before a strip is ever baked. */
+const LOOP_REACH = 90;
 
-/** The standing magic of the town. World pixels, kept off the plot rows. */
-export const LANDMARK_LOOPS: readonly Loop[] = [
-  // 魔法阵广场: rune circle on the crossroads, braziers on two corners
-  { id: "arcane/rune-circle", x: 608, y: 676, scale: 0.6 },
-  { id: "fire/brazier", x: 568, y: 640, scale: 0.42 },
-  { id: "fire/brazier", x: 648, y: 640, scale: 0.42, opts: { seed: 5 } },
-  // 村口传送门 beside the gate post
-  { id: "arcane/portal", x: 60, y: 206, scale: 0.42 },
-  // 许愿泉 on the pond bank, with fish under the water and ripples
-  { id: "water/fountain", x: 300, y: 204, scale: 0.42 },
-  { id: "critters/fish-school", x: 120, y: 84, scale: 0.6, alpha: 0.85 },
-  { id: "water/ripples", x: 176, y: 108, scale: 0.5, alpha: 0.7 },
-  // 篝火 by the picnic spot
-  { id: "fire/campfire", x: 660, y: 214, scale: 0.4 },
-  // 浮空灯 over the path lantern
-  { id: "fire/spirit-flame", x: 610, y: 222, scale: 0.34, opts: { palette: ["#3a1406", "#7a2a0a", "#c8561a", "#f29a32", "#ffd06a", "#fff1b8"] } },
-  { id: "fire/candle", x: 586, y: 214, scale: 0.5 },
-  { id: "fire/candle", x: 634, y: 210, scale: 0.5, opts: { seed: 7 } },
-  // chimney smoke on the two houses
-  { id: "village/chimney-smoke", x: 510, y: 104, alpha: 0.85 },
-  { id: "village/chimney-smoke", x: 782, y: 120, alpha: 0.85, opts: { seed: 8 } },
-  // road glints on the top road and the long street
-  { id: "village/road-glint", x: 380, y: 230, night: true },
-  { id: "village/road-glint", x: 860, y: 230, night: true, opts: { seed: 12 } },
-  { id: "village/road-glint", x: 608, y: 450, night: true, opts: { along: "y", seed: 14 } },
-  { id: "village/road-glint", x: 300, y: 658, night: true, opts: { seed: 16 } },
-  { id: "village/road-glint", x: 920, y: 658, night: true, opts: { seed: 18 } },
-  // wisps and butterflies drift over the meadow
-  { id: "critters/wisp", x: 1000, y: 120, scale: 0.5, night: true },
-  { id: "critters/wisp", x: 250, y: 560, scale: 0.5, night: true, opts: { seed: 3 } },
-  { id: "critters/butterfly", x: 960, y: 110, scale: 0.6, day: true },
-  { id: "critters/butterfly", x: 300, y: 330, scale: 0.6, day: true, opts: { seed: 5 } },
-];
+function onScreen(view: MagicView, wx: number, wy: number, reach: number) {
+  return wx > view.camX - reach && wy > view.camY - reach && wx < view.camX + view.spanW + reach && wy < view.camY + view.spanH + reach;
+}
 
 /* ------------------------------------------------------------- spells */
 
@@ -242,7 +293,31 @@ const SPELL_SCALE: Record<string, number> = {
   "spawn/coin-drop": 0.7,
   "arcane/star-fall": 0.8,
 };
-const SPELL_STOP: Record<string, number> = { "holy/blessing": 2.4, "holy/heal": 2.2 };
+/** Loop effects played as spells are let go after a beat, so they end on their own fade. */
+const SPELL_STOP: Record<string, number> = {
+  "holy/blessing": 2.4,
+  "holy/heal": 2.2,
+  "nature/leaf-storm": 2.4,
+  "water/water-orb": 2.2,
+  "pickups/power-star": 2,
+  "scifi/force-field": 2.4,
+  "arcane/spell-charge": 2,
+  "lightning/ball-lightning": 2.2,
+  "holy/divine-shield": 2.4,
+  "lightning/electrified": 2,
+  "scifi/glitch": 1.6,
+  "fire/fire-ring": 2.2,
+};
+/** Spells on big canvases are shrunk so a tap never floods a phone screen. */
+function spellScale(id: string, w: number, h: number) {
+  if (SPELL_SCALE[id] !== undefined) return SPELL_SCALE[id];
+  const size = Math.max(w, h);
+  if (id === "ice/frost-nova") return 0.55;
+  return size > 200 ? 0.6 : size > 140 ? 0.75 : 1;
+}
+
+type Status = { id: string; name: string; until: number; offset: number };
+type Transition = { fx: FxInstance; canvas: HTMLCanvasElement; frame: ReturnType<FxCore["createFrame"]>; image: ImageData; w: number; h: number };
 
 /* ------------------------------------------------------------- the layer */
 
@@ -285,6 +360,14 @@ export class MagicLayer {
   /** Smoothed seconds between paints. A slow phone drops to a lighter magic budget on its own. */
   private gap = 1 / 60;
   private strained = false;
+  private statuses: Status[] = [];
+  private transitionNow: Transition | null = null;
+  private transitionQueue: string[] = [];
+  private transitionTurn = 0;
+  private lastNight: boolean | null = null;
+  private zoomAnchor = 0;
+  private transitionAt = -99;
+  private taps: number[] = [];
   stats: MagicStats = { ready: false, weather: [], auras: 0, spells: 0, landmarks: 0, baked: 0, ms: 0 };
 
   /** Queue a spell at world pixels. Plays once the effects bundle has loaded. */
@@ -294,13 +377,39 @@ export class MagicLayer {
     if (this.queued.length > 12) this.queued.shift();
   }
 
+  /** Hang a short-lived status (dizzy stars, a little chill) on a person; it follows them until it ends. */
+  castOn(id: string, name: string, seconds: number) {
+    this.statuses = this.statuses.filter((status) => status.name !== name);
+    this.statuses.push({ id, name, until: this.last + seconds, offset: (this.statuses.length * 0.41) % 1 });
+    if (this.statuses.length > 6) this.statuses.shift();
+  }
+
+  /** Play a screen-wide transition sweep. Ignored when one is already running or the budget has none. */
+  transition(id?: string) {
+    const next = id ?? TRANSITIONS[this.transitionTurn++ % TRANSITIONS.length];
+    if (this.transitionQueue.length || this.transitionNow) return;
+    this.transitionQueue.push(next);
+  }
+
+  /** Count quick taps; the fifth inside the window returns true once so the scene can pop a combo counter. */
+  noteTap(windowMs: number, taps: number, at: number) {
+    this.taps = this.taps.filter((stamp) => at - stamp < windowMs);
+    this.taps.push(at);
+    if (this.taps.length < taps) return false;
+    this.taps = [];
+    return true;
+  }
+
   clear() {
     this.spells = [];
     this.queued = [];
+    this.statuses = [];
+    this.transitionNow = null;
+    this.transitionQueue = [];
   }
 
   get liveSpells() {
-    return this.spells.length + this.queued.length;
+    return this.spells.length + this.queued.length + (this.transitionNow || this.transitionQueue.length ? 1 : 0);
   }
 
   render(ctx: CanvasRenderingContext2D, view: MagicView, input: MagicInput) {
@@ -323,19 +432,23 @@ export class MagicLayer {
     else if (this.strained && this.gap < 1 / 40) this.strained = false;
     if (this.strained) budget = strainedBudget(budget);
 
+    paintTick += 1;
     drainBakes(reg, budget.animate ? (this.strained ? 2 : 6) : 40);
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // landmarks
+    // landmarks and critters: cull first (so off-screen strips never bake), then keep the head of the list
     let landmarks = 0;
     if (budget.landmarks) {
-      for (let i = 0; i < LANDMARK_LOOPS.length; i += 1) {
+      for (let i = 0; i < LANDMARK_LOOPS.length && landmarks < budget.landmarkCap; i += 1) {
         const loop = LANDMARK_LOOPS[i];
         if (loop.night && !input.night) continue;
         if (loop.day && input.night) continue;
+        if (loopIsCritter(loop) && !MAGIC_CRITTERS_ENABLED) continue;
+        const at = loopAt(loop, time, i);
+        if (!onScreen(view, at.x, at.y, LOOP_REACH * (loop.scale ?? 1))) continue;
         const strip = stripFor(reg, loop.id, { seed: 1, ...(loop.opts ?? {}) });
-        if (strip && drawStrip(ctx, view, strip, loop.x, loop.y, time + i * 0.37, loop.scale ?? 1, (loop.alpha ?? 1) * Math.min(1, budget.glow + 0.25)))
+        if (strip && drawStrip(ctx, view, strip, Math.round(at.x), Math.round(at.y), time + i * 0.37, loop.scale ?? 1, (loop.alpha ?? 1) * Math.min(1, budget.glow + 0.25)))
           landmarks += 1;
       }
     }
@@ -356,7 +469,18 @@ export class MagicLayer {
         const strip = stripFor(reg, ...auraStrip(aura));
         if (!strip) continue;
         const offset = (person.id % 7) * 0.53;
-        if (drawStrip(ctx, view, strip, person.x, person.y - 2, time + offset, aura.kind === "holy" ? 0.8 : 1, aura.kind === "sleepy" ? 0.8 : 1)) auras += 1;
+        if (drawStrip(ctx, view, strip, person.x, person.y - 2, time + offset, auraScale(aura), aura.kind === "sleepy" || aura.kind === "dozing" ? 0.8 : 1)) auras += 1;
+      }
+    }
+
+    // short statuses that follow a person after a spell
+    this.statuses = this.statuses.filter((status) => status.until > input.now);
+    if (budget.spells > 0 && budget.animate) {
+      for (const status of this.statuses) {
+        const person = input.people.find((candidate) => candidate.name === status.name);
+        if (!person || !onScreen(view, person.x, person.y, 40)) continue;
+        const strip = stripFor(reg, status.id, { seed: 2 });
+        if (strip) drawStrip(ctx, view, strip, person.x, person.y - 2, time + status.offset, 0.6, 0.95);
       }
     }
 
@@ -400,13 +524,28 @@ export class MagicLayer {
     const plan = budget.weather > 0 ? weatherPlan(input).slice(0, budget.weather) : [];
     if (plan.length && budget.animate) this.paintWeather(ctx, reg, view, plan, input.now, budget);
 
+    // transitions: a sweep when night falls or the view jumps a long way in or out
+    if (this.lastNight !== null && this.lastNight !== input.night) this.transition("transitions/blinds");
+    this.lastNight = input.night;
+    if (!this.zoomAnchor) this.zoomAnchor = view.spanW;
+    const ratio = view.spanW / this.zoomAnchor;
+    if (ratio > 1.6 || ratio < 1 / 1.6) {
+      if (input.now - this.transitionAt >= 4) this.transition();
+      this.zoomAnchor = view.spanW;
+    }
+    if (budget.transitions && budget.animate) this.paintTransition(ctx, reg, view, dt, input.now, budget);
+    else {
+      this.transitionNow = null;
+      this.transitionQueue = [];
+    }
+
     ctx.restore();
     this.stats = {
       ready: true,
       lite: this.strained,
       weather: plan,
       auras,
-      spells: this.spells.length,
+      spells: this.liveSpells,
       landmarks,
       baked: [...strips.values()].filter((value) => value !== "pending").length,
       ms: Math.round((performance.now() - t0) * 100) / 100,
@@ -436,13 +575,48 @@ export class MagicLayer {
       h,
       ax,
       ay,
-      scale: SPELL_SCALE[id] ?? 1,
+      scale: spellScale(id, w, h),
       canvas,
       frame: reg.CORE.createFrame(w, h, 0, 0),
       image: ctx.createImageData(w, h),
       dirtyAt: -1,
       stopAfter: SPELL_STOP[id] ?? (meta.loop ? 2.5 : Infinity),
     };
+  }
+
+  private paintTransition(ctx: CanvasRenderingContext2D, reg: Registry, view: MagicView, dt: number, now: number, budget: MagicBudget) {
+    if (!this.transitionNow && this.transitionQueue.length) {
+      const id = this.transitionQueue.shift() as string;
+      const mod = reg.FX[id];
+      if (mod) {
+        const w = mod.meta?.size?.[0] ?? 320;
+        const h = mod.meta?.size?.[1] ?? 180;
+        const canvas = makeCanvas(w, h);
+        const cctx = canvas.getContext("2d");
+        if (cctx) {
+          const fx = reg.CORE.createFx(mod, { x: mod.meta?.origin?.[0] ?? w / 2, y: mod.meta?.origin?.[1] ?? h / 2, seed: 5 });
+          this.transitionNow = { fx, canvas, frame: reg.CORE.createFrame(w, h, 0, 0), image: cctx.createImageData(w, h), w, h };
+          this.transitionAt = now;
+        }
+      }
+    }
+    const run = this.transitionNow;
+    if (!run) return;
+    run.fx.update(dt);
+    if (run.fx.done() || run.fx.t > 2.4) {
+      this.transitionNow = null;
+      return;
+    }
+    reg.CORE.clearFrame(run.frame);
+    run.fx.draw(run.frame);
+    reg.CORE.composite(run.frame, run.image.data, null, budget.glow);
+    run.canvas.getContext("2d")?.putImageData(run.image, 0, 0);
+    // light only: the sweep's dark half adds nothing, so the village never blacks out
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.45;
+    ctx.drawImage(run.canvas, 0, 0, view.viewW, view.viewH);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
   }
 
   private paintWeather(
@@ -560,7 +734,17 @@ function auraStrip(aura: Aura): [string, Record<string, unknown>] {
   if (aura.kind === "arcane") return ["village/arcane-motes", { tier: aura.tier, seed: 3 }];
   if (aura.kind === "fish") return ["village/fish-bubbles", { tier: aura.tier, seed: 7 }];
   if (aura.kind === "holy") return ["holy/halo", { seed: 1, light: 0.8 + aura.tier * 0.15 }];
+  if (aura.kind === "charged") return ["arcane/spell-charge", { seed: 4 }];
+  if (aura.kind === "dozing") return ["status/sleep", { seed: 6 }];
+  if (aura.kind === "popular") return ["status/charmed", { seed: 8 }];
   return ["village/sleepy-sparkle", { seed: 2 }];
+}
+
+function auraScale(aura: Aura) {
+  if (aura.kind === "holy") return 0.8;
+  if (aura.kind === "charged") return 0.5;
+  if (aura.kind === "dozing" || aura.kind === "popular") return 0.6;
+  return 1;
 }
 
 export { LANDMARKS };
