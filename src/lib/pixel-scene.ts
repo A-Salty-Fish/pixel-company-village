@@ -1629,6 +1629,8 @@ export function paintVillage(
   dpr: number,
   fx: VillageFx | null = null,
   life: SceneLife | null = null,
+  /** Drawn over the world and night wash, under the name plates (magic-town layer). */
+  overlay: ((ctx: CanvasRenderingContext2D) => void) | null = null,
 ) {
   if (!artReady()) return { plates: 0, shortPlates: 0, reads: [] };
   ensureGround();
@@ -1824,6 +1826,7 @@ export function paintVillage(
       afterglowAlpha(elapsed, Boolean(life.reduceMotion)),
     );
   }
+  if (overlay) overlay(ctx);
   return drawNameLabels(ctx, villagers, zoom, camX, camY, emphasize, viewW, viewH, dpr, life);
 }
 

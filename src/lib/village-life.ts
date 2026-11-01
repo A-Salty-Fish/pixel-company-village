@@ -9,6 +9,7 @@ import {
   type KindnessEntry,
 } from "@/lib/quota-rules";
 import type { WaveDecor } from "@/lib/wave-d";
+import { DEFAULT_MAGIC_LEVEL, magicLevelFrom, type MagicLevel } from "@/features/magic-town/magic-town";
 import type { PersonWithState, ScorePayload } from "@/lib/types";
 
 /**
@@ -46,6 +47,8 @@ export type Comfort = {
   jobLook: boolean;
   /** True keeps PV-PM-022 silent. Default true. */
   sfxMuted: boolean;
+  /** PV-MAGIC-001 魔法：多 / 少 / 关. Default 多. */
+  magic: MagicLevel;
 };
 
 export type MotionFlags = {
@@ -131,6 +134,8 @@ export type SceneLife = {
   findPathAt?: number | null;
   /** PV-PM-122. Canvas bitmap Y the nearest plates must stay above. Null when the strip is clear. */
   plateClearBottom?: number | null;
+  /** PV-MAGIC-001. Magic level from 体贴设置. Missing means 关 (tests and old callers). */
+  magic?: MagicLevel;
 };
 
 export const DEFAULT_COMFORT: Comfort = {
@@ -143,6 +148,7 @@ export const DEFAULT_COMFORT: Comfort = {
   festivalSkin: true,
   jobLook: true,
   sfxMuted: true,
+  magic: DEFAULT_MAGIC_LEVEL,
 };
 
 const COMFORT_KEY = "village-comfort-v1";
@@ -422,6 +428,7 @@ export function comfortFromStorage(raw: string | null): Comfort {
       festivalSkin: stored.festivalSkin !== undefined ? Boolean(stored.festivalSkin) : true,
       jobLook: stored.jobLook !== undefined ? Boolean(stored.jobLook) : true,
       sfxMuted: stored.sfxMuted !== undefined ? Boolean(stored.sfxMuted) : true,
+      magic: magicLevelFrom(stored.magic),
     };
   } catch {
     return { ...DEFAULT_COMFORT };

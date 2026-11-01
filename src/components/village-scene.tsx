@@ -15,7 +15,21 @@ import {
   placeVillagers,
   updateVillager,
 } from "@/lib/pixel-scene";
-import type { VillageFx } from "@/lib/interactions";
+import { isKindnessKind, type VillageFx } from "@/lib/interactions";
+import { testHooksEnabled } from "@/lib/test-hooks";
+import {
+  KIND_SPELLS,
+  MAGIC_DAILY_ENABLED,
+  MAGIC_SPELLS_ENABLED,
+  PERSON_SPELLS,
+  dailyMagic,
+  groundSpell,
+  hitLandmark,
+  magicBudget,
+  pickSpell,
+  type MagicLevel,
+} from "@/features/magic-town/magic-town";
+import { MagicLayer, type MagicPerson } from "@/features/magic-town/magic-layer";
 import { deriveLoadStage, loadStageLabel, type LoadStage } from "@/lib/load-machine";
 import { hitSpot } from "@/lib/play-systems";
 import type { PersonWithState } from "@/lib/types";
@@ -161,6 +175,8 @@ export function VillageScene({
   const fxRef = useRef(fx);
   const lifeRef = useRef(life);
   const tapRef = useRef<{ name: string; at: number } | null>(null);
+  const magicRef = useRef<MagicLayer | null>(null);
+  const magicRoll = useRef({ n: 0, last: "" as string, fxId: -1, opened: "" });
   const legendRef = useRef<HTMLDetailsElement>(null);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
@@ -628,6 +644,67 @@ export function VillageScene({
         dpr,
         activeFx && Date.now() - activeFx.startedAt < activeFx.duration ? activeFx : null,
         lifeRef.current,
+        (overlayCtx) => {
+          // PV-MAGIC-001: fx over the world, under the plates
+          const lifeMagic = lifeRef.current;
+          const level: MagicLevel = lifeMagic?.magic ?? "off";
+          const narrow = canvas.clientWidth > 0 && canvas.clientWidth < 600;
+          const budget = magicBudget(level, { reduceMotion: Boolean(lifeMagic?.reduceMotion), narrow });
+          if (!magicRef.current) {
+            if (!budget.on) return;
+            magicRef.current = new MagicLayer();
+          }
+          const layer = magicRef.current;
+          const clock = shanghaiClock();
+          const daily = MAGIC_DAILY_ENABLED ? dailyMagic(clock.ymd) : null;
+          const roll = magicRoll.current;
+          if (budget.on && budget.spells > 0 && activeFx && activeFx.id !== roll.fxId && nowMs - activeFx.startedAt < activeFx.duration) {
+            roll.fxId = activeFx.id;
+            if (activeFx.kind === "wave" || isKindnessKind(activeFx.kind)) {
+              const target = list.find((v) => v.name === (activeFx.partner ?? activeFx.actor));
+              if (target) {
+                roll.n += 1;
+                layer.cast(pickSpell(KIND_SPELLS, roll.n), target.x, target.y);
+              }
+            }
+          }
+          if (daily && budget.animate && budget.spells > 0 && roll.opened !== clock.ymd && layer.stats.ready) {
+            roll.opened = clock.ymd;
+            const key = `village-magic-opened:${clock.ymd}`;
+            let seen = false;
+            try {
+              seen = window.sessionStorage.getItem(key) === "1";
+              window.sessionStorage.setItem(key, "1");
+            } catch {
+              seen = false;
+            }
+            if (!seen) layer.cast(daily.opener, PLAZA.x, PLAZA.y);
+          }
+          const span = viewSpan(zoomRef.current);
+          layer.render(
+            overlayCtx,
+            {
+              camX: camRef.current.x,
+              camY: camRef.current.y,
+              spanW: span.w,
+              spanH: span.h,
+              viewW: canvas.width,
+              viewH: canvas.height,
+              dpr,
+            },
+            {
+              budget,
+              night: Boolean(lifeMagic?.sessionNight),
+              hour: clock.hour,
+              seasonId: lifeMagic?.decor?.seasonId ?? "",
+              daily,
+              people: list as unknown as MagicPerson[],
+              now: budget.animate ? (now - start) / 1000 : 0,
+            },
+          );
+          host.dataset.magic = budget.on ? level : "off";
+          host.dataset.magicSpells = String(layer.stats.spells);
+        },
       );
       host.dataset.plateCount = String(painted.plates);
       host.dataset.plateShort = String(painted.shortPlates);
@@ -718,6 +795,22 @@ export function VillageScene({
       const moved = drag.current?.moved ?? false;
       drag.current = null;
       if (moved) return;
+      if (MAGIC_SPELLS_ENABLED && magicRef.current && lifeRef.current?.magic && lifeRef.current.magic !== "off" && !lifeRef.current.reduceMotion) {
+        // PV-MAGIC-001: every tap casts something; the tap still does its usual job below
+        const roll = magicRoll.current;
+        roll.n += 1;
+        const seed = roll.n * 7 + Math.floor(Math.random() * 1000);
+        const mark = found ? null : hitLandmark(world.x, world.y);
+        if (found) {
+          const spell = pickSpell(PERSON_SPELLS, seed, roll.last);
+          roll.last = spell;
+          magicRef.current.cast(spell, found.x, found.y);
+        } else if (mark) {
+          magicRef.current.cast(mark.cast, mark.x, mark.y + (mark.castDy ?? 0));
+        } else {
+          magicRef.current.cast(groundSpell(world.x, world.y), world.x, world.y);
+        }
+      }
       if (found) {
         tapRef.current = { name: found.name, at: Date.now() };
         if (lifeRef.current) {
@@ -821,6 +914,35 @@ export function VillageScene({
       canvas.removeEventListener("wheel", onWheel);
     };
   }, [people, bootAttempt]);
+
+  useEffect(() => {
+    // PV-MAGIC-001 test hook: cast and read the magic layer from e2e and screenshot scripts
+    if (!testHooksEnabled() || typeof window === "undefined") return;
+    const hook = {
+      cast: (id: string, x: number, y: number) => {
+        if (!magicRef.current) magicRef.current = new MagicLayer();
+        magicRef.current.cast(id, x, y);
+        kickRef.current?.();
+        return true;
+      },
+      state: () => ({ ...(magicRef.current?.stats ?? { ready: false }), level: lifeRef.current?.magic ?? "off" }),
+      look: (x: number, y: number, zoom: number) => {
+        userCam.current = true;
+        gateHeldRef.current = true;
+        const z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(zoom)));
+        zoomRef.current = z;
+        setZoom(z);
+        const span = viewSpan(z);
+        camRef.current = clampCamera(x - span.w / 2, y - span.h / 2, z);
+        kickRef.current?.();
+        return { ...camRef.current, zoom: z };
+      },
+    };
+    (window as unknown as { __VILLAGE_MAGIC__?: typeof hook }).__VILLAGE_MAGIC__ = hook;
+    return () => {
+      delete (window as unknown as { __VILLAGE_MAGIC__?: typeof hook }).__VILLAGE_MAGIC__;
+    };
+  }, []);
 
   const applyZoom = (next: number) => {
     userCam.current = true;

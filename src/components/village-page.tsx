@@ -969,6 +969,7 @@ export function VillagePage({ initial }: Props) {
   });
   const liveCue = waveCue && coOn && companionReadOn() ? waveCue : null;
   const life: SceneLife = {
+    magic: comfort.magic,
     quiet: comfort.quiet,
     reduceMotion: motion.reduced,
     seasonTint: season.tint,

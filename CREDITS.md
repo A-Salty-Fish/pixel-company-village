@@ -24,6 +24,15 @@ Sprites below are the ones drawn in the village. The Little Wilds zip is not red
 - https://opengameart.org/content/farming-crops-16x16
 - Used: growth stages on the plots (portrait cells omitted)
 
+## pixelfx
+
+- patch-gg/pixelfx, MIT License, Copyright (c) 2026 Patch
+- https://github.com/patch-gg/pixelfx (commit a84159688af3ca37a4be05a0d422b94451b2e24e)
+- Vendored in `src/vendor/pixelfx/` with its `LICENSE` and `NOTICE.md`: the core painter and the weather, fire, water, arcane, holy, nature, ice, critter, firework, pickup and confetti effects the magic town draws. Four weather loops carry a small `haze: false` patch.
+- Carried-over credits inside pixelfx: Sprite Fusion pixel art VFX by Hugo Duprez (MIT) and Hollow Crown by rehan-remade (MIT, `core/sim.js`, `core/act.js`); their file headers are kept as is.
+- The village's own effects in `src/features/magic-town/fx/` are written against the pixelfx core and say so at the top.
+- The Patch Pixel font is not covered by pixelfx's license and is not used or copied.
+
 ## Not shipped
 
 - Sunlit Meadow, Emberglen Meadow, Market Day Folk, and Cute Farmer are not drawn.
