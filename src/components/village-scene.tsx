@@ -8,6 +8,7 @@ import {
   cameraFocus,
   clampCamera,
   viewSpan,
+  setViewDevice,
   defaultCamera,
   hitTest,
   paintBootField,
@@ -36,7 +37,7 @@ import {
   type MagicLevel,
 } from "@/features/magic-town/magic-town";
 import { MagicLayer, type MagicPerson } from "@/features/magic-town/magic-layer";
-import { LONG_PRESS_MS, MAGIC_PLAY_ENABLED } from "@/features/magic-play/magic-play";
+import { DOUBLE_TAP_MS, LONG_PRESS_MS, MAGIC_PLAY_ENABLED } from "@/features/magic-play/magic-play";
 import { PlayController, type PlaySpot } from "@/features/magic-play/play-controller";
 import { playMagicSfx } from "@/features/gesture-sfx/gesture-sfx";
 import { deriveLoadStage, loadStageLabel, type LoadStage } from "@/lib/load-machine";
@@ -185,6 +186,8 @@ export function VillageScene({
   const lifeRef = useRef(life);
   const tapRef = useRef<{ name: string; at: number } | null>(null);
   const magicRef = useRef<MagicLayer | null>(null);
+  const groundTimer = useRef(0);
+  const selectTimer = useRef(0);
   const magicRoll = useRef({ n: 0, last: "" as string, fxId: -1, opened: "" });
   const legendRef = useRef<HTMLDetailsElement>(null);
   const [failed, setFailed] = useState(false);
@@ -476,6 +479,7 @@ export function VillageScene({
         canvas.width = nextW;
         canvas.height = nextH;
       }
+      setViewDevice(nextW, nextH);
       const rawW = Math.floor(host.clientWidth);
       const rawH = Math.floor(host.clientHeight);
       if (!fitted.current && !userCam.current && rawW > 0 && rawH > 0) {
@@ -712,13 +716,14 @@ export function VillageScene({
           layer.render(
             overlayCtx,
             {
-              camX: camRef.current.x,
-              camY: camRef.current.y,
+              camX: Math.round(camRef.current.x),
+              camY: Math.round(camRef.current.y),
               spanW: span.w,
               spanH: span.h,
               viewW: canvas.width,
               viewH: canvas.height,
               dpr,
+              zoom: zoomRef.current,
             },
             {
               budget,
@@ -795,6 +800,9 @@ export function VillageScene({
 
     // PV-MAGIC-PLAY-001: wizard play rides on the same taps; null when magic is off, still or reduced
     let pressTimer = 0;
+    /** PV-MAGIC-STYLE-001: how long a phone waits before a tapped wizard's card covers half the map. */
+    const CARD_DELAY_MS = 520;
+    const rect0Narrow = () => canvas.getBoundingClientRect().width < 600;
     const playOn = () => {
       const lifeNow = lifeRef.current;
       if (!MAGIC_PLAY_ENABLED || !MAGIC_SPELLS_ENABLED || !magicRef.current || !lifeNow?.magic || lifeNow.magic === "off" || lifeNow.reduceMotion) return null;
@@ -917,8 +925,18 @@ export function VillageScene({
           const game = on ? on.play.tapLandmark(layer, mark.id, tapAt) : { handled: false };
           if (!game.handled) layer.cast(mark.cast, mark.x, mark.y + (mark.castDy ?? 0));
           if (game.travel) travelTo(game.travel);
-        } else if (!on?.play.tapGround(layer, world, tapAt, seed)) {
-          layer.cast(groundSpell(world.x, world.y, seed, Boolean(lifeRef.current.sessionNight)), world.x, world.y);
+        } else {
+          // PV-MAGIC-STYLE-001: ground magic waits out the double-tap window, so the first tap of a double stays quiet
+          window.clearTimeout(groundTimer.current);
+          layer.wake(world.x, world.y);
+          if (!on?.play.groundDouble(layer, world, tapAt)) {
+            const night = Boolean(lifeRef.current.sessionNight);
+            groundTimer.current = window.setTimeout(() => {
+              const live = playOn();
+              if (!live?.play.groundSingle(live.layer, world, seed)) layer.cast(groundSpell(world.x, world.y, seed, night), world.x, world.y);
+              playFlush();
+            }, on ? DOUBLE_TAP_MS : 0);
+          }
         }
         playFlush();
         // five quick taps: a combo counter pops where the last one landed
@@ -931,10 +949,16 @@ export function VillageScene({
           lifeRef.current.tapAt = tapRef.current.at;
         }
         kickRef.current?.();
-        onSelectRef.current(found.name);
+        // PV-MAGIC-STYLE-001: on a phone the card halves the map; with magic play on it waits a beat,
+        // so a quick second tap on another wizard (a chain) lands before the card opens
+        window.clearTimeout(selectTimer.current);
+        const name = found.name;
+        if (playOn() && rect0Narrow()) selectTimer.current = window.setTimeout(() => onSelectRef.current(name), CARD_DELAY_MS);
+        else onSelectRef.current(name);
         return;
       }
       tapRef.current = null;
+      window.clearTimeout(selectTimer.current);
       if (lifeRef.current) {
         lifeRef.current.tapName = null;
         lifeRef.current.tapAt = null;
@@ -1020,6 +1044,8 @@ export function VillageScene({
 
     return () => {
       window.clearTimeout(focusTimer);
+      window.clearTimeout(groundTimer.current);
+      window.clearTimeout(selectTimer.current);
       cancelAnimationFrame(frame);
       window.clearInterval(stageTimer);
       document.removeEventListener("visibilitychange", kick);

@@ -44,14 +44,14 @@ function paintCostume(g: CanvasRenderingContext2D, style: WizardStyle, dir: Faci
   for (let r = 0; r < rows; r += 1) {
     const y = top + r;
     const half = Math.min(11, (side ? 7 : 6) + Math.round((r / Math.max(1, rows - 1)) * (side ? 4 : 5)));
+    // PV-MAGIC-STYLE-001: one light from the top left: a lit column on the left, a two-pixel shade on the right
     px(-half, y, half * 2, 1, robe);
-    px(-half, y, 1, 1, shade);
-    px(half - 1, y, 1, 1, shade);
-    if (r >= 2 && r < rows - 3) px(-half + 1, y, 1, 1, light);
+    px(half - 2, y, 2, 1, shade);
+    if (r >= 1 && r < rows - 2) px(-half + 1, y, 1, 1, light);
+    if (r >= rows - 2) px(-half, y, half * 2, 1, shade);
     if (!side && dir === "down" && r >= 5 && r < rows - 1) px(0, y, 1, 1, shade);
     if (side && r >= 6 && r < rows - 1) px(dir === "right" ? -2 : 1, y, 1, 1, shade);
   }
-  px(-11, bottom, 22, 1, shade);
   if (style.trim >= 1) px(-10, bottom - 1, 20, 1, TRIM);
   if (style.trim >= 2) for (let x = -8; x <= 7; x += 3) px(x, bottom - 4, 1, 1, TRIM);
   if (dir === "down") {
@@ -129,6 +129,35 @@ function paintCostume(g: CanvasRenderingContext2D, style: WizardStyle, dir: Faci
   }
 }
 
+/** PV-MAGIC-STYLE-001: one dark outline around the hat and robe, so a wizard reads at a glance even zoomed out. */
+export const WIZARD_OUTLINE_ENABLED = true;
+const OUTLINE = "#2a1e2e";
+const OUTLINE_RGB = [0x2a, 0x1e, 0x2e];
+
+function outline(g: CanvasRenderingContext2D, headTop: number) {
+  const image = g.getImageData(0, 0, W, H);
+  const data = image.data;
+  const solid = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H && data[(y * W + x) * 4 + 3] > 0;
+  // the face between the brim and the collar keeps the cat's own outline
+  const faceTop = OY + headTop + 8;
+  const faceBottom = OY + headTop + 16;
+  const marks: number[] = [];
+  for (let y = 0; y < H; y += 1)
+    for (let x = 0; x < W; x += 1) {
+      if (solid(x, y)) continue;
+      if (y >= faceTop && y <= faceBottom && Math.abs(x - OX) <= 8) continue;
+      if (solid(x - 1, y) || solid(x + 1, y) || solid(x, y - 1) || solid(x, y + 1)) marks.push(x, y);
+    }
+  for (let i = 0; i < marks.length; i += 2) {
+    const o = (marks[i + 1] * W + marks[i]) * 4;
+    data[o] = OUTLINE_RGB[0];
+    data[o + 1] = OUTLINE_RGB[1];
+    data[o + 2] = OUTLINE_RGB[2];
+    data[o + 3] = 255;
+  }
+  g.putImageData(image, 0, 0);
+}
+
 function costume(style: WizardStyle, dir: Facing, headTop: number, seated: boolean) {
   const key = `${style.key}|${dir}|${headTop}|${seated ? 1 : 0}|${style.gem}`;
   const hit = cache.get(key);
@@ -148,6 +177,7 @@ function costume(style: WizardStyle, dir: Facing, headTop: number, seated: boole
   }
   g.imageSmoothingEnabled = false;
   paintCostume(g, style, dir, headTop, seated);
+  if (WIZARD_OUTLINE_ENABLED) outline(g, headTop);
   cache.set(key, canvas);
   return canvas;
 }
@@ -197,40 +227,61 @@ function drawStaff(
   const grain = style.plain ? "#8e6a44" : "#a8703a";
   let tipX: number;
   let tipY: number;
+  const sway = Math.round(pose.sway);
   if (pose.swing === 0) {
     const lower = Math.round(length * 0.55);
+    if (WIZARD_OUTLINE_ENABLED) {
+      ctx.fillStyle = OUTLINE;
+      ctx.fillRect(baseX - 1, baseY - lower, 4, lower + 1);
+      ctx.fillRect(baseX + sway - 1, baseY - length - 1, 4, length - lower + 1);
+    }
     ctx.fillStyle = wood;
     ctx.fillRect(baseX, baseY - lower, 2, lower);
-    ctx.fillRect(baseX + pose.sway, baseY - length, 2, length - lower);
+    ctx.fillRect(baseX + sway, baseY - length, 2, length - lower);
     ctx.fillStyle = grain;
     ctx.fillRect(baseX, baseY - lower + 2, 1, lower - 4);
-    tipX = baseX + pose.sway;
+    tipX = baseX + sway;
     tipY = baseY - length;
   } else {
     const toward = dir === "down" || dir === "left" ? -1 : 1;
     const angle = pose.swing * 0.95 * toward;
     const sin = Math.sin(angle);
     const cos = Math.cos(angle);
+    if (WIZARD_OUTLINE_ENABLED) {
+      ctx.fillStyle = OUTLINE;
+      for (let i = 0; i < length; i += 1) ctx.fillRect(Math.round(baseX + sin * i) - 1, Math.round(baseY - cos * i) - 1, 4, 3);
+    }
     ctx.fillStyle = wood;
     for (let i = 0; i < length; i += 1) ctx.fillRect(Math.round(baseX + sin * i), Math.round(baseY - cos * i), 2, 1);
     tipX = Math.round(baseX + sin * length);
     tipY = Math.round(baseY - cos * length);
   }
   if (style.plain) {
+    if (WIZARD_OUTLINE_ENABLED) {
+      ctx.fillStyle = OUTLINE;
+      ctx.fillRect(tipX - 2, tipY - 3, 6, 5);
+    }
     ctx.fillStyle = "#5a3a1c";
     ctx.fillRect(tipX - 1, tipY - 2, 4, 3);
     return;
   }
-  // crook and gem
+  // crook and gem, outlined
+  if (WIZARD_OUTLINE_ENABLED) {
+    ctx.fillStyle = OUTLINE;
+    ctx.fillRect(tipX - 2, tipY - 5, 6, 6);
+    ctx.fillRect(tipX - 1, tipY - 6, 4, 1);
+  }
   ctx.fillStyle = wood;
   ctx.fillRect(tipX - 1, tipY - 1, 4, 1);
   const gem = GEMS[style.gem];
-  const glow = prop === "raise" && !reduced ? 0.5 + Math.sin(t * 6) * 0.5 : 0;
+  // the glow breathes on the shared 12fps step, in two flat levels, as a plus shape (no soft blob)
+  const glow = prop === "raise" && !reduced ? 0.5 + Math.sin(Math.floor(t * 12) / 2) * 0.5 : 0;
   const flash = Math.max(pose.flash, glow);
-  if (flash > 0.05) {
-    ctx.globalAlpha = 0.35 * flash;
+  if (flash > 0.25) {
+    ctx.globalAlpha = flash > 0.66 ? 0.5 : 0.25;
     ctx.fillStyle = gem;
-    ctx.fillRect(tipX - 3, tipY - 6, 8, 7);
+    ctx.fillRect(tipX - 3, tipY - 4, 8, 3);
+    ctx.fillRect(tipX - 1, tipY - 7, 4, 8);
     ctx.globalAlpha = 1;
   }
   ctx.fillStyle = gem;

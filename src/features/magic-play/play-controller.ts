@@ -214,17 +214,31 @@ export class PlayController {
   /** Tap on open ground. True when it became a double-tap spell or a summon. */
   tapGround(host: PlayHost, spot: PlaySpot, at: number, seed: number) {
     if (!MAGIC_PLAY_ENABLED) return false;
+    if (this.groundDouble(host, spot, at)) return true;
+    return this.groundSingle(host, spot, seed);
+  }
+
+  /**
+   * First half of a ground tap: a second tap close by and quick is a double-tap burst (true).
+   * Otherwise the tap is remembered and the scene waits out the double-tap window before groundSingle,
+   * so the first tap of a double never summons or casts on its own.
+   */
+  groundDouble(host: PlayHost, spot: PlaySpot, at: number) {
+    if (!MAGIC_PLAY_ENABLED) return false;
     this.chain = null;
     const tap = { ...spot, at };
     const double = CHARGE_ENABLED && isDoubleTap(this.lastTap, tap);
     this.lastTap = double ? null : tap;
-    if (double) {
-      for (const id of ULTIMATES[1]) host.cast(id, spot.x, spot.y);
-      this.events.push({ toast: "双击 · 魔力迸发", sfx: "ultimate" });
-      this.badge("first-ultimate");
-      return true;
-    }
-    if (!SUMMON_ENABLED) return false;
+    if (!double) return false;
+    for (const id of ULTIMATES[1]) host.cast(id, spot.x, spot.y);
+    this.events.push({ toast: "双击 · 魔力迸发", sfx: "ultimate" });
+    this.badge("first-ultimate");
+    return true;
+  }
+
+  /** Second half of a single ground tap: maybe a summon. True when something was summoned. */
+  groundSingle(host: PlayHost, spot: PlaySpot, seed: number) {
+    if (!MAGIC_PLAY_ENABLED || !SUMMON_ENABLED) return false;
     this.groundTaps += 1;
     const summon = summonFor(this.groundTaps, seed);
     if (!summon) return false;

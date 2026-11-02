@@ -1,28 +1,43 @@
 /**
  * The magic overlay painter. Runs in the browser only, after the world is blitted and before name plates.
  * Loops (landmarks, auras) are baked once into frame strips, so a frame costs a few drawImage calls.
- * Weather and one-shot spells render live into small pixel frames at a capped rate.
+ * One-shot spells render live into small pixel frames on the shared 12fps step; the standing air is hand-painted
+ * (ambient-layer). PV-MAGIC-STYLE-001: every strip is shrunk to whole world pixels and recoloured into the town ramps.
  * Effects: pixelfx by patch-gg (MIT), vendored under src/vendor/pixelfx.
  */
 import { WIZARD_LOOK_ENABLED } from "@/features/wizard-look/wizard-look";
 import { PlayLayer } from "@/features/magic-play/play-layer";
+import {
+  auraCap,
+  envelope,
+  harmonize,
+  loopCap,
+  smoothstep,
+  STEP_FPS,
+  zoomTier,
+  type Tier,
+  type ZoomTier,
+} from "@/features/magic-style/magic-style";
+import { AmbientLayer } from "./ambient-layer";
 import type { FxCore, FxInstance, FxModule } from "./magic-registry";
 import {
-  weatherIsSky,
+  FIRE_GLOW,
   LANDMARKS,
   LANDMARK_LOOPS,
   TRANSITIONS,
   MAGIC_CRITTERS_ENABLED,
   loopAt,
   loopIsCritter,
+  loopShows,
+  loopTier,
   auraFor,
   pickAuras,
-  weatherBand,
   weatherPlan,
   strainedBudget,
   type Aura,
   type AuraInput,
   type DailyMagic,
+  type Loop,
   type MagicBudget,
 } from "./magic-town";
 
@@ -98,8 +113,10 @@ function makeCanvas(w: number, h: number): HTMLCanvasElement {
 
 type Strip = {
   canvas: HTMLCanvasElement;
+  /** Size of one frame in world pixels, after the bake scale. */
   w: number;
   h: number;
+  /** Anchor inside a frame, whole world pixels. */
   ax: number;
   ay: number;
   frames: number;
@@ -108,10 +125,11 @@ type Strip = {
   used: number;
 };
 
+type BakeJob = { key: string; id: string; opts: Record<string, unknown>; scale: number; tier: Tier };
 const strips = new Map<string, Strip | "pending">();
-const bakeQueue: { key: string; id: string; opts: Record<string, unknown> }[] = [];
+const bakeQueue: BakeJob[] = [];
 
-const BAKE_FPS = 12;
+const BAKE_FPS = STEP_FPS;
 const BAKE_MAX = 40;
 let paintTick = 0;
 /** Strips kept in memory; phones keep fewer. The least recently drawn go first. */
@@ -129,7 +147,21 @@ function evictStrips() {
   }
 }
 
-function bake(reg: Registry, id: string, opts: Record<string, unknown>): Strip | null {
+/** Shrink an RGBA frame to whole pixels with a soft filter, then snap it to the ramps and quarter alphas. */
+function shrinkFrame(src: HTMLCanvasElement, tw: number, th: number, tier: Tier): ImageData | null {
+  const out = makeCanvas(tw, th);
+  const octx = out.getContext("2d", { willReadFrequently: true });
+  if (!octx) return null;
+  octx.imageSmoothingEnabled = tw !== src.width || th !== src.height;
+  octx.imageSmoothingQuality = "high";
+  octx.drawImage(src, 0, 0, src.width, src.height, 0, 0, tw, th);
+  const image = octx.getImageData(0, 0, tw, th);
+  harmonize(image.data, tier);
+  return image;
+}
+
+function bake(reg: Registry, job: BakeJob): Strip | null {
+  const { id, opts, scale, tier } = job;
   const mod = reg.FX[id];
   if (!mod) return null;
   const meta = mod.meta ?? {};
@@ -178,20 +210,28 @@ function bake(reg: Registry, id: string, opts: Record<string, unknown>): Strip |
   }
   const cw = x1 - x0 + 1;
   const ch = y1 - y0 + 1;
-  const canvas = makeCanvas(cw * frames, ch);
+  const tw = Math.max(1, Math.round(cw * scale));
+  const th = Math.max(1, Math.round(ch * scale));
+  const canvas = makeCanvas(tw * frames, th);
   const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
-  const image = ctx.createImageData(cw, ch);
-  images.forEach((data, i) => {
+  const crop = makeCanvas(cw, ch);
+  const cctx = crop.getContext("2d");
+  if (!ctx || !cctx) return null;
+  const image = cctx.createImageData(cw, ch);
+  for (let i = 0; i < images.length; i += 1) {
+    const data = images[i];
     for (let y = 0; y < ch; y += 1)
       image.data.set(data.subarray(((y + y0) * w + x0) * 4, ((y + y0) * w + x0 + cw) * 4), y * cw * 4);
-    ctx.putImageData(image, i * cw, 0);
-  });
-  return { canvas, w: cw, h: ch, ax: ax - x0, ay: ay - y0, frames, fps, used: paintTick };
+    cctx.putImageData(image, 0, 0);
+    const small = shrinkFrame(crop, tw, th, tier);
+    if (small) ctx.putImageData(small, i * tw, 0);
+  }
+  return { canvas, w: tw, h: th, ax: Math.round((ax - x0) * scale), ay: Math.round((ay - y0) * scale), frames, fps, used: paintTick };
 }
 
-function stripFor(reg: Registry, id: string, opts: Record<string, unknown> = {}): Strip | null {
-  const key = `${id}|${JSON.stringify(opts)}`;
+function stripFor(reg: Registry, id: string, opts: Record<string, unknown> = {}, scale = 1, tier: Tier = "ambient"): Strip | null {
+  const s = Math.round(scale * 100) / 100;
+  const key = `${id}|${JSON.stringify(opts)}|${s}|${tier}`;
   const got = strips.get(key);
   if (got && got !== "pending") {
     got.used = paintTick;
@@ -199,7 +239,7 @@ function stripFor(reg: Registry, id: string, opts: Record<string, unknown> = {})
   }
   if (!got) {
     strips.set(key, "pending");
-    bakeQueue.push({ key, id, opts });
+    bakeQueue.push({ key, id, opts, scale: s, tier });
   }
   return null;
 }
@@ -210,7 +250,7 @@ function drainBakes(reg: Registry, budgetMs: number) {
   while (bakeQueue.length && performance.now() - start < budgetMs) {
     const job = bakeQueue.shift();
     if (!job) break;
-    const strip = bake(reg, job.id, job.opts);
+    const strip = bake(reg, job);
     if (strip) strips.set(job.key, strip);
     else strips.delete(job.key);
   }
@@ -227,34 +267,38 @@ export type MagicView = {
   viewW: number;
   viewH: number;
   dpr: number;
+  /** Camera zoom step (1 map, 2 near, 3 close); effects size and thin out by it. */
+  zoom?: number;
 };
 
-function toScreen(view: MagicView, wx: number, wy: number) {
-  const sx = view.viewW / view.spanW;
-  const sy = view.viewH / view.spanH;
-  return { x: (wx - view.camX) * sx, y: (wy - view.camY) * sy, sx, sy };
+/** Device pixels per world pixel. One number for both axes (PV-PIXEL-SNAP-001). */
+function scaleOf(view: MagicView) {
+  return view.viewW / view.spanW;
 }
 
-function drawStrip(
-  ctx: CanvasRenderingContext2D,
-  view: MagicView,
-  strip: Strip,
-  wx: number,
-  wy: number,
-  time: number,
-  scale = 1,
-  alpha = 1,
-) {
-  const at = toScreen(view, wx, wy);
-  const w = strip.w * at.sx * scale;
-  const h = strip.h * at.sy * scale;
-  const x = at.x - strip.ax * at.sx * scale;
-  const y = at.y - strip.ay * at.sy * scale;
-  if (x > view.viewW || y > view.viewH || x + w < 0 || y + h < 0) return false;
+function toScreen(view: MagicView, wx: number, wy: number) {
+  const k = scaleOf(view);
+  return { x: (wx - view.camX) * k, y: (wy - view.camY) * k, k };
+}
+
+/** Draw one frame of a strip with its anchor on a whole world pixel; the strip is already at its final world size. */
+function drawStrip(ctx: CanvasRenderingContext2D, view: MagicView, strip: Strip, wx: number, wy: number, time: number, alpha = 1) {
+  const k = scaleOf(view);
+  const left = Math.round(wx) - strip.ax - view.camX;
+  const top = Math.round(wy) - strip.ay - view.camY;
+  const x = Math.round(left * k);
+  const y = Math.round(top * k);
+  const w = Math.round((left + strip.w) * k) - x;
+  const h = Math.round((top + strip.h) * k) - y;
+  if (x > view.viewW || y > view.viewH || x + w < 0 || y + h < 0 || w <= 0 || h <= 0) return false;
+  if (alpha <= 0.02) return false;
   const index = ((Math.floor(time * strip.fps) % strip.frames) + strip.frames) % strip.frames;
-  if (alpha < 1) ctx.globalAlpha = alpha;
-  ctx.drawImage(strip.canvas, index * strip.w, 0, strip.w, strip.h, Math.round(x), Math.round(y), Math.round(w), Math.round(h));
-  if (alpha < 1) ctx.globalAlpha = 1;
+  ctx.globalAlpha = Math.min(1, alpha);
+  // a full-map view shrinks the strip; there a soft filter beats dropped pixels
+  ctx.imageSmoothingEnabled = k < 1;
+  ctx.drawImage(strip.canvas, index * strip.w, 0, strip.w, strip.h, x, y, w, h);
+  ctx.imageSmoothingEnabled = false;
+  ctx.globalAlpha = 1;
   return true;
 }
 
@@ -262,9 +306,22 @@ function drawStrip(
 
 /** Rough world-pixel reach of a loop, for culling before a strip is ever baked. */
 const LOOP_REACH = 90;
+/** A tap wakes the quiet loops (road glints, frogs, bats) within this many world pixels, for a few seconds. */
+const WAKE_RADIUS = 140;
+const WAKE_LIFE = 8;
 
 function onScreen(view: MagicView, wx: number, wy: number, reach: number) {
   return wx > view.camX - reach && wy > view.camY - reach && wx < view.camX + view.spanW + reach && wy < view.camY + view.spanH + reach;
+}
+
+const TIER_RANK = { hero: 0, near: 1, close: 2, rest: 3 } as const;
+/** Loops in paint priority: the hero pieces first, so a cap trims the small stuff. */
+const LOOP_ORDER: { loop: Loop; index: number }[] = LANDMARK_LOOPS.map((loop, index) => ({ loop, index })).sort(
+  (a, b) => TIER_RANK[loopTier(a.loop)] - TIER_RANK[loopTier(b.loop)] || a.index - b.index,
+);
+
+function zoomRank(tier: ZoomTier) {
+  return tier === "map" ? 0 : tier === "near" ? 1 : 2;
 }
 
 /* ------------------------------------------------------------- spells */
@@ -281,12 +338,19 @@ type Spell = {
   scale: number;
   canvas: HTMLCanvasElement;
   frame: ReturnType<FxCore["createFrame"]>;
+  native: HTMLCanvasElement;
   image: ImageData;
-  dirtyAt: number;
+  /** Step index last drawn; spells redraw on the shared 12fps step. */
+  step: number;
   stopAfter: number;
+  /** Seconds of effect time at which the spell is fully faded. */
+  end: number;
 };
 
-const SPELL_FPS = 30;
+/** Spells redraw at this rate; motion between steps is the effect's own. */
+const SPELL_FPS = STEP_FPS;
+/** No spell grows past this many world pixels across. */
+const SPELL_MAX = 96;
 const SPELL_SCALE: Record<string, number> = {
   "arcane/magic-circle-cast": 0.55,
   "explosions/firework-rocket": 0.7,
@@ -312,14 +376,23 @@ const SPELL_STOP: Record<string, number> = {
 };
 /** Spells on big canvases are shrunk so a tap never floods a phone screen. */
 function spellScale(id: string, w: number, h: number) {
-  if (SPELL_SCALE[id] !== undefined) return SPELL_SCALE[id];
   const size = Math.max(w, h);
-  if (id === "ice/frost-nova") return 0.55;
-  return size > 200 ? 0.6 : size > 140 ? 0.75 : 1;
+  const base = SPELL_SCALE[id] ?? (id === "ice/frost-nova" ? 0.55 : size > 200 ? 0.6 : size > 140 ? 0.75 : 1);
+  return Math.min(base, SPELL_MAX / size);
 }
 
-type Status = { id: string; name: string; until: number; offset: number };
-type Transition = { fx: FxInstance; canvas: HTMLCanvasElement; frame: ReturnType<FxCore["createFrame"]>; image: ImageData; w: number; h: number };
+type Status = { id: string; name: string; born: number; until: number; offset: number };
+type Transition = {
+  fx: FxInstance;
+  canvas: HTMLCanvasElement;
+  frame: ReturnType<FxCore["createFrame"]>;
+  image: ImageData;
+  w: number;
+  h: number;
+  born: number;
+};
+const TRANSITION_LIFE = 1.6;
+const STATUS_CAP = 3;
 
 /* ------------------------------------------------------------- the layer */
 
@@ -348,17 +421,14 @@ export type MagicStats = {
   lite?: boolean;
   /** PV-MAGIC-PLAY-001 hand-drawn play marks on screen right now. */
   play?: PlayLayer["counts"];
+  /** PV-MAGIC-STYLE-001 ambient particles painted last frame, and the zoom tier. */
+  ambient?: number;
+  tier?: ZoomTier;
 };
 
 export class MagicLayer {
   private spells: Spell[] = [];
   private queued: { id: string; x: number; y: number; seed: number }[] = [];
-  private weatherFx = new Map<string, FxInstance>();
-  private weatherCanvas: HTMLCanvasElement | null = null;
-  private weatherFrame: ReturnType<FxCore["createFrame"]> | null = null;
-  private weatherImage: ImageData | null = null;
-  private weatherKey = "";
-  private weatherAt = -1;
   private last = -1;
   private seed = 1;
   /** Smoothed seconds between paints. A slow phone drops to a lighter magic budget on its own. */
@@ -368,10 +438,9 @@ export class MagicLayer {
   private transitionNow: Transition | null = null;
   private transitionQueue: string[] = [];
   private transitionTurn = 0;
-  private lastNight: boolean | null = null;
-  private zoomAnchor = 0;
-  private transitionAt = -99;
   private taps: number[] = [];
+  private wakes: { x: number; y: number; born: number }[] = [];
+  private ambient = new AmbientLayer();
   /** Beams, staff trails, the charge ring, summons and game pips (PV-MAGIC-PLAY-001). */
   readonly play = new PlayLayer();
   stats: MagicStats = { ready: false, weather: [], auras: 0, spells: 0, landmarks: 0, baked: 0, ms: 0 };
@@ -380,17 +449,24 @@ export class MagicLayer {
   cast(id: string, x: number, y: number) {
     this.seed = (this.seed * 1103515245 + 12345) >>> 0;
     this.queued.push({ id, x, y, seed: this.seed % 9973 });
-    if (this.queued.length > 12) this.queued.shift();
+    if (this.queued.length > 6) this.queued.shift();
   }
 
   /** Hang a short-lived status (dizzy stars, a little chill) on a person; it follows them until it ends. */
   castOn(id: string, name: string, seconds: number) {
     this.statuses = this.statuses.filter((status) => status.name !== name);
-    this.statuses.push({ id, name, until: this.last + seconds, offset: (this.statuses.length * 0.41) % 1 });
-    if (this.statuses.length > 6) this.statuses.shift();
+    this.statuses.push({ id, name, born: this.last, until: this.last + seconds, offset: (this.statuses.length * 0.41) % 1 });
+    while (this.statuses.length > STATUS_CAP) this.statuses.shift();
   }
 
-  /** Play a screen-wide transition sweep. Ignored when one is already running or the budget has none. */
+  /** Wake the quiet loops near a tap (road glints, frogs, bats) for a few seconds. */
+  wake(x: number, y: number) {
+    this.wakes = this.wakes.filter((wake) => Math.hypot(wake.x - x, wake.y - y) > 40);
+    this.wakes.push({ x, y, born: this.last });
+    if (this.wakes.length > 3) this.wakes.shift();
+  }
+
+  /** Play a screen-wide transition sweep. Only on request (a sign-in, the test hook); never on its own. */
   transition(id?: string) {
     const next = id ?? TRANSITIONS[this.transitionTurn++ % TRANSITIONS.length];
     if (this.transitionQueue.length || this.transitionNow) return;
@@ -412,6 +488,7 @@ export class MagicLayer {
     this.statuses = [];
     this.transitionNow = null;
     this.transitionQueue = [];
+    this.wakes = [];
     this.play.clear();
   }
 
@@ -439,113 +516,133 @@ export class MagicLayer {
     if (!this.strained && this.gap > 1 / 24) this.strained = true;
     else if (this.strained && this.gap < 1 / 40) this.strained = false;
     if (this.strained) budget = strainedBudget(budget);
+    const tier = zoomTier(view.zoom ?? 2);
+    const rank = zoomRank(tier);
+    const narrow = view.viewW / Math.max(1, view.dpr) < 600;
 
     paintTick += 1;
     drainBakes(reg, budget.animate ? (this.strained ? 2 : 6) : 40);
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // landmarks and critters: cull first (so off-screen strips never bake), then keep the head of the list
+    // the standing air goes first so every landmark and person sits on top of it
+    const plan = budget.weather > 0 && budget.animate ? weatherPlan(input).slice(0, budget.weather) : [];
+    const fires: { x: number; y: number; r: number }[] = [];
+
+    // landmarks and critters: hero pieces first, then near ones once zoomed in, small pickups only up close
     let landmarks = 0;
+    this.wakes = this.wakes.filter((wake) => input.now - wake.born < WAKE_LIFE);
+    const loopBudget = Math.min(budget.landmarkCap, loopCap(tier, narrow));
+    const glow = Math.min(1, budget.glow + 0.25);
     if (budget.landmarks) {
-      for (let i = 0; i < LANDMARK_LOOPS.length && landmarks < budget.landmarkCap; i += 1) {
-        const loop = LANDMARK_LOOPS[i];
-        if (loop.night && !input.night) continue;
-        if (loop.day && input.night) continue;
+      for (const { loop, index } of LOOP_ORDER) {
+        if (landmarks >= loopBudget) break;
         if (loopIsCritter(loop) && !MAGIC_CRITTERS_ENABLED) continue;
-        const at = loopAt(loop, time, i);
+        let alpha = (loop.alpha ?? 1) * glow;
+        if (loopTier(loop) === "rest") {
+          if (loop.night && !input.night) continue;
+          if (loop.day && input.night) continue;
+          let woke = 0;
+          for (const wake of this.wakes)
+            if (Math.hypot(wake.x - loop.x, wake.y - loop.y) < WAKE_RADIUS) woke = Math.max(woke, envelope(input.now - wake.born, WAKE_LIFE, 0.6, 2));
+          if (woke <= 0) continue;
+          alpha *= woke;
+        } else if (!loopShows(loop, rank, input.night)) continue;
+        const at = loopAt(loop, time, index);
         if (!onScreen(view, at.x, at.y, LOOP_REACH * (loop.scale ?? 1))) continue;
-        const strip = stripFor(reg, loop.id, { seed: 1, ...(loop.opts ?? {}) });
-        if (strip && drawStrip(ctx, view, strip, Math.round(at.x), Math.round(at.y), time + i * 0.37, loop.scale ?? 1, (loop.alpha ?? 1) * Math.min(1, budget.glow + 0.25)))
-          landmarks += 1;
+        if (input.night && FIRE_GLOW[loop.id]) fires.push({ x: Math.round(at.x), y: Math.round(at.y), r: Math.round(FIRE_GLOW[loop.id] * (loop.scale ?? 1)) });
+        const strip = stripFor(reg, loop.id, { seed: 1, ...(loop.opts ?? {}) }, loop.scale ?? 1, "ambient");
+        if (strip && drawStrip(ctx, view, strip, at.x, at.y, time + index * 0.37, alpha)) landmarks += 1;
       }
     }
+    // lantern pools, fireflies, falling petals, the aurora: painted under the people but over the ground loops
+    if (plan.length) this.ambient.paint(ctx, view, { plan, night: input.night, now: input.now, tier, narrow, fires });
+    else this.ambient.count = 0;
 
-    // auras: strongest first, only those on screen, capped
+    // auras: strongest first, only those on screen, capped hard; the sleepy sparkle is gone (it read as dust)
     let auras = 0;
-    if (budget.auras > 0) {
+    const auraBudget = Math.min(budget.auras, auraCap(tier, narrow));
+    if (auraBudget > 0) {
       const visible = input.people.filter((person) => {
         const at = toScreen(view, person.x, person.y);
         return at.x > -40 && at.y > -60 && at.x < view.viewW + 40 && at.y < view.viewH + 40;
       });
       const chosen = pickAuras(
-        visible.map((person) => ({ person, aura: auraFor(person) })),
-        budget.auras,
+        visible.map((person) => {
+          const aura = auraFor(person);
+          return { person, aura: aura && aura.kind !== "sleepy" ? aura : null };
+        }),
+        auraBudget,
       );
       for (const { person, aura } of chosen) {
         if (!aura) continue;
-        const strip = stripFor(reg, ...auraStrip(aura));
+        const strip = stripFor(reg, ...auraStrip(aura), auraScale(aura), "ambient");
         if (!strip) continue;
         const offset = (person.id % 7) * 0.53;
-        if (drawStrip(ctx, view, strip, person.x, person.y - 2 - auraLift(aura.kind), time + offset, auraScale(aura), aura.kind === "sleepy" || aura.kind === "dozing" ? 0.8 : 1)) auras += 1;
+        if (drawStrip(ctx, view, strip, person.x, person.y - 2 - auraLift(aura.kind), time + offset, aura.kind === "dozing" ? 0.8 : 0.9)) auras += 1;
       }
     }
 
-    // short statuses that follow a person after a spell
+    // short statuses that follow a person after a spell, easing in and out
     this.statuses = this.statuses.filter((status) => status.until > input.now);
     if (budget.spells > 0 && budget.animate) {
       for (const status of this.statuses) {
         const person = input.people.find((candidate) => candidate.name === status.name);
         if (!person || !onScreen(view, person.x, person.y, 40)) continue;
-        const strip = stripFor(reg, status.id, { seed: 2 });
-        if (strip) drawStrip(ctx, view, strip, person.x, person.y - 2 - (WIZARD_LOOK_ENABLED ? HAT_LIFT : 0), time + status.offset, 0.6, 0.95);
+        const strip = stripFor(reg, status.id, { seed: 2 }, 0.6, "play");
+        const fade = envelope(input.now - status.born, status.until - status.born, 0.25, 0.5);
+        if (strip) drawStrip(ctx, view, strip, person.x, person.y - 2 - (WIZARD_LOOK_ENABLED ? HAT_LIFT : 0), time + status.offset, fade);
       }
     }
 
-    // one-shot spells
+    // one-shot spells: redrawn on the 12fps step, shrunk to whole pixels, faded in and out
     if (budget.spells > 0 && budget.animate) {
       while (this.queued.length) {
         const next = this.queued.shift();
         if (!next) break;
         const spell = this.start(reg, next.id, next.x, next.y, next.seed);
         if (!spell) continue;
+        // a new spell close to an old one hurries the old one out, so taps never pile into a blob
+        for (const old of this.spells)
+          if (Math.hypot(old.x - spell.x, old.y - spell.y) < 36) old.end = Math.min(old.end, old.fx.t + 0.3);
         this.spells.push(spell);
         while (this.spells.length > budget.spells) this.spells.shift();
       }
       for (const spell of this.spells) {
         spell.fx.update(dt);
         if (spell.fx.t >= spell.stopAfter) spell.fx.stop();
-        if (input.now - spell.dirtyAt >= 1 / SPELL_FPS || spell.dirtyAt < 0) {
-          spell.dirtyAt = input.now;
+        const step = Math.floor(spell.fx.t * SPELL_FPS);
+        if (step !== spell.step) {
+          spell.step = step;
           reg.CORE.clearFrame(spell.frame);
           spell.fx.draw(spell.frame);
           reg.CORE.composite(spell.frame, spell.image.data, null, budget.glow);
-          spell.canvas.getContext("2d")?.putImageData(spell.image, 0, 0);
+          spell.native.getContext("2d")?.putImageData(spell.image, 0, 0);
+          const small = shrinkFrame(spell.native, spell.canvas.width, spell.canvas.height, "play");
+          if (small) spell.canvas.getContext("2d")?.putImageData(small, 0, 0);
         }
-        const at = toScreen(view, spell.x, spell.y);
-        const w = spell.w * at.sx * spell.scale;
-        const h = spell.h * at.sy * spell.scale;
-        ctx.drawImage(
-          spell.canvas,
-          Math.round(at.x - spell.ax * at.sx * spell.scale),
-          Math.round(at.y - spell.ay * at.sy * spell.scale),
-          Math.round(w),
-          Math.round(h),
+        const fade = envelope(spell.fx.t, spell.end, 0.15, 0.3);
+        drawStrip(
+          ctx,
+          view,
+          { canvas: spell.canvas, w: spell.canvas.width, h: spell.canvas.height, ax: spell.ax, ay: spell.ay, frames: 1, fps: 1, used: paintTick },
+          spell.x,
+          spell.y,
+          0,
+          fade,
         );
       }
-      this.spells = this.spells.filter((spell) => !spell.fx.done());
+      this.spells = this.spells.filter((spell) => !spell.fx.done() && spell.fx.t < spell.end);
       this.play.paint(ctx, view, this.strained, (id, x, y, scale, alpha, at) => {
         if (!onScreen(view, x, y, LOOP_REACH * scale)) return false;
-        const strip = stripFor(reg, id, { seed: 3 });
-        return strip ? drawStrip(ctx, view, strip, Math.round(x), Math.round(y), at, scale, alpha) : false;
+        const strip = stripFor(reg, id, { seed: 3 }, scale, "play");
+        return strip ? drawStrip(ctx, view, strip, x, y, at, alpha) : false;
       });
     } else {
       this.clear();
     }
 
-    // weather, in screen space, a few times a second
-    const plan = budget.weather > 0 ? weatherPlan(input).slice(0, budget.weather) : [];
-    if (plan.length && budget.animate) this.paintWeather(ctx, reg, view, plan, input.now, budget);
-
-    // transitions: a sweep when night falls or the view jumps a long way in or out
-    if (this.lastNight !== null && this.lastNight !== input.night) this.transition("transitions/blinds");
-    this.lastNight = input.night;
-    if (!this.zoomAnchor) this.zoomAnchor = view.spanW;
-    const ratio = view.spanW / this.zoomAnchor;
-    if (ratio > 1.6 || ratio < 1 / 1.6) {
-      if (input.now - this.transitionAt >= 4) this.transition();
-      this.zoomAnchor = view.spanW;
-    }
+    // transitions: only when asked for, soft and short
     if (budget.transitions && budget.animate) this.paintTransition(ctx, reg, view, dt, input.now, budget);
     else {
       this.transitionNow = null;
@@ -563,6 +660,8 @@ export class MagicLayer {
       baked: [...strips.values()].filter((value) => value !== "pending").length,
       ms: Math.round((performance.now() - t0) * 100) / 100,
       play: this.play.counts,
+      ambient: this.ambient.count,
+      tier,
     };
   }
 
@@ -577,24 +676,30 @@ export class MagicLayer {
     const options: Record<string, unknown> = { x: ax, y: ay, seed };
     if (meta.actor) options.actor = blankActor();
     const fx = reg.CORE.createFx(mod, options);
-    const canvas = makeCanvas(w, h);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
+    const native = makeCanvas(w, h);
+    const nctx = native.getContext("2d");
+    if (!nctx) return null;
+    const scale = spellScale(id, w, h);
+    const canvas = makeCanvas(Math.max(1, Math.round(w * scale)), Math.max(1, Math.round(h * scale)));
+    const stopAfter = SPELL_STOP[id] ?? (meta.loop ? 2.5 : Infinity);
+    const end = Number.isFinite(stopAfter) ? stopAfter + 0.5 : Math.max(0.6, meta.duration ?? 1.6);
     return {
       id,
       fx,
-      x,
-      y,
+      x: Math.round(x),
+      y: Math.round(y),
       w,
       h,
-      ax,
-      ay,
-      scale: spellScale(id, w, h),
+      ax: Math.round(ax * scale),
+      ay: Math.round(ay * scale),
+      scale,
       canvas,
+      native,
       frame: reg.CORE.createFrame(w, h, 0, 0),
-      image: ctx.createImageData(w, h),
-      dirtyAt: -1,
-      stopAfter: SPELL_STOP[id] ?? (meta.loop ? 2.5 : Infinity),
+      image: nctx.createImageData(w, h),
+      step: -1,
+      stopAfter,
+      end,
     };
   }
 
@@ -609,141 +714,31 @@ export class MagicLayer {
         const cctx = canvas.getContext("2d");
         if (cctx) {
           const fx = reg.CORE.createFx(mod, { x: mod.meta?.origin?.[0] ?? w / 2, y: mod.meta?.origin?.[1] ?? h / 2, seed: 5 });
-          this.transitionNow = { fx, canvas, frame: reg.CORE.createFrame(w, h, 0, 0), image: cctx.createImageData(w, h), w, h };
-          this.transitionAt = now;
+          this.transitionNow = { fx, canvas, frame: reg.CORE.createFrame(w, h, 0, 0), image: cctx.createImageData(w, h), w, h, born: now };
         }
       }
     }
     const run = this.transitionNow;
     if (!run) return;
+    const age = now - run.born;
     run.fx.update(dt);
-    if (run.fx.done() || run.fx.t > 2.4) {
+    if (run.fx.done() || age > TRANSITION_LIFE) {
       this.transitionNow = null;
       return;
     }
-    reg.CORE.clearFrame(run.frame);
-    run.fx.draw(run.frame);
-    reg.CORE.composite(run.frame, run.image.data, null, budget.glow);
-    run.canvas.getContext("2d")?.putImageData(run.image, 0, 0);
-    // light only: the sweep's dark half adds nothing, so the village never blacks out
+    if (Math.floor(age * SPELL_FPS) !== Math.floor((age - dt) * SPELL_FPS) || age === 0) {
+      reg.CORE.clearFrame(run.frame);
+      run.fx.draw(run.frame);
+      reg.CORE.composite(run.frame, run.image.data, null, budget.glow);
+      harmonize(run.image.data, "play");
+      run.canvas.getContext("2d")?.putImageData(run.image, 0, 0);
+    }
+    // light only and soft: a gentle wash that rises and settles, never a flash
     ctx.globalCompositeOperation = "lighter";
-    ctx.globalAlpha = 0.45;
+    ctx.globalAlpha = 0.28 * Math.sin(Math.PI * smoothstep(age / TRANSITION_LIFE));
     ctx.drawImage(run.canvas, 0, 0, view.viewW, view.viewH);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
-  }
-
-  private paintWeather(
-    ctx: CanvasRenderingContext2D,
-    reg: Registry,
-    view: MagicView,
-    plan: string[],
-    now: number,
-    budget: MagicBudget,
-  ) {
-    const W = 320;
-    const H = 180;
-    const key = plan.join(",");
-    if (key !== this.weatherKey) {
-      this.weatherKey = key;
-      this.weatherFx.clear();
-      this.weatherAt = -1;
-    }
-    if (!this.weatherCanvas) {
-      this.weatherCanvas = makeCanvas(W, H * plan.length);
-      this.weatherFrame = reg.CORE.createFrame(W, H, 0, 0);
-      this.weatherImage = new ImageData(W, H);
-    }
-    if (this.weatherCanvas.height !== H * plan.length) this.weatherCanvas.height = H * plan.length;
-    const frame = this.weatherFrame;
-    const image = this.weatherImage;
-    const wctx = this.weatherCanvas.getContext("2d");
-    if (!frame || !image || !wctx) return;
-    const step = 1 / Math.max(1, budget.weatherFps);
-    if (this.weatherAt < 0 || now - this.weatherAt >= step) {
-      const dt = this.weatherAt < 0 ? 0 : Math.min(0.25, now - this.weatherAt);
-      this.weatherAt = now;
-      plan.forEach((id, row) => {
-        let fx = this.weatherFx.get(id);
-        if (!fx) {
-          const mod = reg.FX[id];
-          if (!mod) return;
-          const ox = mod.meta?.origin?.[0] ?? 160;
-          const oy = mod.meta?.origin?.[1] ?? 170;
-          fx = reg.CORE.createFx(mod, { x: ox, y: oy, seed: 3 + row, haze: false });
-          // start mid-loop so particles already fill the sky
-          fx.update(2);
-          this.weatherFx.set(id, fx);
-        }
-        fx.update(dt);
-        reg.CORE.clearFrame(frame);
-        fx.draw(frame);
-        reg.CORE.composite(frame, image.data, null, budget.glow);
-        wctx.putImageData(image, 0, row * H);
-      });
-    }
-    // one weather pixel per world pixel, tiled; the tile's bottom strip (where leaves and snow settle) is cut off
-    // weather pixels are 2 CSS px on a wide desk; phones get the sparser grid below
-    const scaleX = view.viewW / view.spanW;
-    const dprN = Math.max(1, view.dpr);
-    // phones: 1 CSS px pixels and only every other tile (checkerboard), so a small screen gets a light sprinkle, not a storm
-    const narrow = view.viewW / dprN < 600;
-    const px = (narrow ? 1 : 2) * dprN;
-    const UH = 140;
-    const tileW = W * px;
-    const tileH = UH * px;
-    const source = this.weatherCanvas as HTMLCanvasElement;
-    plan.forEach((id, row) => {
-      const band = weatherBand(id);
-      const top = band.top * view.viewH;
-      const bottom = band.bottom * view.viewH;
-      ctx.globalAlpha = id === "weather/fog" ? 0.5 : id === "weather/god-rays" ? 0.65 : 1;
-      if (weatherIsSky(id)) {
-        // one stretched copy of the whole tile: aurora and stars hang from the top and fade out on their own,
-        // mist keeps only its lower bank and sits on the bottom edge
-        const dw = view.viewW;
-        const dh = Math.round(bottom - top);
-        const srcY = id === "weather/fog" ? 96 : 0;
-        const srcH = id === "weather/fog" ? 84 : H;
-        // sky layers add light only, so their dark backdrop never dims the village
-        const additive = id !== "weather/fog";
-        if (additive) {
-          ctx.globalCompositeOperation = "lighter";
-          ctx.globalAlpha = id === "weather/aurora" ? 0.36 : id === "weather/god-rays" ? 0.35 : 0.8;
-        }
-        ctx.drawImage(source, 0, row * H + srcY, W, srcH, 0, Math.round(top), dw, dh);
-        ctx.globalCompositeOperation = "source-over";
-        return;
-      }
-      const sparse = id === "weather/falling-leaves" || id === "weather/cherry-blossoms";
-      // anchor tiles to the world so weather drifts with the camera instead of sticking to the glass
-      const shiftX = -((((view.camX * scaleX) % tileW) + tileW) % tileW);
-      let j = 0;
-      for (let y = top; y < bottom; y += tileH, j += 1) {
-        const h = Math.min(tileH, bottom - y);
-        const srcH = Math.max(1, Math.round((h / tileH) * UH));
-        let i = 0;
-        for (let x = shiftX; x < view.viewW; x += tileW, i += 1) {
-          const dx = Math.round(x);
-          const dw = Math.round(x + tileW) - dx;
-          const dy = Math.round(y);
-          const dh = Math.round(y + h) - dy;
-          if (narrow && (i + j) % 2 === 1) continue;
-          // big leaves and petals: a desk keeps two tiles in three, so a close zoom stays airy
-          if (!narrow && sparse && (i + 2 * j) % 3 === 2) continue;
-          if ((i + j) % 2 === 1 || (narrow && j % 4 === 2)) {
-            ctx.save();
-            ctx.translate(dx + dw, dy);
-            ctx.scale(-1, 1);
-            ctx.drawImage(source, 0, row * H, W, srcH, 0, 0, dw, dh);
-            ctx.restore();
-          } else {
-            ctx.drawImage(source, 0, row * H, W, srcH, dx, dy, dw, dh);
-          }
-        }
-      }
-    });
-    ctx.globalAlpha = 1;
   }
 }
 

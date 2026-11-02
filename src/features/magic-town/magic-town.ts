@@ -106,8 +106,8 @@ export function magicBudget(
     animate: true,
     weather: MAGIC_AMBIENT_ENABLED ? (many ? 2 : 1) : 0,
     weatherFps: many ? (narrow ? 12 : 15) : 10,
-    auras: MAGIC_AURA_ENABLED ? (many ? (narrow ? 12 : 18) : 6) : 0,
-    spells: MAGIC_SPELLS_ENABLED ? (many ? (narrow ? 6 : 10) : 3) : 0,
+    auras: MAGIC_AURA_ENABLED ? (many ? (narrow ? 5 : 8) : 3) : 0,
+    spells: MAGIC_SPELLS_ENABLED ? (many ? (narrow ? 3 : 4) : 2) : 0,
     landmarks: MAGIC_LANDMARKS_ENABLED,
     landmarkCap: many ? (narrow ? 26 : 44) : 12,
     transitions: MAGIC_TRANSITIONS_ENABLED && many,
@@ -122,8 +122,8 @@ export function strainedBudget(budget: MagicBudget): MagicBudget {
     ...budget,
     weather: Math.min(budget.weather, 1),
     weatherFps: Math.min(budget.weatherFps, 8),
-    auras: Math.min(budget.auras, 6),
-    spells: Math.min(budget.spells, 4),
+    auras: Math.min(budget.auras, 3),
+    spells: Math.min(budget.spells, 2),
     landmarkCap: Math.min(budget.landmarkCap, 8),
     transitions: false,
   };
@@ -459,7 +459,11 @@ export type WeatherInput = {
   daily: DailyMagic | null;
 };
 
-/** Weather layers, most important first. The budget trims the tail. */
+/**
+ * Weather layers, most important first. The budget trims the tail.
+ * PV-MAGIC-STYLE-001: "less but finer". Night is fireflies plus, late or on an aurora day, a faint aurora;
+ * day is one slow falling kind (the daily pick or the season) and gold motes. No fog, rain or storms.
+ */
 export function weatherPlan(input: WeatherInput): string[] {
   const plan: string[] = [];
   const add = (id: string | null) => {
@@ -468,20 +472,15 @@ export function weatherPlan(input: WeatherInput): string[] {
   const daily = input.daily?.weather ?? null;
   if (input.night) {
     add("weather/fireflies");
-    if (daily === "weather/aurora" || daily === "weather/shooting-stars" || daily === "weather/storm" || daily === "weather/clouds")
-      add(daily);
-    else add(input.hour >= 22 || input.hour < 5 ? "weather/aurora" : "weather/shooting-stars");
-    add(daily && daily !== "weather/god-rays" ? daily : null);
-    add("weather/fog");
+    if (daily === "weather/aurora" || daily === "weather/shooting-stars") add(daily);
+    else if (input.hour >= 22 || input.hour < 5) add("weather/aurora");
     return plan;
   }
-  const nightOnly = ["weather/aurora", "weather/shooting-stars", "weather/fireflies", "weather/storm", "weather/clouds"];
-  if (daily && !nightOnly.includes(daily)) add(daily);
+  const dayFalls = ["weather/cherry-blossoms", "weather/snow", "weather/blizzard", "weather/falling-leaves"];
+  if (daily && dayFalls.includes(daily)) add(daily === "weather/blizzard" ? "weather/snow" : daily);
+  else if (daily === "weather/god-rays") add(daily);
   const season = input.seasonId;
   add(season === "spring" ? "weather/cherry-blossoms" : season === "winter" ? "weather/snow" : season === "autumn" ? "weather/falling-leaves" : null);
-  if (input.hour < 10) add("weather/god-rays");
-  if (input.hour >= 17) add("weather/fog");
-  add("weather/falling-leaves");
   return plan;
 }
 
@@ -602,6 +601,60 @@ export const LANDMARK_LOOPS: readonly Loop[] = [
   { id: "critters/slime", x: 46, y: 1040, scale: 0.4, drift: [20, 0, 12] },
   { id: "critters/snake", x: 900, y: 1080, scale: 0.4, day: true, drift: [36, 0, 15] },
 ];
+
+/**
+ * PV-MAGIC-STYLE-001 — how close the camera must be before a standing loop shows.
+ * hero: always; near: zoom 2 and up; close: zoom 3; rest: only for a few seconds after a tap close by.
+ */
+export type LoopTier = "hero" | "near" | "close" | "rest";
+const HERO_LOOPS = new Set(["arcane/rune-circle", "arcane/portal", "water/fountain", "fire/campfire"]);
+const NEAR_LOOPS = new Set([
+  "fire/brazier",
+  "fire/spirit-flame",
+  "fire/candle",
+  "village/chimney-smoke",
+  "critters/fish-school",
+  "water/ripples",
+  "fire/torch",
+  "arcane/arcane-orb",
+  "scifi/teleporter-pad",
+  "holy/sunburst",
+  "water/bubbles",
+  "critters/butterfly",
+  "critters/wisp",
+]);
+const REST_LOOPS = new Set(["village/road-glint", "critters/bat", "critters/ghost", "critters/slime", "critters/snake", "critters/frog", "critters/jellyfish"]);
+
+export function loopTier(loop: Loop): LoopTier {
+  if (HERO_LOOPS.has(loop.id)) return "hero";
+  // the road pickups after dark and the second bird only wake on a tap
+  if (loop.id.startsWith("pickups/") && loop.night && loop.y === 664) return "rest";
+  if (loop.id === "critters/bird") return loop.opts ? "rest" : "near";
+  if (REST_LOOPS.has(loop.id)) return "rest";
+  if (NEAR_LOOPS.has(loop.id)) return "near";
+  return "close";
+}
+
+/** Fires that cast a lantern pool after dark: [world radius]. */
+export const FIRE_GLOW: Readonly<Record<string, number>> = {
+  "fire/campfire": 26,
+  "fire/brazier": 16,
+  "fire/torch": 14,
+  "fire/candle": 8,
+  "fire/spirit-flame": 12,
+};
+
+/** Shown at this zoom tier (0 map, 1 near, 2 close)? Torches burn only after dark. */
+export function loopShows(loop: Loop, zoomRank: number, night: boolean) {
+  if (loop.night && !night) return false;
+  if (loop.day && night) return false;
+  if (loop.id === "fire/torch" && !night) return false;
+  const tier = loopTier(loop);
+  if (tier === "hero") return true;
+  if (tier === "near") return zoomRank >= 1;
+  if (tier === "close") return zoomRank >= 2;
+  return false;
+}
 
 export function loopIsCritter(loop: Loop) {
   return loop.id.startsWith("critters/");
