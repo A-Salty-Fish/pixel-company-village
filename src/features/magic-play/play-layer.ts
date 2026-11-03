@@ -39,6 +39,7 @@ const NOTE = [
 export class PlayLayer {
   private beams: Beam[] = [];
   private trail: TrailPoint[] = [];
+  private stroke = 0;
   private charge: { x: number; y: number; born: number } | null = null;
   private summons: Live[] = [];
   private notes: Note[] = [];
@@ -68,10 +69,12 @@ export class PlayLayer {
   chargeStart(x: number, y: number) {
     this.charge = { x, y, born: this.now };
     this.trail = [];
+    this.stroke = 0;
   }
 
   chargeMove(x: number, y: number) {
     if (!this.charge) return;
+    this.stroke += Math.hypot(x - this.charge.x, y - this.charge.y);
     this.charge.x = x;
     this.charge.y = y;
     this.trail = trailPush(this.trail, { x, y, at: this.now });
@@ -80,6 +83,11 @@ export class PlayLayer {
   /** The level the ring shows right now; the scene uses its own clock for the cast. */
   chargeNow() {
     return this.charge ? chargeLevel((this.now - this.charge.born) * 1000 + 420) : 0;
+  }
+
+  /** Whole stroke drawn while charging (world px); the visible trail only keeps the fading tail. */
+  chargeStroke() {
+    return this.stroke;
   }
 
   chargeEnd() {

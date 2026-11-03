@@ -202,3 +202,18 @@ test("magic sounds stay quiet and obey mute", () => {
   assert.equal(magicSfxSpec("badge", false), null);
   assert.ok(magicSfxSpec("badge", true));
 });
+
+test("a long charge stroke still counts as a trail when the fading tail is short", () => {
+  const { host } = fakeHost();
+  host.play.chargeEnd = () => [{ x: 0, y: 0, at: 0 }, { x: 10, y: 0, at: 0.1 }];
+  host.play.chargeStroke = () => TRAIL_QUEST_PX + 30;
+  const play = new PlayController(memoryStore(), "2026-11-01");
+  assert.ok(play.chargeStart(host, { x: 0, y: 0 }, 1000));
+  play.chargeRelease(host, { x: 0, y: 0 }, 2000);
+  assert.equal(play.snapshot.progress.counts.trail, 1);
+  const short = new PlayController(memoryStore(), "2026-11-01");
+  host.play.chargeStroke = () => 12;
+  short.chargeStart(host, { x: 0, y: 0 }, 1000);
+  short.chargeRelease(host, { x: 0, y: 0 }, 2000);
+  assert.equal(short.snapshot.progress.counts.trail ?? 0, 0);
+});

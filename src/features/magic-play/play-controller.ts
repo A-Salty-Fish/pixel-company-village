@@ -50,7 +50,8 @@ export type PlayHost = {
   cast(id: string, x: number, y: number): void;
   castOn(id: string, name: string, seconds: number): void;
   transition(id?: string): void;
-  readonly play: Pick<PlayLayer, "beam" | "chorus" | "chargeStart" | "chargeMove" | "chargeEnd" | "summon" | "showPips">;
+  readonly play: Pick<PlayLayer, "beam" | "chorus" | "chargeStart" | "chargeMove" | "chargeEnd" | "summon" | "showPips"> &
+    Partial<Pick<PlayLayer, "chargeStroke">>;
 };
 type Store = Pick<Storage, "getItem" | "setItem">;
 
@@ -273,12 +274,14 @@ export class PlayController {
   chargeRelease(host: PlayHost, spot: PlaySpot, at: number) {
     const press = this.press;
     this.press = null;
+    const stroke = host.play.chargeStroke?.() ?? 0;
     const trail: TrailPoint[] = host.play.chargeEnd();
     if (!press) return 0;
     const level = chargeLevel(at - press.at);
     const tier = chargeTier(level);
     ULTIMATES[tier].forEach((id, i) => host.cast(id, spot.x + (i === 0 ? 0 : (i % 2 ? -10 : 10)), spot.y - (i === 0 ? 0 : 6)));
-    const drawn = trailLength(trail);
+    // count the whole stroke: on a slow frame the fading trail may already have dropped its start
+    const drawn = Math.max(trailLength(trail), stroke);
     if (TRAIL_ENABLED && drawn >= TRAIL_QUEST_PX) {
       const step = Math.max(1, Math.floor(trail.length / 3));
       for (let i = step; i < trail.length && i <= step * 3; i += step) host.cast("pickups/collect-burst", trail[i].x, trail[i].y);

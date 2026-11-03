@@ -438,6 +438,7 @@ export class MagicLayer {
   private transitionNow: Transition | null = null;
   private transitionQueue: string[] = [];
   private transitionTurn = 0;
+  private lastNight: boolean | null = null;
   private taps: number[] = [];
   private wakes: { x: number; y: number; born: number }[] = [];
   private ambient = new AmbientLayer();
@@ -499,6 +500,13 @@ export class MagicLayer {
   render(ctx: CanvasRenderingContext2D, view: MagicView, input: MagicInput) {
     const t0 = performance.now();
     let budget = input.budget;
+    // the sky turning (day <-> night) ends any sweep still in flight: a "lighter" wash born in one
+    // sky would otherwise bleach the first seconds of the other into grey
+    if (this.lastNight !== null && this.lastNight !== input.night) {
+      this.transitionNow = null;
+      this.transitionQueue = [];
+    }
+    this.lastNight = input.night;
     if (!budget.on) {
       this.clear();
       this.stats = { ...this.stats, weather: [], auras: 0, spells: 0, landmarks: 0, ms: 0 };
