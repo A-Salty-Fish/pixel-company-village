@@ -1,3 +1,4 @@
+import { MAGIC_STYLE_ENABLED } from "@/features/magic-style/magic-style";
 import { isKindnessKind, type VillageFx } from "@/lib/interactions";
 import { blitLabel, getLabelSprite, type LabelMode } from "@/lib/pixel-label";
 import { VILLAGE_CAPACITY } from "@/lib/capacity";
@@ -63,6 +64,15 @@ import { paintNightHearth } from "@/features/night-hearth/night-hearth";
 import { paintNightWindowPulse } from "@/features/night-window-pulse/night-window-pulse";
 import { pathFocusPixels } from "@/features/path-focus/path-focus";
 import { tapDustPixels, tapHop } from "@/features/villager-tap-feedback/villager-tap-feedback";
+import {
+  WIZARD_LOOK_ENABLED,
+  wizardAnim,
+  wizardPose,
+  wizardProp,
+  wizardStyle,
+  type WizardStyle,
+} from "@/features/wizard-look/wizard-look";
+import { catHeadTop, drawWizard } from "@/features/wizard-look/wizard-paint";
 import { paintSkyWash } from "@/features/sky-wash/sky-wash";
 import { paintPathMicroGlow } from "@/features/path-micro-glow/path-micro-glow";
 import { isNextBeatAim, paintNextBeatPathGlow } from "@/features/next-beat-path-glow/next-beat-path-glow";
@@ -668,6 +678,19 @@ function catFrame(color: string, dir: Facing, anim: CatAnim, frame: number) {
   return `cat_${color}_down_idle_0`;
 }
 
+const wizardStyles = new WeakMap<PlacedVillager, WizardStyle>();
+function wizardFor(person: PlacedVillager) {
+  let style = wizardStyles.get(person);
+  if (!style) {
+    style = wizardStyle(
+      person.name,
+      person.scored ? { scored: true, work: person.work, fish: person.fish, on_task: person.on_task } : { scored: false },
+    );
+    wizardStyles.set(person, style);
+  }
+  return style;
+}
+
 function drawVillager(
   ctx: CanvasRenderingContext2D,
   person: PlacedVillager,
@@ -698,6 +721,8 @@ function drawVillager(
   }
   if ((onActor || onPartner) && fx?.kind === "pair") anim = "water";
   if (seated) anim = "sit";
+  const wizard = WIZARD_LOOK_ENABLED ? wizardFor(person) : null;
+  if (wizard) anim = wizardAnim(anim);
   const frame = Math.floor(t * fps * person.speed);
   const bob = selected && !life?.reduceMotion
     ? (Math.floor(t * 5) % 2 === 0 ? 1 : 0)
@@ -733,7 +758,29 @@ function drawVillager(
   const hop = tapHop(tapElapsed, Boolean(life?.reduceMotion));
   const dust = tapDustPixels(x, y, tapElapsed, Boolean(life?.reduceMotion));
   if (dust.length > 0) paintPixels(ctx, dust);
-  drawSprite(ctx, catFrame(color, person.dir, anim, frame), x, y - hop);
+  // things that float above the head clear the hat tip
+  const headY = wizard ? y - 10 : y;
+  const catName = catFrame(color, person.dir, anim, frame);
+  drawSprite(ctx, catName, x, y - hop);
+  if (wizard) {
+    const shown = catName.startsWith(`cat_${color}_${person.dir}_${anim}_`) ? anim : "idle";
+    const count = ANIM_FRAMES[anim];
+    const index = ((frame % count) + count) % count;
+    const reduced = Boolean(life?.reduceMotion);
+    drawWizard(
+      ctx,
+      wizard,
+      person.dir,
+      x,
+      y - hop,
+      catHeadTop(shown, person.dir, shown === anim ? index : 0),
+      shown === "sit",
+      wizardPose(t, wizard.phase, tapElapsed, reduced),
+      wizardProp(person.state, t),
+      t,
+      reduced,
+    );
+  }
   if (villagerSilhouetteOn()) paintPixels(ctx, villagerSilhouettePixels(x, y - hop));
   if (life?.waveTarget === person.name) paintPixels(ctx, waveCuePixels(x, y));
   if (!stood && !softGround && zoom < 2) {
@@ -752,12 +799,12 @@ function drawVillager(
     drawSprite(ctx, "crop_2_0_2", x + 20, y - 10 - rise * 14 - hop, { scale: 2 });
   }
   if (onActor && fx?.kind === "coffee") drawMug(ctx, x + 10, y - 36);
-  if (onActor && fx?.kind === "scare" && elapsed < 0.45) drawBang(ctx, x + 8, y - 40);
+  if (onActor && fx?.kind === "scare" && elapsed < 0.45) drawBang(ctx, x + 8, headY - 40);
   if (onActor && fx?.kind === "stretch") y -= life?.reduceMotion ? 2 : Math.sin(elapsed * 8) * 5;
-  if (onActor && fx?.kind === "wave") drawWave(ctx, x + 12, y - 46 - (life?.reduceMotion ? 0 : Math.sin(elapsed * 8) * 3));
+  if (onActor && fx?.kind === "wave") drawWave(ctx, x + 12, headY - 46 - (life?.reduceMotion ? 0 : Math.sin(elapsed * 8) * 3));
   if (fx && fx.partner === person.name && fx.kind === "wave") {
     const bob = life?.reduceMotion ? 0 : Math.sin(elapsed * 8) * 3;
-    drawWave(ctx, x - 16, y - 46 - bob);
+    drawWave(ctx, x - 16, headY - 46 - bob);
   }
   if (fx && fx.partner === person.name && isKindnessKind(fx.kind)) {
     ctx.fillStyle = "#6aaa3a";
@@ -776,7 +823,7 @@ function drawVillager(
   }
   if (life?.selfName === person.name && life.selfPreset) {
     drawStatusProp(ctx, life.selfPreset, x - 18, y - 28);
-    drawStatusBadge(ctx, life.selfPreset, x - 4, y - 46);
+    drawStatusBadge(ctx, life.selfPreset, x - 4, headY - 46);
   }
   const avail = availabilityFor(
     person,
@@ -1629,8 +1676,15 @@ export function paintVillage(
   dpr: number,
   fx: VillageFx | null = null,
   life: SceneLife | null = null,
+  /** Drawn over the world and night wash, under the name plates (magic-town layer). */
+  overlay: ((ctx: CanvasRenderingContext2D) => void) | null = null,
 ) {
   if (!artReady()) return { plates: 0, shortPlates: 0, reads: [] };
+  // PV-PIXEL-SNAP-001: the camera lands on whole world pixels, so a sliding camera never resamples the map
+  if (viewDevice) {
+    camX = Math.round(camX);
+    camY = Math.round(camY);
+  }
   ensureGround();
   if (!groundCanvas) return { plates: 0, shortPlates: 0, reads: [] };
   if (!worldCanvas) {
@@ -1651,11 +1705,43 @@ export function paintVillage(
   const viewWorldH = span.h;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = "#3c6e32";
-  ctx.fillRect(0, 0, viewW, viewH);
-  const destW = Math.max(1, Math.round(viewW));
-  const destH = Math.max(1, Math.round(viewH));
-  ctx.drawImage(worldCanvas, camX, camY, viewWorldW, viewWorldH, 0, 0, destW, destH);
+  const snapK = viewScale(zoom);
+  let bandRect: { dx: number; dy: number; dw: number; dh: number } | null = null;
+  if (snapK) {
+    // PV-PIXEL-SNAP-001: one scale for x and y; whole device pixels from zoom 2; a soft fit for the overview
+    const k = viewW / viewWorldW;
+    const sx0 = Math.max(0, camX);
+    const sy0 = Math.max(0, camY);
+    const sx1 = Math.min(WORLD_W, camX + viewWorldW);
+    const sy1 = Math.min(WORLD_H, camY + viewWorldH);
+    const bands = sx0 > camX || sy0 > camY || sx1 < camX + viewWorldW || sy1 < camY + viewWorldH;
+    ctx.fillStyle = bands ? "#22381e" : "#3c6e32";
+    ctx.fillRect(0, 0, viewW, viewH);
+    const dx = Math.round((sx0 - camX) * k);
+    const dy = Math.round((sy0 - camY) * k);
+    const dw = Math.round((sx1 - camX) * k) - dx;
+    const dh = Math.round((sy1 - camY) * k) - dy;
+    if (k < 1) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "medium";
+    }
+    if (dw > 0 && dh > 0) ctx.drawImage(worldCanvas, sx0, sy0, sx1 - sx0, sy1 - sy0, dx, dy, dw, dh);
+    ctx.imageSmoothingEnabled = false;
+    if (bands) {
+      bandRect = { dx, dy, dw, dh };
+      ctx.fillStyle = "#16261a";
+      ctx.fillRect(dx - 2, dy - 2, dw + 4, 2);
+      ctx.fillRect(dx - 2, dy + dh, dw + 4, 2);
+      ctx.fillRect(dx - 2, dy, 2, dh);
+      ctx.fillRect(dx + dw, dy, 2, dh);
+    }
+  } else {
+    ctx.fillStyle = "#3c6e32";
+    ctx.fillRect(0, 0, viewW, viewH);
+    const destW = Math.max(1, Math.round(viewW));
+    const destH = Math.max(1, Math.round(viewH));
+    ctx.drawImage(worldCanvas, camX, camY, viewWorldW, viewWorldH, 0, 0, destW, destH);
+  }
   if (life?.seasonTint) {
     ctx.fillStyle = life.seasonTint;
     ctx.fillRect(0, 0, viewW, viewH);
@@ -1670,6 +1756,7 @@ export function paintVillage(
   if (autumnPaletteMark(life?.decor?.seasonId ?? "") === "warm") {
     paintAutumnPalette(ctx, viewW, viewH);
   }
+  const moonlit = MAGIC_STYLE_ENABLED && Boolean(life?.magic) && life?.magic !== "off";
   if (NIGHT_WASH_V2_ENABLED && life?.sessionNight) {
     paintNightWashV2(ctx, {
       viewW,
@@ -1680,6 +1767,7 @@ export function paintVillage(
       worldH: span.h,
       houses: HOUSE_FACES,
       reduced: Boolean(life.reduceMotion),
+      moonlit,
     });
   } else if (life?.decor?.night) {
     // PV-PM-014 checkpoint, used when night-wash v2 is off
@@ -1711,7 +1799,8 @@ export function paintVillage(
     camY,
     worldW: span.w,
     worldH: span.h,
-    night: Boolean(NIGHT_WASH_V2_ENABLED && life?.sessionNight),
+    // Moonlit (multiply) nights keep their own contrast; skip the flat path fill and house frames.
+    night: Boolean(NIGHT_WASH_V2_ENABLED && life?.sessionNight) && !moonlit,
     seasonId: life?.decor?.seasonId ?? "",
     houses: HOUSE_FACES,
     walkers: villagers.map((person) => ({ x: person.x, y: person.y })),
@@ -1739,6 +1828,15 @@ export function paintVillage(
     t,
   });
   paintSkyWash(ctx, viewW, viewH, shanghaiClock().hour);
+  if (bandRect) {
+    // Flat letterbox after every wash, so the overview frame never reads as a smudge or gradient
+    const { dx, dy, dw, dh } = bandRect;
+    ctx.fillStyle = life?.sessionNight ? (moonlit ? "#0e1624" : "#0f1a16") : "#22381e";
+    if (dy > 2) ctx.fillRect(0, 0, viewW, dy - 2);
+    if (dy + dh + 2 < viewH) ctx.fillRect(0, dy + dh + 2, viewW, viewH - dy - dh - 2);
+    if (dx > 2) ctx.fillRect(0, 0, dx - 2, viewH);
+    if (dx + dw + 2 < viewW) ctx.fillRect(dx + dw + 2, 0, viewW - dx - dw - 2, viewH);
+  }
   const pathSelf = life?.selfName ? villagers.find((person) => person.name === life.selfName) : undefined;
   if (life?.findPathAt && pathSelf) {
     const approach = findMeApproach(pathSelf);
@@ -1824,6 +1922,7 @@ export function paintVillage(
       afterglowAlpha(elapsed, Boolean(life.reduceMotion)),
     );
   }
+  if (overlay) overlay(ctx);
   return drawNameLabels(ctx, villagers, zoom, camX, camY, emphasize, viewW, viewH, dpr, life);
 }
 
@@ -1912,7 +2011,7 @@ export function drawNameLabels(
   const viewWorldW = span.w;
   const viewWorldH = span.h;
   const cssW = viewW / dpr;
-  const pitchCss = (PITCH_X * cssW * zoom) / WORLD_W;
+  const pitchCss = (PITCH_X * cssW) / viewWorldW;
   const showAll = Boolean(life?.showAllPlates);
   let cssScale = zoom >= 3 ? 3 : 2;
   if (pitchCss < 72 || (showAll && zoom < 2)) cssScale = 1;
@@ -2200,8 +2299,37 @@ export function hitTest(villagers: PlacedVillager[], worldX: number, worldY: num
   return best;
 }
 
-/** Integer world span for a zoom step so drawImage never samples a fractional source rect. */
+/**
+ * PV-PIXEL-SNAP-001 — one scale for both axes, and a whole number of device pixels per world pixel
+ * from zoom 2 up. The old fixed span stretched the world to the canvas box (a desk map ran 1.9x wide,
+ * a phone map 1.7x tall) and nearest-neighbour rows came out one and two pixels thick.
+ * Zoom 1 fits the whole world inside the canvas (bands on the long side); zoom 2 and 3 cover it.
+ * Off (or before the canvas has a size, as in unit tests) the old fixed spans come back.
+ */
+export const PIXEL_SNAP_ENABLED = true;
+let viewDevice: { w: number; h: number } | null = null;
+
+/** The map canvas backing size, in device pixels. The scene calls this on every resize. */
+export function setViewDevice(w: number, h: number) {
+  viewDevice = PIXEL_SNAP_ENABLED && w > 0 && h > 0 ? { w, h } : null;
+}
+
+/** Device pixels per world pixel at a zoom step, or null when the old fixed spans apply. */
+export function viewScale(zoom: number, device: { w: number; h: number } | null = viewDevice): number | null {
+  if (!device) return null;
+  const z = Math.max(1, Math.round(zoom) || 1);
+  const contain = Math.min(device.w / WORLD_W, device.h / WORLD_H);
+  if (z <= 1) return contain >= 1 ? Math.floor(contain) : contain;
+  const cover = Math.max(device.w / WORLD_W, device.h / WORLD_H);
+  const near = Math.max(1, Math.ceil(2 * cover - 0.05));
+  if (z === 2) return near;
+  return Math.max(near + 1, Math.round(z * cover));
+}
+
+/** World span for a zoom step. With a known canvas it keeps the canvas aspect, so pixels stay square. */
 export function viewSpan(zoom: number) {
+  const k = viewScale(zoom);
+  if (k && viewDevice) return { w: viewDevice.w / k, h: viewDevice.h / k };
   const z = Math.max(1, Math.round(zoom) || 1);
   return {
     w: Math.max(1, Math.floor(WORLD_W / z)),
@@ -2209,16 +2337,20 @@ export function viewSpan(zoom: number) {
   };
 }
 
+/** Whole-pixel camera; a span wider than the world centres it (the zoom-1 bands). */
 export function clampCamera(x: number, y: number, zoom: number) {
   const view = viewSpan(zoom);
+  const axis = (v: number, span: number, world: number) =>
+    span >= world ? Math.round((world - span) / 2) : Math.round(Math.min(Math.max(0, v), world - span));
   return {
-    x: Math.round(Math.min(Math.max(0, x), Math.max(0, WORLD_W - view.w))),
-    y: Math.round(Math.min(Math.max(0, y), Math.max(0, WORLD_H - view.h))),
+    x: axis(x, view.w, WORLD_W),
+    y: axis(y, view.h, WORLD_H),
   };
 }
 
 export function cameraFocus(person: PlacedVillager, zoom: number) {
-  return clampCamera(person.x - WORLD_W / zoom / 2, person.y - WORLD_H / zoom / 2, zoom);
+  const span = viewSpan(zoom);
+  return clampCamera(person.x - span.w / 2, person.y - span.h / 2, zoom);
 }
 
 export function defaultCamera() {

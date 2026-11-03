@@ -8,6 +8,7 @@ import {
   cameraFocus,
   clampCamera,
   viewSpan,
+  setViewDevice,
   defaultCamera,
   hitTest,
   paintBootField,
@@ -15,7 +16,30 @@ import {
   placeVillagers,
   updateVillager,
 } from "@/lib/pixel-scene";
-import type { VillageFx } from "@/lib/interactions";
+import { isKindnessKind, type VillageFx } from "@/lib/interactions";
+import { testHooksEnabled } from "@/lib/test-hooks";
+import {
+  COMBO_SPELL,
+  COMBO_TAPS,
+  COMBO_WINDOW_MS,
+  KIND_SPELLS,
+  MAGIC_DAILY_ENABLED,
+  MAGIC_SPELLS_ENABLED,
+  MAGIC_UI_FEEDBACK_ENABLED,
+  PERSON_SPELLS,
+  SELF_SPELLS,
+  STATUS_AFTER,
+  dailyMagic,
+  groundSpell,
+  hitLandmark,
+  magicBudget,
+  pickSpell,
+  type MagicLevel,
+} from "@/features/magic-town/magic-town";
+import { MagicLayer, type MagicPerson } from "@/features/magic-town/magic-layer";
+import { DOUBLE_TAP_MS, LONG_PRESS_MS, MAGIC_PLAY_ENABLED } from "@/features/magic-play/magic-play";
+import { PlayController, type PlaySpot } from "@/features/magic-play/play-controller";
+import { playMagicSfx } from "@/features/gesture-sfx/gesture-sfx";
 import { deriveLoadStage, loadStageLabel, type LoadStage } from "@/lib/load-machine";
 import { hitSpot } from "@/lib/play-systems";
 import type { PersonWithState } from "@/lib/types";
@@ -161,6 +185,10 @@ export function VillageScene({
   const fxRef = useRef(fx);
   const lifeRef = useRef(life);
   const tapRef = useRef<{ name: string; at: number } | null>(null);
+  const magicRef = useRef<MagicLayer | null>(null);
+  const groundTimer = useRef(0);
+  const selectTimer = useRef(0);
+  const magicRoll = useRef({ n: 0, last: "" as string, fxId: -1, opened: "" });
   const legendRef = useRef<HTMLDetailsElement>(null);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
@@ -191,7 +219,11 @@ export function VillageScene({
   const userCam = useRef(false);
   const fitted = useRef(false);
   const [mapFill, setMapFill] = useState<"village" | "world">("world");
-  const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const drag = useRef<{ x: number; y: number; moved: boolean; charging?: boolean } | null>(null);
+  /** PV-MAGIC-PLAY-001 wizard play: gestures, counts and the little toast. */
+  const playRef = useRef<PlayController | null>(null);
+  const [playToast, setPlayToast] = useState<{ text: string; n: number } | null>(null);
+  const playToastTimer = useRef(0);
   const kickRef = useRef<(() => void) | null>(null);
   const wheelAt = useRef(0);
   const glowUntilRef = useRef(0);
@@ -237,7 +269,11 @@ export function VillageScene({
     const nextZoom = arrived?.zoom ?? 3;
     const focus = arrived
       ? { x: arrived.x, y: arrived.y }
-      : clampCamera(mapAim.x - WORLD_W / nextZoom / 2, mapAim.y - WORLD_H / nextZoom / 2, nextZoom);
+      : (() => {
+          // PV-PIXEL-SNAP-001: centre on the real span at this zoom (the snapped span is narrower on a phone)
+          const span = viewSpan(nextZoom);
+          return clampCamera(mapAim.x - span.w / 2, mapAim.y - span.h / 2, nextZoom);
+        })();
     const mode = landmarkSettleMode({ quiet: Boolean(life.quiet), reduced: Boolean(life.reduceMotion) });
     zoomRef.current = nextZoom;
     setZoom(nextZoom);
@@ -292,7 +328,8 @@ export function VillageScene({
     userCam.current = true;
     const toZoom = 2;
     const roof = roofFocus(person);
-    const focus = clampCamera(roof.x - WORLD_W / toZoom / 2, roof.y - WORLD_H / toZoom / 2, toZoom);
+    const roofSpan = viewSpan(toZoom);
+    const focus = clampCamera(roof.x - roofSpan.w / 2, roof.y - roofSpan.h / 2, toZoom);
     const from = { x: camRef.current.x, y: camRef.current.y, zoom: zoomRef.current };
     const to = { x: focus.x, y: focus.y, zoom: toZoom };
     const started = performance.now();
@@ -327,6 +364,11 @@ export function VillageScene({
     setCamMark({ x: Math.round(focus.x), y: Math.round(focus.y), zoom: nextZoom });
     glowUntilRef.current = Date.now() + FIND_ME_HOLD_MS;
     aimHoldRef.current = Date.now() + IDENTITY_LAND_MS;
+    // landing on yourself: a star iris sweep and a level-up sparkle on your cat
+    if (magicRef.current && lifeRef.current?.magic && lifeRef.current.magic !== "off" && !lifeRef.current.reduceMotion) {
+      magicRef.current.transition("transitions/star-iris");
+      if (MAGIC_UI_FEEDBACK_ENABLED) magicRef.current.cast("ui/level-up", person.x, person.y);
+    }
     kickRef.current?.();
   }, [identityPulse, life.selfName]);
 
@@ -442,6 +484,7 @@ export function VillageScene({
         canvas.width = nextW;
         canvas.height = nextH;
       }
+      setViewDevice(nextW, nextH);
       const rawW = Math.floor(host.clientWidth);
       const rawH = Math.floor(host.clientHeight);
       if (!fitted.current && !userCam.current && rawW > 0 && rawH > 0) {
@@ -628,6 +671,78 @@ export function VillageScene({
         dpr,
         activeFx && Date.now() - activeFx.startedAt < activeFx.duration ? activeFx : null,
         lifeRef.current,
+        (overlayCtx) => {
+          // PV-MAGIC-001: fx over the world, under the plates
+          const lifeMagic = lifeRef.current;
+          const level: MagicLevel = lifeMagic?.magic ?? "off";
+          const narrow = canvas.clientWidth > 0 && canvas.clientWidth < 600;
+          const budget = magicBudget(level, { reduceMotion: Boolean(lifeMagic?.reduceMotion), narrow });
+          if (!magicRef.current) {
+            if (!budget.on) return;
+            magicRef.current = new MagicLayer();
+          }
+          const layer = magicRef.current;
+          const clock = shanghaiClock();
+          const daily = MAGIC_DAILY_ENABLED ? dailyMagic(clock.ymd) : null;
+          const roll = magicRoll.current;
+          if (budget.on && budget.spells > 0 && activeFx && activeFx.id !== roll.fxId && nowMs - activeFx.startedAt < activeFx.duration) {
+            roll.fxId = activeFx.id;
+            if (activeFx.kind === "wave" || isKindnessKind(activeFx.kind)) {
+              const target = list.find((v) => v.name === (activeFx.partner ?? activeFx.actor));
+              const actor = activeFx.kind === "wave" && activeFx.partner ? list.find((v) => v.name === activeFx.actor) : null;
+              const on = actor && target && budget.animate ? playOn() : null;
+              if (on && actor && target && on.play.chorus(on.layer, actor, target)) playFlush();
+              else if (target) {
+                roll.n += 1;
+                const spell = pickSpell(KIND_SPELLS, roll.n);
+                layer.cast(spell, target.x, target.y);
+                const after = STATUS_AFTER[spell];
+                if (after) layer.castOn(after.id, target.name, after.seconds);
+              }
+            }
+          }
+          if (daily && budget.animate && budget.spells > 0 && roll.opened !== clock.ymd && layer.stats.ready) {
+            roll.opened = clock.ymd;
+            const key = `village-magic-opened:${clock.ymd}`;
+            let seen = false;
+            try {
+              seen = window.sessionStorage.getItem(key) === "1";
+              window.sessionStorage.setItem(key, "1");
+            } catch {
+              seen = false;
+            }
+            if (!seen) {
+              layer.cast(daily.opener, PLAZA.x, PLAZA.y);
+              // first visit of the day: a small achievement banner pops over the plaza
+              if (MAGIC_UI_FEEDBACK_ENABLED) layer.cast("ui/achievement", PLAZA.x, PLAZA.y - 70);
+            }
+          }
+          const span = viewSpan(zoomRef.current);
+          layer.render(
+            overlayCtx,
+            {
+              camX: Math.round(camRef.current.x),
+              camY: Math.round(camRef.current.y),
+              spanW: span.w,
+              spanH: span.h,
+              viewW: canvas.width,
+              viewH: canvas.height,
+              dpr,
+              zoom: zoomRef.current,
+            },
+            {
+              budget,
+              night: Boolean(lifeMagic?.sessionNight),
+              hour: clock.hour,
+              seasonId: lifeMagic?.decor?.seasonId ?? "",
+              daily,
+              people: list as unknown as MagicPerson[],
+              now: budget.animate ? (now - start) / 1000 : 0,
+            },
+          );
+          host.dataset.magic = budget.on ? level : "off";
+          host.dataset.magicSpells = String(layer.stats.spells);
+        },
       );
       host.dataset.plateCount = String(painted.plates);
       host.dataset.plateShort = String(painted.shortPlates);
@@ -688,9 +803,67 @@ export function VillageScene({
       }
     };
 
+    // PV-MAGIC-PLAY-001: wizard play rides on the same taps; null when magic is off, still or reduced
+    let pressTimer = 0;
+    /** PV-MAGIC-STYLE-001: how long a phone waits before a tapped wizard's card covers half the map. */
+    const CARD_DELAY_MS = 520;
+    const rect0Narrow = () => canvas.getBoundingClientRect().width < 600;
+    const playOn = () => {
+      const lifeNow = lifeRef.current;
+      if (!MAGIC_PLAY_ENABLED || !MAGIC_SPELLS_ENABLED || !magicRef.current || !lifeNow?.magic || lifeNow.magic === "off" || lifeNow.reduceMotion) return null;
+      const ymd = shanghaiClock().ymd;
+      if (!playRef.current) {
+        let store: Storage | null = null;
+        try {
+          store = window.localStorage;
+        } catch {
+          store = null;
+        }
+        playRef.current = new PlayController(store, ymd);
+      }
+      playRef.current.setDay(ymd);
+      return { play: playRef.current, layer: magicRef.current };
+    };
+    const playFlush = () => {
+      const events = playRef.current?.drain() ?? [];
+      if (!events.length) return;
+      const lifeNow = lifeRef.current;
+      const sound = [...events].reverse().find((event) => event.sfx)?.sfx;
+      if (sound) playMagicSfx(sound, lifeNow?.sfxMuted === false && !lifeNow.reduceMotion);
+      const toast = [...events].reverse().find((event) => event.toast)?.toast;
+      if (toast) {
+        setPlayToast((prev) => ({ text: toast, n: (prev?.n ?? 0) + 1 }));
+        window.clearTimeout(playToastTimer.current);
+        playToastTimer.current = window.setTimeout(() => setPlayToast(null), 2200);
+      }
+      kickRef.current?.();
+    };
+    const travelTo = (spot: PlaySpot) => {
+      window.setTimeout(() => {
+        const on = playOn();
+        const span = viewSpan(zoomRef.current);
+        userCam.current = true;
+        aimHoldRef.current = Date.now() + 8000;
+        camRef.current = clampCamera(spot.x - span.w / 2, spot.y - span.h / 2, zoomRef.current);
+        setCamMark({ x: camRef.current.x, y: camRef.current.y, zoom: zoomRef.current });
+        if (on) on.play.arrive(on.layer, spot);
+        kickRef.current?.();
+      }, 360);
+    };
     const onPointerDown = (e: PointerEvent) => {
       canvas.setPointerCapture(e.pointerId);
       drag.current = { x: e.clientX, y: e.clientY, moved: false };
+      window.clearTimeout(pressTimer);
+      if (!playOn()) return;
+      const pressAt = { x: e.clientX, y: e.clientY };
+      pressTimer = window.setTimeout(() => {
+        const on = playOn();
+        if (!on || !drag.current || drag.current.moved) return;
+        if (on.play.chargeStart(on.layer, toWorld(pressAt.x, pressAt.y), Date.now())) {
+          drag.current.charging = true;
+          playFlush();
+        }
+      }, LONG_PRESS_MS);
     };
     const onPointerMove = (e: PointerEvent) => {
       const world = toWorld(e.clientX, e.clientY);
@@ -698,11 +871,18 @@ export function VillageScene({
       const nextHover = found?.name ?? null;
       if (nextHover !== hoverRef.current) setHoverHint(nextHover);
       if (!drag.current) return;
+      if (drag.current.charging) {
+        // charging: the staff draws a trail instead of panning
+        const on = playOn();
+        if (on) on.play.chargeMove(on.layer, world);
+        return;
+      }
       const dx = e.clientX - drag.current.x;
       const dy = e.clientY - drag.current.y;
       if (Math.abs(dx) + Math.abs(dy) > 6) {
         drag.current.moved = true;
         userCam.current = true;
+        window.clearTimeout(pressTimer);
       }
       const rect = canvas.getBoundingClientRect();
       const span = viewSpan(zoomRef.current);
@@ -716,8 +896,57 @@ export function VillageScene({
       const world = toWorld(e.clientX, e.clientY);
       const found = hitTest(villagersRef.current, world.x, world.y, zoomRef.current);
       const moved = drag.current?.moved ?? false;
+      const charging = drag.current?.charging ?? false;
       drag.current = null;
+      window.clearTimeout(pressTimer);
+      if (charging) {
+        const on = playOn();
+        if (on) on.play.chargeRelease(on.layer, world, Date.now());
+        else if (magicRef.current) playRef.current?.cancelCharge(magicRef.current);
+        playFlush();
+        return;
+      }
       if (moved) return;
+      if (MAGIC_SPELLS_ENABLED && magicRef.current && lifeRef.current?.magic && lifeRef.current.magic !== "off" && !lifeRef.current.reduceMotion) {
+        // PV-MAGIC-001: every tap casts something; the tap still does its usual job below
+        const roll = magicRoll.current;
+        roll.n += 1;
+        const seed = roll.n * 7 + Math.floor(Math.random() * 1000);
+        const mark = found ? null : hitLandmark(world.x, world.y);
+        const layer = magicRef.current;
+        const on = playOn();
+        const tapAt = Date.now();
+        on?.play.streakTap(tapAt);
+        if (found) {
+          if (!on?.play.tapPerson(layer, found, tapAt)) {
+            const self = found.name === lifeRef.current.selfName;
+            const spell = pickSpell(self && MAGIC_UI_FEEDBACK_ENABLED ? SELF_SPELLS : PERSON_SPELLS, seed, roll.last);
+            roll.last = spell;
+            layer.cast(spell, found.x, found.y);
+            const after = STATUS_AFTER[spell];
+            if (after) layer.castOn(after.id, found.name, after.seconds);
+          }
+        } else if (mark) {
+          const game = on ? on.play.tapLandmark(layer, mark.id, tapAt) : { handled: false };
+          if (!game.handled) layer.cast(mark.cast, mark.x, mark.y + (mark.castDy ?? 0));
+          if (game.travel) travelTo(game.travel);
+        } else {
+          // PV-MAGIC-STYLE-001: ground magic waits out the double-tap window, so the first tap of a double stays quiet
+          window.clearTimeout(groundTimer.current);
+          layer.wake(world.x, world.y);
+          if (!on?.play.groundDouble(layer, world, tapAt)) {
+            const night = Boolean(lifeRef.current.sessionNight);
+            groundTimer.current = window.setTimeout(() => {
+              const live = playOn();
+              if (!live?.play.groundSingle(live.layer, world, seed)) layer.cast(groundSpell(world.x, world.y, seed, night), world.x, world.y);
+              playFlush();
+            }, on ? DOUBLE_TAP_MS : 0);
+          }
+        }
+        playFlush();
+        // five quick taps: a combo counter pops where the last one landed
+        if (MAGIC_UI_FEEDBACK_ENABLED && layer.noteTap(COMBO_WINDOW_MS, COMBO_TAPS, Date.now())) layer.cast(COMBO_SPELL, world.x, world.y - 24);
+      }
       if (found) {
         tapRef.current = { name: found.name, at: Date.now() };
         if (lifeRef.current) {
@@ -725,10 +954,16 @@ export function VillageScene({
           lifeRef.current.tapAt = tapRef.current.at;
         }
         kickRef.current?.();
-        onSelectRef.current(found.name);
+        // PV-MAGIC-STYLE-001: on a phone the card halves the map; with magic play on it waits a beat,
+        // so a quick second tap on another wizard (a chain) lands before the card opens
+        window.clearTimeout(selectTimer.current);
+        const name = found.name;
+        if (playOn() && rect0Narrow()) selectTimer.current = window.setTimeout(() => onSelectRef.current(name), CARD_DELAY_MS);
+        else onSelectRef.current(name);
         return;
       }
       tapRef.current = null;
+      window.clearTimeout(selectTimer.current);
       if (lifeRef.current) {
         lifeRef.current.tapName = null;
         lifeRef.current.tapAt = null;
@@ -765,7 +1000,12 @@ export function VillageScene({
     canvas.addEventListener("pointerdown", onPointerDown);
     canvas.addEventListener("pointermove", onPointerMove);
     canvas.addEventListener("pointerup", onPointerUp);
-    canvas.addEventListener("pointercancel", onPointerUp);
+    const onPointerCancel = () => {
+      window.clearTimeout(pressTimer);
+      if (drag.current?.charging && magicRef.current) playRef.current?.cancelCharge(magicRef.current);
+      drag.current = null;
+    };
+    canvas.addEventListener("pointercancel", onPointerCancel);
     canvas.addEventListener("wheel", onWheel, { passive: false });
 
     let frame = 0;
@@ -809,6 +1049,8 @@ export function VillageScene({
 
     return () => {
       window.clearTimeout(focusTimer);
+      window.clearTimeout(groundTimer.current);
+      window.clearTimeout(selectTimer.current);
       cancelAnimationFrame(frame);
       window.clearInterval(stageTimer);
       document.removeEventListener("visibilitychange", kick);
@@ -817,10 +1059,80 @@ export function VillageScene({
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);
-      canvas.removeEventListener("pointercancel", onPointerUp);
+      canvas.removeEventListener("pointercancel", onPointerCancel);
+      window.clearTimeout(pressTimer);
       canvas.removeEventListener("wheel", onWheel);
     };
   }, [people, bootAttempt]);
+
+  useEffect(() => {
+    // PV-MAGIC-001 test hook: cast and read the magic layer from e2e and screenshot scripts
+    if (!testHooksEnabled() || typeof window === "undefined") return;
+    const hook = {
+      cast: (id: string, x: number, y: number) => {
+        if (!magicRef.current) magicRef.current = new MagicLayer();
+        magicRef.current.cast(id, x, y);
+        kickRef.current?.();
+        return true;
+      },
+      /** Play a screen transition sweep (a random one when no id is given). */
+      transition: (id?: string) => {
+        if (!magicRef.current) magicRef.current = new MagicLayer();
+        magicRef.current.transition(id);
+        kickRef.current?.();
+        return true;
+      },
+      /** Hang a short status on the n-th villager, by position in the list, so no name is needed. */
+      statusOn: (id: string, index: number, seconds = 3) => {
+        const person = villagersRef.current[index];
+        if (!person || !magicRef.current) return false;
+        magicRef.current.castOn(id, person.name, seconds);
+        kickRef.current?.();
+        return true;
+      },
+      state: () => ({ ...(magicRef.current?.stats ?? { ready: false }), level: lifeRef.current?.magic ?? "off" }),
+      /** Wizard play counts (quest progress, badge ids, game counters); no names. */
+      play: () => playRef.current?.snapshot ?? null,
+      /** Two villagers by list position sing a chorus, as if one had waved at the other. */
+      chorus: (a: number, b: number) => {
+        const one = villagersRef.current[a];
+        const two = villagersRef.current[b];
+        if (!one || !two || !magicRef.current) return false;
+        if (!playRef.current) playRef.current = new PlayController(null, shanghaiClock().ymd);
+        const ok = playRef.current.chorus(magicRef.current, one, two);
+        kickRef.current?.();
+        return ok;
+      },
+      /** Client coordinates of a world point, for real taps in e2e. */
+      screen: (x: number, y: number) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return null;
+        const rect = canvas.getBoundingClientRect();
+        const span = viewSpan(zoomRef.current);
+        return {
+          x: rect.left + ((x - camRef.current.x) * rect.width) / span.w,
+          y: rect.top + ((y - camRef.current.y) * rect.height) / span.h,
+        };
+      },
+      /** World positions only; names stay out so the hook never needs more than the map shows. */
+      spots: (n: number) => villagersRef.current.slice(0, Math.max(0, n)).map((v) => ({ x: v.x, y: v.y })),
+      look: (x: number, y: number, zoom: number) => {
+        userCam.current = true;
+        gateHeldRef.current = true;
+        const z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(zoom)));
+        zoomRef.current = z;
+        setZoom(z);
+        const span = viewSpan(z);
+        camRef.current = clampCamera(x - span.w / 2, y - span.h / 2, z);
+        kickRef.current?.();
+        return { ...camRef.current, zoom: z };
+      },
+    };
+    (window as unknown as { __VILLAGE_MAGIC__?: typeof hook }).__VILLAGE_MAGIC__ = hook;
+    return () => {
+      delete (window as unknown as { __VILLAGE_MAGIC__?: typeof hook }).__VILLAGE_MAGIC__;
+    };
+  }, []);
 
   const applyZoom = (next: number) => {
     userCam.current = true;
@@ -998,6 +1310,16 @@ export function VillageScene({
           {loadStageLabel(shownStage)}
         </p>
       ) : null}
+      <p
+        className="magic-play-toast"
+        data-testid="magic-toast"
+        data-shown={playToast ? "1" : "0"}
+        role="status"
+        aria-live="polite"
+        data-n={playToast?.n ?? 0}
+      >
+        {playToast?.text ?? ""}
+      </p>
       {ready && hintOpen && !life.quiet ? (
         <p
           ref={hintRef}

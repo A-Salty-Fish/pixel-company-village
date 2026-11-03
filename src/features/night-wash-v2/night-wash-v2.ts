@@ -117,7 +117,21 @@ type PaintInput = {
   worldH: number;
   houses: House[];
   reduced: boolean;
+  /**
+   * PV-MAGIC-STYLE-001 moonlight: the magic town tints night with a multiply instead of a flat veil,
+   * so colours and contrast survive and the scene reads blue rather than grey.
+   */
+  moonlit?: boolean;
 };
+
+/** Multiply ink for the moonlit night: keeps about 40-65% of each channel, blue kept most. */
+export const MOON_INK = "rgb(96, 112, 172)";
+
+/**
+ * Screen lift after the moon ink: a thin blue sheen so grass reads moonlit (blue over green on
+ * average) without the old flat veil's grey. Screen only brightens, and mostly in blue.
+ */
+export const MOON_LIFT = "rgb(0, 4, 24)";
 
 function paintLamp(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, look: NightLookV2) {
   ctx.fillStyle = LAMP_HALO;
@@ -134,9 +148,19 @@ export function paintNightWashV2(ctx: CanvasRenderingContext2D, input: PaintInpu
   if (!NIGHT_WASH_V2_ENABLED) return { mode: "off" as const, lamps: 0 };
   ctx.save();
   ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = WASH_COMPOSITE;
-  ctx.fillStyle = look.veil;
-  ctx.fillRect(0, 0, input.viewW, input.viewH);
+  if (input.moonlit) {
+    ctx.globalCompositeOperation = "multiply";
+    ctx.fillStyle = MOON_INK;
+    ctx.fillRect(0, 0, input.viewW, input.viewH);
+    ctx.globalCompositeOperation = "screen";
+    ctx.fillStyle = MOON_LIFT;
+    ctx.fillRect(0, 0, input.viewW, input.viewH);
+    ctx.globalCompositeOperation = WASH_COMPOSITE;
+  } else {
+    ctx.globalCompositeOperation = WASH_COMPOSITE;
+    ctx.fillStyle = look.veil;
+    ctx.fillRect(0, 0, input.viewW, input.viewH);
+  }
   const cx = input.viewW / 2;
   const cy = input.viewH / 2;
   const short = Math.min(input.viewW, input.viewH);
@@ -157,10 +181,11 @@ export function paintNightWashV2(ctx: CanvasRenderingContext2D, input: PaintInpu
     if (sx < -24 || sy < -24 || sx > input.viewW || sy > input.viewH) continue;
     const w = Math.max(8, 10 * scale);
     const h = Math.max(6, 7 * scale);
-    paintLamp(ctx, sx, sy, w, h, look);
+    // Moonlit nights leave window light to the magic town's lantern pools (no square lamp boxes).
+    if (!input.moonlit) paintLamp(ctx, sx, sy, w, h, look);
     lamps += 1;
   }
-  if (lamps === 0) {
+  if (lamps === 0 && !input.moonlit) {
     paintLamp(ctx, Math.round(input.viewW * 0.2), Math.round(input.viewH * 0.28), 10, 7, look);
     paintLamp(ctx, Math.round(input.viewW * 0.68), Math.round(input.viewH * 0.62), 10, 7, look);
     lamps = 2;

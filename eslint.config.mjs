@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored third-party code (pixelfx, MIT) is kept byte-close to upstream.
+    "src/vendor/**",
   ]),
 ]);
 

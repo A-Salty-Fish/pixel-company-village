@@ -2863,3 +2863,36 @@ body:has(.farm-page[data-focal-village="village"]) {
   white-space: nowrap;
   pointer-events: none;
 }
+
+/* PV-MAGIC-PLAY-001 wizard play toast: quest steps, small badges and streaks, over the map top */
+.magic-play-toast {
+  position: absolute;
+  left: 50%;
+  top: 52px;
+  z-index: 12;
+  max-width: calc(100% - 24px);
+  transform: translate(-50%, -4px);
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 2px solid #6a3d18;
+  border-radius: 2px;
+  background: rgba(42, 24, 64, 0.88);
+  box-shadow: 0 0 0 2px rgba(255, 216, 74, 0.35);
+  padding: 3px 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: #fff0a8;
+  opacity: 0;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+.magic-play-toast[data-shown="1"] {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .magic-play-toast {
+    transition: none;
+  }
+}

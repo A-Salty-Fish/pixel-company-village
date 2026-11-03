@@ -4,6 +4,44 @@ import type { Comfort, StatusId } from "@/lib/village-life";
 import { STATUS_PRESETS } from "@/lib/village-life";
 import { SettingsDiscover } from "@/features/compact-settings-discover/discover-badge";
 import { LIGHT_SFX_ENABLED } from "@/features/light-sfx/light-sfx";
+import { MAGIC_LEVELS, MAGIC_SETTING_ENABLED, MAGIC_TOWN_ENABLED, dailyMagicLine } from "@/features/magic-town/magic-town";
+import { shanghaiClock } from "@/lib/village-life";
+import { useSyncExternalStore } from "react";
+import { MAGIC_PLAY_ENABLED, PLAY_HOWTO, questLine, readProgress } from "@/features/magic-play/magic-play";
+
+function readQuestLine() {
+  const ymd = shanghaiClock().ymd;
+  let store: Storage | null = null;
+  try {
+    store = window.localStorage;
+  } catch {
+    store = null;
+  }
+  return questLine(ymd, readProgress(store, ymd));
+}
+
+function onStorage(change: () => void) {
+  window.addEventListener("storage", change);
+  return () => window.removeEventListener("storage", change);
+}
+
+/** Today's wizard quest, read from local counts on the client so the server render stays plain. */
+function MagicQuestLine({ off, still }: { off: boolean; still: boolean }) {
+  const line = useSyncExternalStore(onStorage, readQuestLine, () => "");
+  if (!MAGIC_PLAY_ENABLED || off) return null;
+  return (
+    <>
+      {line ? (
+        <p className="mt-1 text-xs leading-5 text-[#6a3d18]" data-testid="magic-quest">
+          {line}
+        </p>
+      ) : null}
+      <p className="mt-1 text-[11px] leading-4 text-[#7a5030]" data-testid="magic-howto">
+        {still ? "减少动作开着时，魔法互动先歇着。" : PLAY_HOWTO}
+      </p>
+    </>
+  );
+}
 
 type Props = {
   comfort: Comfort;
@@ -56,6 +94,30 @@ export function ComfortSettings({
             <span>安静村子：少一点花瓣、广播和头顶小动作。新来的人默认开着。</span>
           </label>
         </details>
+        {MAGIC_TOWN_ENABLED && MAGIC_SETTING_ENABLED ? (
+          <details className="comfort-group" open data-testid="comfort-magic">
+            <summary className="pixel-label cursor-pointer">魔法</summary>
+            <div className="mt-2 flex flex-wrap gap-3 text-sm text-[#2a1a10]" role="radiogroup" aria-label="魔法特效">
+              {MAGIC_LEVELS.map((level) => (
+                <label key={level.id} className="flex items-center gap-1">
+                  <input
+                    type="radio"
+                    name="magic-level"
+                    data-testid={`magic-${level.id}`}
+                    checked={comfort.magic === level.id}
+                    onChange={() => onComfort({ ...comfort, magic: level.id })}
+                  />
+                  <span>{level.label}</span>
+                </label>
+              ))}
+            </div>
+            <p className="mt-2 text-xs leading-5 text-[#6a3d18]" data-testid="magic-daily">
+              {comfort.magic === "off" ? "魔法已关。地图回到原来的样子。" : dailyMagicLine(shanghaiClock().ymd)}
+              {comfort.magic !== "off" && motionReduced ? " 减少动作开着时，魔法只停成一张静图。" : ""}
+            </p>
+            <MagicQuestLine off={comfort.magic === "off"} still={motionReduced} />
+          </details>
+        ) : null}
         <details className="comfort-group" data-testid="comfort-decor">
           <summary className="pixel-label cursor-pointer">装饰</summary>
           <div className="mt-2 space-y-3">

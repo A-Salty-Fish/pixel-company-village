@@ -42,3 +42,17 @@ test("PV-PM-016 night wash follows the glance clock and stays dark, cool, and st
   assert.equal(DAY_GRASS.g - DAY_GRASS.b - (night.g - night.b) >= 40, true);
   assert.equal(contrastRatio(LAMP_CORE, night) >= 4.5, true);
 });
+
+test("moonlit ink keeps blue the most and never blacks out the map", async () => {
+  const { MOON_INK } = await import("./night-wash-v2");
+  const [r, g, b] = (MOON_INK.match(/\d+/g) ?? []).map(Number);
+  assert.equal(b > g && g > r, true);
+  assert.equal(r >= 80 && b <= 200, true);
+});
+
+test("moon lift is a thin blue sheen, not a grey veil", async () => {
+  const { MOON_LIFT } = await import("./night-wash-v2");
+  const [r, g, b] = (MOON_LIFT.match(/\d+/g) ?? []).map(Number);
+  assert.equal(b > g && g >= r, true);
+  assert.equal(r + g <= 12 && b <= 32, true);
+});
