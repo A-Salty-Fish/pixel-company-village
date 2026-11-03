@@ -49,3 +49,10 @@ test("moonlit ink keeps blue the most and never blacks out the map", async () =>
   assert.equal(b > g && g > r, true);
   assert.equal(r >= 80 && b <= 200, true);
 });
+
+test("moon lift is a thin blue sheen, not a grey veil", async () => {
+  const { MOON_LIFT } = await import("./night-wash-v2");
+  const [r, g, b] = (MOON_LIFT.match(/\d+/g) ?? []).map(Number);
+  assert.equal(b > g && g >= r, true);
+  assert.equal(r + g <= 12 && b <= 32, true);
+});

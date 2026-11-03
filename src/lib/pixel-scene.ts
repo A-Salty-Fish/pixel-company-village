@@ -1831,7 +1831,7 @@ export function paintVillage(
   if (bandRect) {
     // Flat letterbox after every wash, so the overview frame never reads as a smudge or gradient
     const { dx, dy, dw, dh } = bandRect;
-    ctx.fillStyle = life?.sessionNight ? "#0f1a16" : "#22381e";
+    ctx.fillStyle = life?.sessionNight ? (moonlit ? "#0e1624" : "#0f1a16") : "#22381e";
     if (dy > 2) ctx.fillRect(0, 0, viewW, dy - 2);
     if (dy + dh + 2 < viewH) ctx.fillRect(0, dy + dh + 2, viewW, viewH - dy - dh - 2);
     if (dx > 2) ctx.fillRect(0, 0, dx - 2, viewH);

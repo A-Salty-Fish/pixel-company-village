@@ -269,7 +269,11 @@ export function VillageScene({
     const nextZoom = arrived?.zoom ?? 3;
     const focus = arrived
       ? { x: arrived.x, y: arrived.y }
-      : clampCamera(mapAim.x - WORLD_W / nextZoom / 2, mapAim.y - WORLD_H / nextZoom / 2, nextZoom);
+      : (() => {
+          // PV-PIXEL-SNAP-001: centre on the real span at this zoom (the snapped span is narrower on a phone)
+          const span = viewSpan(nextZoom);
+          return clampCamera(mapAim.x - span.w / 2, mapAim.y - span.h / 2, nextZoom);
+        })();
     const mode = landmarkSettleMode({ quiet: Boolean(life.quiet), reduced: Boolean(life.reduceMotion) });
     zoomRef.current = nextZoom;
     setZoom(nextZoom);
@@ -324,7 +328,8 @@ export function VillageScene({
     userCam.current = true;
     const toZoom = 2;
     const roof = roofFocus(person);
-    const focus = clampCamera(roof.x - WORLD_W / toZoom / 2, roof.y - WORLD_H / toZoom / 2, toZoom);
+    const roofSpan = viewSpan(toZoom);
+    const focus = clampCamera(roof.x - roofSpan.w / 2, roof.y - roofSpan.h / 2, toZoom);
     const from = { x: camRef.current.x, y: camRef.current.y, zoom: zoomRef.current };
     const to = { x: focus.x, y: focus.y, zoom: toZoom };
     const started = performance.now();

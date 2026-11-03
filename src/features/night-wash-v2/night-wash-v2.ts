@@ -127,6 +127,12 @@ type PaintInput = {
 /** Multiply ink for the moonlit night: keeps about 40-65% of each channel, blue kept most. */
 export const MOON_INK = "rgb(96, 112, 172)";
 
+/**
+ * Screen lift after the moon ink: a thin blue sheen so grass reads moonlit (blue over green on
+ * average) without the old flat veil's grey. Screen only brightens, and mostly in blue.
+ */
+export const MOON_LIFT = "rgb(0, 4, 24)";
+
 function paintLamp(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, look: NightLookV2) {
   ctx.fillStyle = LAMP_HALO;
   ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
@@ -145,6 +151,9 @@ export function paintNightWashV2(ctx: CanvasRenderingContext2D, input: PaintInpu
   if (input.moonlit) {
     ctx.globalCompositeOperation = "multiply";
     ctx.fillStyle = MOON_INK;
+    ctx.fillRect(0, 0, input.viewW, input.viewH);
+    ctx.globalCompositeOperation = "screen";
+    ctx.fillStyle = MOON_LIFT;
     ctx.fillRect(0, 0, input.viewW, input.viewH);
     ctx.globalCompositeOperation = WASH_COMPOSITE;
   } else {
