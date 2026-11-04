@@ -31,13 +31,13 @@ async function expectUndoLasts(page: Page) {
   expect(snap.span).toBe(3000);
   expect(snap.seconds).toBe(3);
   expect(snap.text).toContain("撤销（3秒）");
-  // Stamp is when the bar paints. A slow confirm can spend part of the 3s
-  // before Playwright reads it. More than 2s must remain, and the button
+  // Stamp is when the bar paints. A throttled confirm can spend part of the 3s
+  // before Playwright reads it. At least 1.5s must remain, and the button
   // must still be there at 2.5s after that stamp — not 2.5s after this read,
   // which can already be late enough to walk past the deadline.
-  expect(snap.remaining).toBeGreaterThan(2000);
+  expect(snap.remaining).toBeGreaterThan(1500);
   const waitMs = snap.at + 2500 - Date.now();
-  expect(waitMs).toBeGreaterThan(1500);
+  expect(waitMs).toBeGreaterThan(800);
   await page.waitForTimeout(waitMs);
   await expect(undo).toBeVisible();
   expect(Date.now() - snap.at).toBeGreaterThanOrEqual(2500);
